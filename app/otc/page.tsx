@@ -335,6 +335,7 @@ const dummyCards = [
     amount: 5.2,
     branch: "서울 서초",
     allowPartial: false,
+    status: "대기중", // "대기중" | "진행중" | "완료"
   },
   {
     id: 2,
@@ -342,6 +343,7 @@ const dummyCards = [
     amount: 3.2,
     branch: "광주",
     allowPartial: false,
+    status: "진행중",
   },
   {
     id: 3,
@@ -349,6 +351,7 @@ const dummyCards = [
     amount: 10.5,
     branch: "부산",
     allowPartial: true,
+    status: "대기중",
   },
   {
     id: 4,
@@ -356,6 +359,7 @@ const dummyCards = [
     amount: 7.8,
     branch: "대전",
     allowPartial: false,
+    status: "진행중",
   },
   {
     id: 5,
@@ -363,6 +367,7 @@ const dummyCards = [
     amount: 2.1,
     branch: "서울 서초",
     allowPartial: true,
+    status: "대기중",
   },
   {
     id: 6,
@@ -370,6 +375,7 @@ const dummyCards = [
     amount: 15.0,
     branch: "광주",
     allowPartial: false,
+    status: "진행중",
   },
 ].sort((a, b) => a.price - b.price); // 가격순 정렬
 
@@ -432,18 +438,14 @@ export default function OTCPage() {
                         </CardHeader>
                         <CardInfo>
                           <CardInfoRow>
-                            <CardLabel>수량</CardLabel>
-                            <CardValue>{card.amount} Mo</CardValue>
-                          </CardInfoRow>
-                          <CardInfoRow>
-                            <CardLabel>회관</CardLabel>
-                            <CardValue>{card.branch}</CardValue>
-                          </CardInfoRow>
-                          <CardInfoRow>
-                            <CardLabel>소량 구매</CardLabel>
+                            <CardLabel>총 금액</CardLabel>
                             <CardValue>
-                              {card.allowPartial ? "가능" : "불가능"}
+                              {(card.price * card.amount).toLocaleString()}원
                             </CardValue>
+                          </CardInfoRow>
+                          <CardInfoRow>
+                            <CardLabel>상태</CardLabel>
+                            <CardValue>{card.status}</CardValue>
                           </CardInfoRow>
                         </CardInfo>
                       </Card>

@@ -73,7 +73,7 @@ export default function OTCSection() {
               <S.PriceLabel>BMB/USDT</S.PriceLabel>
               <S.PriceValue>
                 {priceData.bmbUsdtPrice
-                  ? priceData.bmbUsdtPrice.toFixed(4)
+                  ? priceData.bmbUsdtPrice.toFixed(1)
                   : "N/A"}
               </S.PriceValue>
               <S.PriceSubValue>USDT</S.PriceSubValue>
