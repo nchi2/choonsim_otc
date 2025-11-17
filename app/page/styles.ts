@@ -269,6 +269,39 @@ export const NewsCardDate = styled.div`
   margin-top: auto;
 `;
 
+export const NewsCardThumbnail = styled.div`
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #e5e7eb;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media (min-width: 768px) {
+    margin-bottom: 1.25rem;
+  }
+`;
+
+export const NewsCardMeta = styled.div`
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 export const SectionButton = styled(Link)`
   display: inline-block;
   padding: 0.75rem 1.5rem;

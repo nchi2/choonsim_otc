@@ -7,22 +7,25 @@ const dummyNews = [
   {
     id: 1,
     title: "모빅 경제 동향 분석: 2024년 하반기 전망",
-    summary: "최근 모빅 경제의 주요 동향과 하반기 전망에 대해 전문가들이 분석한 내용을 공유합니다.",
+    thumbnail: null, // 나중에 실제 이미지 URL로 교체
     date: "2024.01.15",
+    author: "모빅경제",
     link: "#",
   },
   {
     id: 2,
     title: "디지털 자산 시장의 새로운 변화",
-    summary: "디지털 자산 시장에서 나타나는 새로운 트렌드와 변화에 대해 살펴봅니다.",
+    thumbnail: null,
     date: "2024.01.10",
+    author: "모빅경제",
     link: "#",
   },
   {
     id: 3,
     title: "블록체인 기술의 미래",
-    summary: "블록체인 기술이 가져올 미래의 변화와 가능성에 대해 탐구합니다.",
+    thumbnail: null,
     date: "2024.01.05",
+    author: "모빅경제",
     link: "#",
   },
 ];
@@ -34,9 +37,17 @@ export default function NewsSection() {
       <S.CardGrid>
         {dummyNews.map((news) => (
           <S.NewsCard key={news.id}>
+            <S.NewsCardThumbnail>
+              {news.thumbnail ? (
+                <img src={news.thumbnail} alt={news.title} />
+              ) : (
+                "썸네일"
+              )}
+            </S.NewsCardThumbnail>
             <S.NewsCardTitle>{news.title}</S.NewsCardTitle>
-            <S.NewsCardSummary>{news.summary}</S.NewsCardSummary>
-            <S.NewsCardDate>{news.date}</S.NewsCardDate>
+            <S.NewsCardMeta>
+              {news.date} | {news.author}
+            </S.NewsCardMeta>
           </S.NewsCard>
         ))}
       </S.CardGrid>
@@ -46,6 +57,3 @@ export default function NewsSection() {
     </S.Section>
   );
 }
-
-
-
