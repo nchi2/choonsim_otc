@@ -6,8 +6,12 @@ const FooterContainer = styled.footer`
   width: 100%;
   background-color: #e5e7eb;
   border-top: 2px solid #d1d5db;
-  padding: 2rem;
+  padding: 1rem;
   margin-top: auto;
+
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
 `;
 
 const FooterContent = styled.div`
@@ -19,8 +23,12 @@ const FooterContent = styled.div`
 
 const Copyright = styled.p`
   color: #4b5563;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   margin: 0;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+  }
 `;
 
 export default function Footer() {

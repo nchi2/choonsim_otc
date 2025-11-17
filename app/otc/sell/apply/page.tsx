@@ -223,6 +223,8 @@ export default function SellApplyPage() {
   const [priceError, setPriceError] = useState("");
   const [useCustomPrice, setUseCustomPrice] = useState(false);
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   // LBANK 가격 불러오기
   useEffect(() => {
     const fetchPrices = async () => {
@@ -287,8 +289,77 @@ export default function SellApplyPage() {
     return cleaned;
   };
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    // 성함 검증
+    if (!formData.name.trim()) {
+      newErrors.name = "성함을 입력해주세요.";
+    }
+
+    // 연락처 검증
+    if (!formData.phone.trim()) {
+      newErrors.phone = "연락처를 입력해주세요.";
+    } else {
+      // 연락처 형식 검증 (000-0000-0000)
+      const phonePattern = /^\d{3}-\d{4}-\d{4}$/;
+      if (!phonePattern.test(formData.phone)) {
+        newErrors.phone = "올바른 연락처 형식이 아닙니다. (예: 010-1234-5678)";
+      }
+    }
+
+    // 수량 검증
+    if (!formData.amount.trim()) {
+      newErrors.amount = "판매 희망 수량을 입력해주세요.";
+    } else {
+      const amountNum = parseFloat(formData.amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        newErrors.amount = "수량은 0보다 큰 숫자를 입력해주세요.";
+      }
+    }
+
+    // 가격 검증
+    if (!formData.price.trim()) {
+      newErrors.price = "희망 가격을 입력하거나 선택해주세요.";
+    } else {
+      const priceNum = parseInt(formData.price);
+      if (isNaN(priceNum) || priceNum <= 0) {
+        newErrors.price = "가격은 0보다 큰 숫자를 입력해주세요.";
+      } else if (priceNum % 10000 !== 0) {
+        newErrors.price = "가격은 10,000원 단위로 입력해주세요.";
+      }
+    }
+
+    // 소량 판매 허용 여부 검증
+    if (!formData.allowPartial) {
+      newErrors.allowPartial = "소량 판매 허용 여부를 선택해주세요.";
+    }
+
+    // 회관 선택 검증
+    if (!formData.branch) {
+      newErrors.branch = "방문할 회관을 선택해주세요.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      // 유효성 검사 실패 시 첫 번째 에러 필드로 스크롤
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const element = document.getElementById(firstErrorField);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.focus();
+        }
+      }
+      return;
+    }
+
     console.log("Form Data:", formData);
     alert(JSON.stringify(formData, null, 2));
   };
@@ -399,7 +470,9 @@ export default function SellApplyPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="예: 홍길동"
+                style={{ borderColor: errors.name ? "#ef4444" : "#d1d5db" }}
               />
+              {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
             </FormGroup>
 
             <FormGroup>
@@ -412,7 +485,9 @@ export default function SellApplyPage() {
                 onChange={handlePhoneChange}
                 placeholder="예: 010-1234-5678"
                 maxLength={13}
+                style={{ borderColor: errors.phone ? "#ef4444" : "#d1d5db" }}
               />
+              {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
             </FormGroup>
 
             <FormGroup>
@@ -425,7 +500,9 @@ export default function SellApplyPage() {
                 onChange={handleAmountChange}
                 placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
                 inputMode="decimal"
+                style={{ borderColor: errors.amount ? "#ef4444" : "#d1d5db" }}
               />
+              {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
             </FormGroup>
 
             <FormGroup>
@@ -438,6 +515,7 @@ export default function SellApplyPage() {
                 disabled={
                   isLoadingPrice || lbankKrwPrice === null || useCustomPrice
                 }
+                style={{ borderColor: errors.price ? "#ef4444" : "#d1d5db" }}
               >
                 <option value="">
                   {isLoadingPrice
@@ -463,8 +541,15 @@ export default function SellApplyPage() {
                   onChange={handleCustomPriceChange}
                   placeholder="예: 100000"
                   disabled={isLoadingPrice || lbankKrwPrice === null}
+                  style={{
+                    borderColor:
+                      errors.price || priceError ? "#ef4444" : "#d1d5db",
+                  }}
                 />
                 {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
+                {errors.price && !priceError && (
+                  <ErrorMessage>{errors.price}</ErrorMessage>
+                )}
               </PriceInputWrapper>
             </FormGroup>
 
@@ -492,6 +577,9 @@ export default function SellApplyPage() {
                   비허용
                 </RadioLabel>
               </RadioGroup>
+              {errors.allowPartial && (
+                <ErrorMessage>{errors.allowPartial}</ErrorMessage>
+              )}
             </FormGroup>
 
             <FormGroup>
@@ -501,6 +589,7 @@ export default function SellApplyPage() {
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
+                style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
               >
                 <option value="">회관을 선택하세요</option>
                 <option value="서울">서울</option>
@@ -508,6 +597,7 @@ export default function SellApplyPage() {
                 <option value="부산">부산</option>
                 <option value="대전">대전</option>
               </Select>
+              {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
             </FormGroup>
 
             <SubmitButton type="submit">신청하기</SubmitButton>
