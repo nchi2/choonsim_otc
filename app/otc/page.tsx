@@ -76,7 +76,7 @@ const TabContainer = styled.div`
 
 const TabButton = styled.button<{ $active: boolean }>`
   padding: 0.75rem 1.5rem;
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: ${(props) => (props.$active ? "#3b82f6" : "#6b7280")};
   background-color: transparent;
@@ -387,13 +387,13 @@ export default function OTCPage() {
               $active={activeTab === "orderbook"}
               onClick={() => setActiveTab("orderbook")}
             >
-              호가형
+              호가형(소액)
             </TabButton>
             <TabButton
               $active={activeTab === "card"}
               onClick={() => setActiveTab("card")}
             >
-              카드형
+              카드형(일괄)
             </TabButton>
           </TabContainer>
 
