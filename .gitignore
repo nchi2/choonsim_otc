@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+ai-workflow-otc.md
 
 # debug
 npm-debug.log*
