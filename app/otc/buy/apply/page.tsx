@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
@@ -212,6 +212,21 @@ const ErrorMessage = FormStyles.ErrorMessage;
 const SubmitButton = FormStyles.PrimaryButton;
 
 export default function BuyApplyPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageLayout>
+          <Title>모빅 구매 신청</Title>
+          <Description>로딩 중...</Description>
+        </PageLayout>
+      }
+    >
+      <BuyApplyContent />
+    </Suspense>
+  );
+}
+
+function BuyApplyContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode") || "free";
   const initialPrice = searchParams.get("price") || "";
