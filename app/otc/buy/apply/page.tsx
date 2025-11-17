@@ -249,6 +249,79 @@ const PriceInputLabel = styled.label`
   font-weight: 500;
 `;
 
+const CheckboxContainer = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: #9ca3af;
+  }
+
+  @media (min-width: 768px) {
+    padding: 1.25rem;
+  }
+`;
+
+const CheckboxInput = styled.input`
+  margin-top: 0.25rem;
+  cursor: pointer;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+`;
+
+const CheckboxLabel = styled.label`
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  line-height: 1.5;
+  flex: 1;
+
+  @media (min-width: 768px) {
+    font-size: 0.9375rem;
+  }
+`;
+
+const SubmitButton = styled.button`
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #3b82f6;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1.125rem;
+    padding: 1.25rem 2.5rem;
+  }
+`;
+
 export default function BuyApplyPage() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode") || "free";
@@ -267,6 +340,11 @@ export default function BuyApplyPage() {
   const [lbankKrwPrice, setLbankKrwPrice] = useState<number | null>(null);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [priceError, setPriceError] = useState("");
+  const [agreedRisk, setAgreedRisk] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [errors, setErrors] = useState<{
+    [key: string]: string;
+  }>({});
 
   // free 모드에서 allowPartial = true, card 모드에서 allowPartial = false
   const allowPartial = mode === "free" ? true : false;
@@ -400,9 +478,108 @@ export default function BuyApplyPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form Data:", formData);
-    console.log("Mode:", mode);
-    console.log("Allow Partial:", allowPartial);
+
+    // 에러 초기화
+    setErrors({});
+    let hasError = false;
+
+    // 필수 필드 검증
+    if (!formData.name.trim()) {
+      setErrors((prev) => ({ ...prev, name: "성함을 입력해주세요." }));
+      hasError = true;
+    }
+
+    if (!formData.phone.trim()) {
+      setErrors((prev) => ({ ...prev, phone: "연락처를 입력해주세요." }));
+      hasError = true;
+    } else if (formData.phone.replace(/[^\d]/g, "").length !== 11) {
+      setErrors((prev) => ({
+        ...prev,
+        phone: "올바른 연락처 형식이 아닙니다.",
+      }));
+      hasError = true;
+    }
+
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      setErrors((prev) => ({
+        ...prev,
+        amount: "구매 희망 수량을 입력해주세요.",
+      }));
+      hasError = true;
+    }
+
+    if (mode === "free") {
+      if (!formData.price || parseFloat(formData.price) <= 0) {
+        setErrors((prev) => ({
+          ...prev,
+          price: "희망 가격을 입력해주세요.",
+        }));
+        hasError = true;
+      }
+
+      if (
+        formData.priceType === "custom" &&
+        formData.price &&
+        parseInt(formData.price) % 10000 !== 0
+      ) {
+        setErrors((prev) => ({
+          ...prev,
+          price: "가격은 10,000원 단위로 입력해주세요.",
+        }));
+        hasError = true;
+      }
+    }
+
+    if (!formData.branch) {
+      setErrors((prev) => ({
+        ...prev,
+        branch: "방문할 회관을 선택해주세요.",
+      }));
+      hasError = true;
+    }
+
+    // 동의 체크 검증
+    if (!agreedRisk) {
+      setErrors((prev) => ({
+        ...prev,
+        agreedRisk: "보이스피싱 안내 동의는 필수입니다.",
+      }));
+      hasError = true;
+    }
+
+    if (!agreedPrivacy) {
+      setErrors((prev) => ({
+        ...prev,
+        agreedPrivacy: "개인정보 수집 동의는 필수입니다.",
+      }));
+      hasError = true;
+    }
+
+    if (hasError) {
+      // 첫 번째 에러로 스크롤
+      const firstErrorElement = document.querySelector(
+        '[style*="border-color: #ef4444"], .error-message'
+      );
+      if (firstErrorElement) {
+        firstErrorElement.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+      return;
+    }
+
+    // 제출 데이터 구성
+    const submitData = {
+      ...formData,
+      mode,
+      allowPartial,
+      agreedRisk,
+      agreedPrivacy,
+    };
+
+    console.log("Form Data:", submitData);
+    alert(JSON.stringify(submitData, null, 2));
   };
 
   return (
@@ -447,7 +624,11 @@ export default function BuyApplyPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="예: 홍길동"
+                style={{
+                  borderColor: errors.name ? "#ef4444" : "#d1d5db",
+                }}
               />
+              {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
             </FormGroup>
 
             <FormGroup>
@@ -460,7 +641,11 @@ export default function BuyApplyPage() {
                 onChange={handlePhoneChange}
                 placeholder="예: 010-1234-5678"
                 maxLength={13}
+                style={{
+                  borderColor: errors.phone ? "#ef4444" : "#d1d5db",
+                }}
               />
+              {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
             </FormGroup>
 
             <FormGroup>
@@ -475,16 +660,18 @@ export default function BuyApplyPage() {
                 inputMode="decimal"
                 readOnly={mode === "card"}
                 disabled={mode === "card"}
-                style={
-                  mode === "card"
+                style={{
+                  ...(mode === "card"
                     ? {
                         backgroundColor: "#f3f4f6",
                         cursor: "not-allowed",
                         color: "#6b7280",
                       }
-                    : {}
-                }
+                    : {}),
+                  borderColor: errors.amount ? "#ef4444" : "#d1d5db",
+                }}
               />
+              {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
               {mode === "card" && (
                 <p
                   style={{
@@ -550,8 +737,12 @@ export default function BuyApplyPage() {
                         style={{
                           backgroundColor: "#f3f4f6",
                           cursor: "not-allowed",
+                          borderColor: errors.price ? "#ef4444" : "#d1d5db",
                         }}
                       />
+                      {errors.price && (
+                        <ErrorMessage>{errors.price}</ErrorMessage>
+                      )}
                     </>
                   )}
 
@@ -594,6 +785,7 @@ export default function BuyApplyPage() {
                       backgroundColor: "#f3f4f6",
                       cursor: "not-allowed",
                       color: "#6b7280",
+                      borderColor: errors.price ? "#ef4444" : "#d1d5db",
                     }}
                   />
                   <p
@@ -605,6 +797,7 @@ export default function BuyApplyPage() {
                   >
                     카드형 매물의 가격은 고정되어 있습니다.
                   </p>
+                  {errors.price && <ErrorMessage>{errors.price}</ErrorMessage>}
                 </>
               )}
             </FormGroup>
@@ -616,6 +809,9 @@ export default function BuyApplyPage() {
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
+                style={{
+                  borderColor: errors.branch ? "#ef4444" : "#d1d5db",
+                }}
               >
                 <option value="">회관을 선택하세요</option>
                 <option value="서울 서초">서울 서초</option>
@@ -624,7 +820,71 @@ export default function BuyApplyPage() {
                 <option value="대전">대전</option>
                 <option value="기타(담당자와 조율)">기타(담당자와 조율)</option>
               </Select>
+              {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
             </FormGroup>
+
+            <FormGroup>
+              <Label>필수 동의 사항 *</Label>
+              <CheckboxContainer
+                style={{
+                  borderColor: errors.agreedRisk ? "#ef4444" : "#d1d5db",
+                }}
+              >
+                <CheckboxInput
+                  type="checkbox"
+                  id="agreedRisk"
+                  checked={agreedRisk}
+                  onChange={(e) => {
+                    setAgreedRisk(e.target.checked);
+                    if (e.target.checked) {
+                      setErrors((prev) => {
+                        const newErrors = { ...prev };
+                        delete newErrors.agreedRisk;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                />
+                <CheckboxLabel htmlFor="agreedRisk">
+                  보이스피싱 및 불법 자금 관련 안내를 확인하고 동의합니다.
+                </CheckboxLabel>
+              </CheckboxContainer>
+              {errors.agreedRisk && (
+                <ErrorMessage>{errors.agreedRisk}</ErrorMessage>
+              )}
+            </FormGroup>
+
+            <FormGroup>
+              <CheckboxContainer
+                style={{
+                  borderColor: errors.agreedPrivacy ? "#ef4444" : "#d1d5db",
+                }}
+              >
+                <CheckboxInput
+                  type="checkbox"
+                  id="agreedPrivacy"
+                  checked={agreedPrivacy}
+                  onChange={(e) => {
+                    setAgreedPrivacy(e.target.checked);
+                    if (e.target.checked) {
+                      setErrors((prev) => {
+                        const newErrors = { ...prev };
+                        delete newErrors.agreedPrivacy;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                />
+                <CheckboxLabel htmlFor="agreedPrivacy">
+                  개인정보 최소 수집 및 이용에 동의합니다.
+                </CheckboxLabel>
+              </CheckboxContainer>
+              {errors.agreedPrivacy && (
+                <ErrorMessage>{errors.agreedPrivacy}</ErrorMessage>
+              )}
+            </FormGroup>
+
+            <SubmitButton type="submit">구매 신청하기</SubmitButton>
           </Form>
         </FormContainer>
       </MainContent>

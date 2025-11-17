@@ -143,7 +143,6 @@ const ButtonContainer = styled.div`
   flex-direction: column;
   gap: 1rem;
   width: 100%;
-  max-width: 400px;
   background-color: #ffffff;
   padding: 1.5rem;
   border-radius: 0.5rem;
@@ -154,7 +153,7 @@ const ButtonContainer = styled.div`
     align-items: center;
     justify-content: center;
     gap: 1.5rem;
-    max-width: 500px;
+    max-width: 100%;
     padding: 2rem;
   }
 `;
