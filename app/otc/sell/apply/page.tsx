@@ -2,33 +2,8 @@
 
 import { useState, useEffect } from "react";
 import styled from "styled-components";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-
-const PageContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: #f5f5f5;
-`;
-
-const MainContent = styled.main`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 2rem 1rem;
-  background-color: #ffffff;
-  margin: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-  @media (min-width: 768px) {
-    padding: 4rem 2rem;
-    margin: 2rem;
-  }
-`;
+import PageLayout from "@/components/layouts/PageLayout";
+import * as FormStyles from "@/components/forms/styles";
 
 const Title = styled.h1`
   font-size: 1.875rem;
@@ -40,131 +15,6 @@ const Title = styled.h1`
   @media (min-width: 768px) {
     font-size: 2.5rem;
     margin-bottom: 3rem;
-  }
-`;
-
-const FormContainer = styled.div`
-  width: 100%;
-  max-width: 800px;
-  background-color: #f9fafb;
-  padding: 2rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-
-  @media (min-width: 768px) {
-    padding: 3rem;
-  }
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-  }
-`;
-
-const Input = styled.input`
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: #ffffff;
-  color: #111827;
-  transition: border-color 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  @media (min-width: 768px) {
-    padding: 0.875rem;
-  }
-`;
-
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-`;
-
-const RadioLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  color: #374151;
-  cursor: pointer;
-`;
-
-const RadioInput = styled.input`
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-`;
-
-const Select = styled.select`
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: #ffffff;
-  color: #111827;
-  cursor: pointer;
-  transition: border-color 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  @media (min-width: 768px) {
-    padding: 0.875rem;
-  }
-`;
-
-const SubmitButton = styled.button`
-  padding: 1rem 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ffffff;
-  background-color: #10b981;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 1rem;
-
-  &:hover {
-    background-color: #059669;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1.125rem;
-    padding: 1.25rem 2.5rem;
   }
 `;
 
@@ -185,28 +35,17 @@ const PriceInfo = styled.div`
   }
 `;
 
-const ErrorMessage = styled.div`
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 0.375rem;
-`;
-
-const PriceInputWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-`;
-
-const PriceInputLabel = styled.label`
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
-`;
+// 공통 컴포넌트 사용
+const Form = FormStyles.Form;
+const FormGroup = FormStyles.FormGroup;
+const Label = FormStyles.Label;
+const Input = FormStyles.Input;
+const Select = FormStyles.Select;
+const RadioGroup = FormStyles.RadioGroup;
+const RadioLabel = FormStyles.RadioLabel;
+const RadioInput = FormStyles.RadioInput;
+const ErrorMessage = FormStyles.ErrorMessage;
+const SubmitButton = FormStyles.PrimaryButton;
 
 export default function SellApplyPage() {
   const [formData, setFormData] = useState({
@@ -447,164 +286,156 @@ export default function SellApplyPage() {
   };
 
   return (
-    <PageContainer>
-      <Header />
-      <MainContent>
-        <Title>판매 신청</Title>
-        {isLoadingPrice && lbankKrwPrice === null && (
-          <PriceInfo>LBANK 현재가를 불러오는 중...</PriceInfo>
-        )}
-        {lbankKrwPrice !== null && (
-          <PriceInfo>
-            LBANK 현재가: {lbankKrwPrice.toLocaleString()}원
-          </PriceInfo>
-        )}
-        <FormContainer>
-          <Form onSubmit={handleSubmit}>
-            <FormGroup>
-              <Label htmlFor="name">성함 *</Label>
-              <Input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
+    <PageLayout>
+      <Title>모빅 판매 신청</Title>
+      <PriceInfo>
+        {isLoadingPrice &&
+          lbankKrwPrice === null &&
+          "LBANK 현재가를 불러오는 중..."}
+        {lbankKrwPrice !== null &&
+          `LBANK 현재가: ${lbankKrwPrice.toLocaleString()}원`}
+      </PriceInfo>
+      <Form onSubmit={handleSubmit}>
+        <FormGroup>
+          <Label htmlFor="name">성함 *</Label>
+          <Input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="예: 홍길동"
+            style={{ borderColor: errors.name ? "#ef4444" : "#d1d5db" }}
+          />
+          {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="phone">연락처 *</Label>
+          <Input
+            type="tel"
+            id="phone"
+            name="phone"
+            value={formData.phone}
+            onChange={handlePhoneChange}
+            placeholder="예: 010-1234-5678"
+            maxLength={13}
+            style={{ borderColor: errors.phone ? "#ef4444" : "#d1d5db" }}
+          />
+          {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="amount">판매 희망 수량 *</Label>
+          <Input
+            type="text"
+            id="amount"
+            name="amount"
+            value={formData.amount}
+            onChange={handleAmountChange}
+            placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
+            inputMode="decimal"
+            style={{ borderColor: errors.amount ? "#ef4444" : "#d1d5db" }}
+          />
+          {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="price">희망 가격 *</Label>
+          <Select
+            id="price"
+            name="price"
+            value={useCustomPrice ? "" : formData.price}
+            onChange={handlePriceChange}
+            disabled={
+              isLoadingPrice || lbankKrwPrice === null || useCustomPrice
+            }
+            style={{ borderColor: errors.price ? "#ef4444" : "#d1d5db" }}
+          >
+            <option value="">
+              {isLoadingPrice
+                ? "가격 정보를 불러오는 중..."
+                : "가격을 선택하세요 (10,000원 단위)"}
+            </option>
+            {generatePriceOptions()}
+          </Select>
+
+          <FormStyles.PriceInputWrapper>
+            <FormStyles.PriceInputLabel htmlFor="customPrice">
+              또는 직접 입력 (10,000원 단위)
+            </FormStyles.PriceInputLabel>
+            <Input
+              type="text"
+              id="customPrice"
+              name="customPrice"
+              value={
+                useCustomPrice
+                  ? parseInt(formData.price || "0").toLocaleString()
+                  : ""
+              }
+              onChange={handleCustomPriceChange}
+              placeholder="예: 100000"
+              disabled={isLoadingPrice || lbankKrwPrice === null}
+              style={{
+                borderColor: errors.price || priceError ? "#ef4444" : "#d1d5db",
+              }}
+            />
+            {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
+            {errors.price && !priceError && (
+              <ErrorMessage>{errors.price}</ErrorMessage>
+            )}
+          </FormStyles.PriceInputWrapper>
+        </FormGroup>
+
+        <FormGroup>
+          <Label>소량 판매 허용 여부 *</Label>
+          <RadioGroup>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                name="allowPartial"
+                value="true"
+                checked={formData.allowPartial === "true"}
                 onChange={handleChange}
-                placeholder="예: 홍길동"
-                style={{ borderColor: errors.name ? "#ef4444" : "#d1d5db" }}
               />
-              {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="phone">연락처 *</Label>
-              <Input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="예: 010-1234-5678"
-                maxLength={13}
-                style={{ borderColor: errors.phone ? "#ef4444" : "#d1d5db" }}
-              />
-              {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="amount">판매 희망 수량 *</Label>
-              <Input
-                type="text"
-                id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleAmountChange}
-                placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
-                inputMode="decimal"
-                style={{ borderColor: errors.amount ? "#ef4444" : "#d1d5db" }}
-              />
-              {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="price">희망 가격 *</Label>
-              <Select
-                id="price"
-                name="price"
-                value={useCustomPrice ? "" : formData.price}
-                onChange={handlePriceChange}
-                disabled={
-                  isLoadingPrice || lbankKrwPrice === null || useCustomPrice
-                }
-                style={{ borderColor: errors.price ? "#ef4444" : "#d1d5db" }}
-              >
-                <option value="">
-                  {isLoadingPrice
-                    ? "가격 정보를 불러오는 중..."
-                    : "가격을 선택하세요 (10,000원 단위)"}
-                </option>
-                {generatePriceOptions()}
-              </Select>
-
-              <PriceInputWrapper>
-                <PriceInputLabel htmlFor="customPrice">
-                  또는 직접 입력 (10,000원 단위)
-                </PriceInputLabel>
-                <Input
-                  type="text"
-                  id="customPrice"
-                  name="customPrice"
-                  value={
-                    useCustomPrice
-                      ? parseInt(formData.price || "0").toLocaleString()
-                      : ""
-                  }
-                  onChange={handleCustomPriceChange}
-                  placeholder="예: 100000"
-                  disabled={isLoadingPrice || lbankKrwPrice === null}
-                  style={{
-                    borderColor:
-                      errors.price || priceError ? "#ef4444" : "#d1d5db",
-                  }}
-                />
-                {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
-                {errors.price && !priceError && (
-                  <ErrorMessage>{errors.price}</ErrorMessage>
-                )}
-              </PriceInputWrapper>
-            </FormGroup>
-
-            <FormGroup>
-              <Label>소량 판매 허용 여부 *</Label>
-              <RadioGroup>
-                <RadioLabel>
-                  <RadioInput
-                    type="radio"
-                    name="allowPartial"
-                    value="true"
-                    checked={formData.allowPartial === "true"}
-                    onChange={handleChange}
-                  />
-                  허용
-                </RadioLabel>
-                <RadioLabel>
-                  <RadioInput
-                    type="radio"
-                    name="allowPartial"
-                    value="false"
-                    checked={formData.allowPartial === "false"}
-                    onChange={handleChange}
-                  />
-                  비허용
-                </RadioLabel>
-              </RadioGroup>
-              {errors.allowPartial && (
-                <ErrorMessage>{errors.allowPartial}</ErrorMessage>
-              )}
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="branch">방문할 회관 선택 *</Label>
-              <Select
-                id="branch"
-                name="branch"
-                value={formData.branch}
+              허용
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                name="allowPartial"
+                value="false"
+                checked={formData.allowPartial === "false"}
                 onChange={handleChange}
-                style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
-              >
-                <option value="">회관을 선택하세요</option>
-                <option value="서울">서울</option>
-                <option value="광주">광주</option>
-                <option value="부산">부산</option>
-                <option value="대전">대전</option>
-              </Select>
-              {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
-            </FormGroup>
+              />
+              비허용
+            </RadioLabel>
+          </RadioGroup>
+          {errors.allowPartial && (
+            <ErrorMessage>{errors.allowPartial}</ErrorMessage>
+          )}
+        </FormGroup>
 
-            <SubmitButton type="submit">신청하기</SubmitButton>
-          </Form>
-        </FormContainer>
-      </MainContent>
-      <Footer />
-    </PageContainer>
+        <FormGroup>
+          <Label htmlFor="branch">방문할 회관 선택 *</Label>
+          <Select
+            id="branch"
+            name="branch"
+            value={formData.branch}
+            onChange={handleChange}
+            style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
+          >
+            <option value="">회관을 선택하세요</option>
+            <option value="서울">서울</option>
+            <option value="광주">광주</option>
+            <option value="부산">부산</option>
+            <option value="대전">대전</option>
+          </Select>
+          {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
+        </FormGroup>
+
+        <SubmitButton type="submit">신청하기</SubmitButton>
+      </Form>
+    </PageLayout>
   );
 }

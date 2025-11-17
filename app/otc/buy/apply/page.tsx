@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import PageLayout from "@/components/layouts/PageLayout";
+import * as FormStyles from "@/components/forms/styles";
 
 const PageContainer = styled.div`
   display: flex;
@@ -53,82 +53,6 @@ const Description = styled.p`
   @media (min-width: 768px) {
     font-size: 1rem;
     margin-bottom: 3rem;
-  }
-`;
-
-const FormContainer = styled.div`
-  width: 100%;
-  max-width: 800px;
-  background-color: #f9fafb;
-  padding: 2rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-
-  @media (min-width: 768px) {
-    padding: 3rem;
-  }
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-  }
-`;
-
-const Input = styled.input`
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: #ffffff;
-  color: #111827;
-  transition: border-color 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  @media (min-width: 768px) {
-    padding: 0.875rem;
-  }
-`;
-
-const Select = styled.select`
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: #ffffff;
-  color: #111827;
-  cursor: pointer;
-  transition: border-color 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  @media (min-width: 768px) {
-    padding: 0.875rem;
   }
 `;
 
@@ -226,16 +150,6 @@ const InfoText = styled.p`
   }
 `;
 
-const ErrorMessage = styled.div`
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 0.375rem;
-`;
-
 const PriceInputWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -288,39 +202,14 @@ const CheckboxLabel = styled.label`
   }
 `;
 
-const SubmitButton = styled.button`
-  width: 100%;
-  padding: 1rem 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ffffff;
-  background-color: #3b82f6;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background-color: #2563eb;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  &:disabled {
-    background-color: #9ca3af;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1.125rem;
-    padding: 1.25rem 2.5rem;
-  }
-`;
+// Form, FormGroup, Label, Input, Select, ErrorMessage, PrimaryButton은 FormStyles에서 import
+const Form = FormStyles.Form;
+const FormGroup = FormStyles.FormGroup;
+const Label = FormStyles.Label;
+const Input = FormStyles.Input;
+const Select = FormStyles.Select;
+const ErrorMessage = FormStyles.ErrorMessage;
+const SubmitButton = FormStyles.PrimaryButton;
 
 export default function BuyApplyPage() {
   const searchParams = useSearchParams();
@@ -583,96 +472,209 @@ export default function BuyApplyPage() {
   };
 
   return (
-    <PageContainer>
-      <Header />
-      <MainContent>
-        <Title>모빅 구매 신청</Title>
-        <Description>구매 신청서를 작성해주세요.</Description>
-        <FormContainer>
-          {mode === "card" && (
-            <>
-              <ModeIndicator>
-                카드형 매물 구매 모드 (가격:{" "}
-                {initialPrice ? parseInt(initialPrice).toLocaleString() : "N/A"}
-                원, 수량: {initialAmount || "N/A"} Mo)
-              </ModeIndicator>
-              <InfoText
+    <PageLayout>
+      <Title>모빅 구매 신청</Title>
+      <Description>구매 신청서를 작성해주세요.</Description>
+      <FormStyles.FormContainer>
+        {mode === "card" && (
+          <>
+            <ModeIndicator>
+              카드형 매물 구매 모드 (가격:{" "}
+              {initialPrice ? parseInt(initialPrice).toLocaleString() : "N/A"}
+              원, 수량: {initialAmount || "N/A"} Mo)
+            </ModeIndicator>
+            <InfoText
+              style={{
+                backgroundColor: "#fef3c7",
+                border: "1px solid #fbbf24",
+                color: "#92400e",
+              }}
+            >
+              이 매물은 일괄 거래 전용이며, 수량과 가격은 판매자가 제시한
+              조건으로 고정됩니다.
+            </InfoText>
+          </>
+        )}
+        {mode === "free" && (
+          <>
+            <ModeIndicator>일반 구매 모드</ModeIndicator>
+            <InfoText>소량 구매가 가능한 일반 구매 신청입니다.</InfoText>
+          </>
+        )}
+        <Form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label htmlFor="name">성함 *</Label>
+            <Input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="예: 홍길동"
+              style={{
+                borderColor: errors.name ? "#ef4444" : "#d1d5db",
+              }}
+            />
+            {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="phone">연락처 *</Label>
+            <Input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handlePhoneChange}
+              placeholder="예: 010-1234-5678"
+              maxLength={13}
+              style={{
+                borderColor: errors.phone ? "#ef4444" : "#d1d5db",
+              }}
+            />
+            {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="amount">구매 희망 수량 *</Label>
+            <Input
+              type="text"
+              id="amount"
+              name="amount"
+              value={formData.amount}
+              onChange={handleAmountChange}
+              placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
+              inputMode="decimal"
+              readOnly={mode === "card"}
+              disabled={mode === "card"}
+              style={{
+                ...(mode === "card"
+                  ? {
+                      backgroundColor: "#f3f4f6",
+                      cursor: "not-allowed",
+                      color: "#6b7280",
+                    }
+                  : {}),
+                borderColor: errors.amount ? "#ef4444" : "#d1d5db",
+              }}
+            />
+            {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
+            {mode === "card" && (
+              <p
                 style={{
-                  backgroundColor: "#fef3c7",
-                  border: "1px solid #fbbf24",
-                  color: "#92400e",
+                  fontSize: "0.75rem",
+                  color: "#6b7280",
+                  marginTop: "0.25rem",
                 }}
               >
-                이 매물은 일괄 거래 전용이며, 수량과 가격은 판매자가 제시한
-                조건으로 고정됩니다.
-              </InfoText>
-            </>
-          )}
-          {mode === "free" && (
-            <>
-              <ModeIndicator>일반 구매 모드</ModeIndicator>
-              <InfoText>소량 구매가 가능한 일반 구매 신청입니다.</InfoText>
-            </>
-          )}
-          <Form onSubmit={handleSubmit}>
-            <FormGroup>
-              <Label htmlFor="name">성함 *</Label>
-              <Input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="예: 홍길동"
-                style={{
-                  borderColor: errors.name ? "#ef4444" : "#d1d5db",
-                }}
-              />
-              {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
-            </FormGroup>
+                카드형 매물의 수량은 고정되어 있습니다.
+              </p>
+            )}
+          </FormGroup>
 
-            <FormGroup>
-              <Label htmlFor="phone">연락처 *</Label>
-              <Input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="예: 010-1234-5678"
-                maxLength={13}
-                style={{
-                  borderColor: errors.phone ? "#ef4444" : "#d1d5db",
-                }}
-              />
-              {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
-            </FormGroup>
+          <FormGroup>
+            <Label htmlFor="price">희망 가격 *</Label>
+            {mode === "free" && (
+              <>
+                <RadioGroup>
+                  <RadioLabel>
+                    <RadioInput
+                      type="radio"
+                      name="priceType"
+                      value="market"
+                      checked={formData.priceType === "market"}
+                      onChange={handleChange}
+                    />
+                    시장가
+                  </RadioLabel>
+                  <RadioLabel>
+                    <RadioInput
+                      type="radio"
+                      name="priceType"
+                      value="custom"
+                      checked={formData.priceType === "custom"}
+                      onChange={handleChange}
+                    />
+                    사용자 지정
+                  </RadioLabel>
+                </RadioGroup>
 
-            <FormGroup>
-              <Label htmlFor="amount">구매 희망 수량 *</Label>
-              <Input
-                type="text"
-                id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleAmountChange}
-                placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
-                inputMode="decimal"
-                readOnly={mode === "card"}
-                disabled={mode === "card"}
-                style={{
-                  ...(mode === "card"
-                    ? {
+                {formData.priceType === "market" && (
+                  <>
+                    {isLoadingPrice && lbankKrwPrice === null && (
+                      <PriceInfo>LBANK 현재가를 불러오는 중...</PriceInfo>
+                    )}
+                    {lbankKrwPrice !== null && (
+                      <PriceInfo>
+                        LBANK 현재가: {lbankKrwPrice.toLocaleString()}원
+                        <br />
+                        (10,000원 단위로 반올림:{" "}
+                        {(
+                          Math.round(lbankKrwPrice / 10000) * 10000
+                        ).toLocaleString()}
+                        원)
+                      </PriceInfo>
+                    )}
+                    <Input
+                      type="text"
+                      id="price"
+                      name="price"
+                      value={formData.price}
+                      readOnly
+                      style={{
                         backgroundColor: "#f3f4f6",
                         cursor: "not-allowed",
-                        color: "#6b7280",
-                      }
-                    : {}),
-                  borderColor: errors.amount ? "#ef4444" : "#d1d5db",
-                }}
-              />
-              {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
-              {mode === "card" && (
+                        borderColor: errors.price ? "#ef4444" : "#d1d5db",
+                      }}
+                    />
+                    {errors.price && (
+                      <ErrorMessage>{errors.price}</ErrorMessage>
+                    )}
+                  </>
+                )}
+
+                {formData.priceType === "custom" && (
+                  <PriceInputWrapper>
+                    <PriceInputLabel htmlFor="customPrice">
+                      직접 입력 (10,000원 단위)
+                    </PriceInputLabel>
+                    <Input
+                      type="text"
+                      id="customPrice"
+                      name="customPrice"
+                      value={formData.price}
+                      onChange={handleCustomPriceChange}
+                      placeholder="예: 900000"
+                      style={{
+                        borderColor: priceError ? "#ef4444" : "#d1d5db",
+                      }}
+                    />
+                    {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
+                  </PriceInputWrapper>
+                )}
+              </>
+            )}
+
+            {mode === "card" && (
+              <>
+                <Input
+                  type="text"
+                  id="price"
+                  name="price"
+                  value={
+                    formData.price
+                      ? parseInt(formData.price).toLocaleString()
+                      : ""
+                  }
+                  readOnly
+                  disabled
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    cursor: "not-allowed",
+                    color: "#6b7280",
+                    borderColor: errors.price ? "#ef4444" : "#d1d5db",
+                  }}
+                />
                 <p
                   style={{
                     fontSize: "0.75rem",
@@ -680,215 +682,98 @@ export default function BuyApplyPage() {
                     marginTop: "0.25rem",
                   }}
                 >
-                  카드형 매물의 수량은 고정되어 있습니다.
+                  카드형 매물의 가격은 고정되어 있습니다.
                 </p>
-              )}
-            </FormGroup>
+                {errors.price && <ErrorMessage>{errors.price}</ErrorMessage>}
+              </>
+            )}
+          </FormGroup>
 
-            <FormGroup>
-              <Label htmlFor="price">희망 가격 *</Label>
-              {mode === "free" && (
-                <>
-                  <RadioGroup>
-                    <RadioLabel>
-                      <RadioInput
-                        type="radio"
-                        name="priceType"
-                        value="market"
-                        checked={formData.priceType === "market"}
-                        onChange={handleChange}
-                      />
-                      시장가
-                    </RadioLabel>
-                    <RadioLabel>
-                      <RadioInput
-                        type="radio"
-                        name="priceType"
-                        value="custom"
-                        checked={formData.priceType === "custom"}
-                        onChange={handleChange}
-                      />
-                      사용자 지정
-                    </RadioLabel>
-                  </RadioGroup>
+          <FormGroup>
+            <Label htmlFor="branch">방문할 회관 선택 *</Label>
+            <Select
+              id="branch"
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              style={{
+                borderColor: errors.branch ? "#ef4444" : "#d1d5db",
+              }}
+            >
+              <option value="">회관을 선택하세요</option>
+              <option value="서울 서초">서울 서초</option>
+              <option value="광주">광주</option>
+              <option value="부산">부산</option>
+              <option value="대전">대전</option>
+              <option value="기타(담당자와 조율)">기타(담당자와 조율)</option>
+            </Select>
+            {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
+          </FormGroup>
 
-                  {formData.priceType === "market" && (
-                    <>
-                      {isLoadingPrice && lbankKrwPrice === null && (
-                        <PriceInfo>LBANK 현재가를 불러오는 중...</PriceInfo>
-                      )}
-                      {lbankKrwPrice !== null && (
-                        <PriceInfo>
-                          LBANK 현재가: {lbankKrwPrice.toLocaleString()}원
-                          <br />
-                          (10,000원 단위로 반올림:{" "}
-                          {(
-                            Math.round(lbankKrwPrice / 10000) * 10000
-                          ).toLocaleString()}
-                          원)
-                        </PriceInfo>
-                      )}
-                      <Input
-                        type="text"
-                        id="price"
-                        name="price"
-                        value={formData.price}
-                        readOnly
-                        style={{
-                          backgroundColor: "#f3f4f6",
-                          cursor: "not-allowed",
-                          borderColor: errors.price ? "#ef4444" : "#d1d5db",
-                        }}
-                      />
-                      {errors.price && (
-                        <ErrorMessage>{errors.price}</ErrorMessage>
-                      )}
-                    </>
-                  )}
-
-                  {formData.priceType === "custom" && (
-                    <PriceInputWrapper>
-                      <PriceInputLabel htmlFor="customPrice">
-                        직접 입력 (10,000원 단위)
-                      </PriceInputLabel>
-                      <Input
-                        type="text"
-                        id="customPrice"
-                        name="customPrice"
-                        value={formData.price}
-                        onChange={handleCustomPriceChange}
-                        placeholder="예: 900000"
-                        style={{
-                          borderColor: priceError ? "#ef4444" : "#d1d5db",
-                        }}
-                      />
-                      {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
-                    </PriceInputWrapper>
-                  )}
-                </>
-              )}
-
-              {mode === "card" && (
-                <>
-                  <Input
-                    type="text"
-                    id="price"
-                    name="price"
-                    value={
-                      formData.price
-                        ? parseInt(formData.price).toLocaleString()
-                        : ""
-                    }
-                    readOnly
-                    disabled
-                    style={{
-                      backgroundColor: "#f3f4f6",
-                      cursor: "not-allowed",
-                      color: "#6b7280",
-                      borderColor: errors.price ? "#ef4444" : "#d1d5db",
-                    }}
-                  />
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#6b7280",
-                      marginTop: "0.25rem",
-                    }}
-                  >
-                    카드형 매물의 가격은 고정되어 있습니다.
-                  </p>
-                  {errors.price && <ErrorMessage>{errors.price}</ErrorMessage>}
-                </>
-              )}
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="branch">방문할 회관 선택 *</Label>
-              <Select
-                id="branch"
-                name="branch"
-                value={formData.branch}
-                onChange={handleChange}
-                style={{
-                  borderColor: errors.branch ? "#ef4444" : "#d1d5db",
+          <FormGroup>
+            <Label>필수 동의 사항 *</Label>
+            <CheckboxContainer
+              style={{
+                borderColor: errors.agreedRisk ? "#ef4444" : "#d1d5db",
+              }}
+            >
+              <CheckboxInput
+                type="checkbox"
+                id="agreedRisk"
+                checked={agreedRisk}
+                onChange={(e) => {
+                  setAgreedRisk(e.target.checked);
+                  if (e.target.checked) {
+                    setErrors((prev) => {
+                      const newErrors = { ...prev };
+                      delete newErrors.agreedRisk;
+                      return newErrors;
+                    });
+                  }
                 }}
-              >
-                <option value="">회관을 선택하세요</option>
-                <option value="서울 서초">서울 서초</option>
-                <option value="광주">광주</option>
-                <option value="부산">부산</option>
-                <option value="대전">대전</option>
-                <option value="기타(담당자와 조율)">기타(담당자와 조율)</option>
-              </Select>
-              {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
-            </FormGroup>
+              />
+              <CheckboxLabel htmlFor="agreedRisk">
+                보이스피싱 및 불법 자금 관련 안내를 확인하고 동의합니다.
+              </CheckboxLabel>
+            </CheckboxContainer>
+            {errors.agreedRisk && (
+              <ErrorMessage>{errors.agreedRisk}</ErrorMessage>
+            )}
+          </FormGroup>
 
-            <FormGroup>
-              <Label>필수 동의 사항 *</Label>
-              <CheckboxContainer
-                style={{
-                  borderColor: errors.agreedRisk ? "#ef4444" : "#d1d5db",
+          <FormGroup>
+            <CheckboxContainer
+              style={{
+                borderColor: errors.agreedPrivacy ? "#ef4444" : "#d1d5db",
+              }}
+            >
+              <CheckboxInput
+                type="checkbox"
+                id="agreedPrivacy"
+                checked={agreedPrivacy}
+                onChange={(e) => {
+                  setAgreedPrivacy(e.target.checked);
+                  if (e.target.checked) {
+                    setErrors((prev) => {
+                      const newErrors = { ...prev };
+                      delete newErrors.agreedPrivacy;
+                      return newErrors;
+                    });
+                  }
                 }}
-              >
-                <CheckboxInput
-                  type="checkbox"
-                  id="agreedRisk"
-                  checked={agreedRisk}
-                  onChange={(e) => {
-                    setAgreedRisk(e.target.checked);
-                    if (e.target.checked) {
-                      setErrors((prev) => {
-                        const newErrors = { ...prev };
-                        delete newErrors.agreedRisk;
-                        return newErrors;
-                      });
-                    }
-                  }}
-                />
-                <CheckboxLabel htmlFor="agreedRisk">
-                  보이스피싱 및 불법 자금 관련 안내를 확인하고 동의합니다.
-                </CheckboxLabel>
-              </CheckboxContainer>
-              {errors.agreedRisk && (
-                <ErrorMessage>{errors.agreedRisk}</ErrorMessage>
-              )}
-            </FormGroup>
+              />
+              <CheckboxLabel htmlFor="agreedPrivacy">
+                개인정보 최소 수집 및 이용에 동의합니다.
+              </CheckboxLabel>
+            </CheckboxContainer>
+            {errors.agreedPrivacy && (
+              <ErrorMessage>{errors.agreedPrivacy}</ErrorMessage>
+            )}
+          </FormGroup>
 
-            <FormGroup>
-              <CheckboxContainer
-                style={{
-                  borderColor: errors.agreedPrivacy ? "#ef4444" : "#d1d5db",
-                }}
-              >
-                <CheckboxInput
-                  type="checkbox"
-                  id="agreedPrivacy"
-                  checked={agreedPrivacy}
-                  onChange={(e) => {
-                    setAgreedPrivacy(e.target.checked);
-                    if (e.target.checked) {
-                      setErrors((prev) => {
-                        const newErrors = { ...prev };
-                        delete newErrors.agreedPrivacy;
-                        return newErrors;
-                      });
-                    }
-                  }}
-                />
-                <CheckboxLabel htmlFor="agreedPrivacy">
-                  개인정보 최소 수집 및 이용에 동의합니다.
-                </CheckboxLabel>
-              </CheckboxContainer>
-              {errors.agreedPrivacy && (
-                <ErrorMessage>{errors.agreedPrivacy}</ErrorMessage>
-              )}
-            </FormGroup>
-
-            <SubmitButton type="submit">구매 신청하기</SubmitButton>
-          </Form>
-        </FormContainer>
-      </MainContent>
-      <Footer />
-    </PageContainer>
+          <SubmitButton type="submit">구매 신청하기</SubmitButton>
+        </Form>
+      </FormStyles.FormContainer>
+    </PageLayout>
   );
 }
