@@ -4,6 +4,12 @@ export const Form = styled.form`
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  width: 100%;
+  max-width: 600px; /* 데스크톱에서 최대 너비 제한 */
+
+  @media (min-width: 768px) {
+    max-width: 800px; /* 태블릿 이상에서 더 넓게 */
+  }
 `;
 
 export const FormGroup = styled.div`

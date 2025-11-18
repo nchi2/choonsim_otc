@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output을 지정하지 않으면 기본 경로(node_modules/.prisma/client) 사용
+}
+
+datasource db {
+  provider = "mysql"  // "postgresql"에서 "mysql"로 변경
+  url      = env("DATABASE_URL")
+}
+
+model SellerRequest {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String
+  amount      Int
+  price       Decimal  @db.Decimal(18, 2)
+  allowPartial Boolean
+  branch      String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

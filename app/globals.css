@@ -22,3 +22,8 @@ body {
   padding: 0;
   overflow-x: hidden;
 }
+
+/* 버튼 기본 스타일 리셋이 필요할 수 있음 */
+button {
+  font-family: inherit;
+}

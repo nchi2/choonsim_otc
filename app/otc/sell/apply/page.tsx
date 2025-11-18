@@ -45,7 +45,16 @@ const RadioGroup = FormStyles.RadioGroup;
 const RadioLabel = FormStyles.RadioLabel;
 const RadioInput = FormStyles.RadioInput;
 const ErrorMessage = FormStyles.ErrorMessage;
-const SubmitButton = FormStyles.PrimaryButton;
+const SubmitButton = styled(FormStyles.PrimaryButton)``;
+
+const FormContainer = styled.div`
+  width: 100%;
+  max-width: 600px;
+
+  @media (min-width: 768px) {
+    max-width: 800px;
+  }
+`;
 
 export default function SellApplyPage() {
   const [formData, setFormData] = useState({
@@ -183,7 +192,7 @@ export default function SellApplyPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -199,8 +208,65 @@ export default function SellApplyPage() {
       return;
     }
 
-    console.log("Form Data:", formData);
-    alert(JSON.stringify(formData, null, 2));
+    try {
+      const response = await fetch("/api/seller-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          amount: formData.amount,
+          price: formData.price,
+          allowPartial: formData.allowPartial,
+          branch: formData.branch,
+        }),
+      });
+
+      // Content-Type 확인
+      const contentType = response.headers.get("content-type");
+      let data;
+
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        // HTML 응답인 경우 (에러 페이지)
+        const text = await response.text();
+        console.error("Server returned HTML instead of JSON:", text);
+        alert(
+          `서버 오류가 발생했습니다. (${response.status}) 개발자 콘솔을 확인해주세요.`
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        // 에러 응답 처리
+        const errorMsg = data.error || "알 수 없는 오류가 발생했습니다.";
+        const details = data.details ? `\n\n상세: ${data.details}` : "";
+        alert(`신청 실패: ${errorMsg}${details}`);
+        return;
+      }
+
+      // 성공 처리
+      alert("신청이 접수되었습니다.");
+
+      // 폼 초기화
+      setFormData({
+        name: "",
+        phone: "",
+        amount: "",
+        price: "",
+        allowPartial: "",
+        branch: "",
+      });
+      setErrors({});
+      setPriceError("");
+      setUseCustomPrice(false);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("신청 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
   };
 
   const handleChange = (
@@ -295,147 +361,150 @@ export default function SellApplyPage() {
         {lbankKrwPrice !== null &&
           `LBANK 현재가: ${lbankKrwPrice.toLocaleString()}원`}
       </PriceInfo>
-      <Form onSubmit={handleSubmit}>
-        <FormGroup>
-          <Label htmlFor="name">성함 *</Label>
-          <Input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="예: 홍길동"
-            style={{ borderColor: errors.name ? "#ef4444" : "#d1d5db" }}
-          />
-          {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="phone">연락처 *</Label>
-          <Input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handlePhoneChange}
-            placeholder="예: 010-1234-5678"
-            maxLength={13}
-            style={{ borderColor: errors.phone ? "#ef4444" : "#d1d5db" }}
-          />
-          {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="amount">판매 희망 수량 *</Label>
-          <Input
-            type="text"
-            id="amount"
-            name="amount"
-            value={formData.amount}
-            onChange={handleAmountChange}
-            placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
-            inputMode="decimal"
-            style={{ borderColor: errors.amount ? "#ef4444" : "#d1d5db" }}
-          />
-          {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="price">희망 가격 *</Label>
-          <Select
-            id="price"
-            name="price"
-            value={useCustomPrice ? "" : formData.price}
-            onChange={handlePriceChange}
-            disabled={
-              isLoadingPrice || lbankKrwPrice === null || useCustomPrice
-            }
-            style={{ borderColor: errors.price ? "#ef4444" : "#d1d5db" }}
-          >
-            <option value="">
-              {isLoadingPrice
-                ? "가격 정보를 불러오는 중..."
-                : "가격을 선택하세요 (10,000원 단위)"}
-            </option>
-            {generatePriceOptions()}
-          </Select>
-
-          <FormStyles.PriceInputWrapper>
-            <FormStyles.PriceInputLabel htmlFor="customPrice">
-              또는 직접 입력 (10,000원 단위)
-            </FormStyles.PriceInputLabel>
+      <FormContainer>
+        <Form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label htmlFor="name">성함 *</Label>
             <Input
               type="text"
-              id="customPrice"
-              name="customPrice"
-              value={
-                useCustomPrice
-                  ? parseInt(formData.price || "0").toLocaleString()
-                  : ""
-              }
-              onChange={handleCustomPriceChange}
-              placeholder="예: 100000"
-              disabled={isLoadingPrice || lbankKrwPrice === null}
-              style={{
-                borderColor: errors.price || priceError ? "#ef4444" : "#d1d5db",
-              }}
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="예: 홍길동"
+              style={{ borderColor: errors.name ? "#ef4444" : "#d1d5db" }}
             />
-            {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
-            {errors.price && !priceError && (
-              <ErrorMessage>{errors.price}</ErrorMessage>
+            {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="phone">연락처 *</Label>
+            <Input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handlePhoneChange}
+              placeholder="예: 010-1234-5678"
+              maxLength={13}
+              style={{ borderColor: errors.phone ? "#ef4444" : "#d1d5db" }}
+            />
+            {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="amount">판매 희망 수량 *</Label>
+            <Input
+              type="text"
+              id="amount"
+              name="amount"
+              value={formData.amount}
+              onChange={handleAmountChange}
+              placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
+              inputMode="decimal"
+              style={{ borderColor: errors.amount ? "#ef4444" : "#d1d5db" }}
+            />
+            {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="price">희망 가격 *</Label>
+            <Select
+              id="price"
+              name="price"
+              value={useCustomPrice ? "" : formData.price}
+              onChange={handlePriceChange}
+              disabled={
+                isLoadingPrice || lbankKrwPrice === null || useCustomPrice
+              }
+              style={{ borderColor: errors.price ? "#ef4444" : "#d1d5db" }}
+            >
+              <option value="">
+                {isLoadingPrice
+                  ? "가격 정보를 불러오는 중..."
+                  : "가격을 선택하세요 (10,000원 단위)"}
+              </option>
+              {generatePriceOptions()}
+            </Select>
+
+            <FormStyles.PriceInputWrapper>
+              <FormStyles.PriceInputLabel htmlFor="customPrice">
+                또는 직접 입력 (10,000원 단위)
+              </FormStyles.PriceInputLabel>
+              <Input
+                type="text"
+                id="customPrice"
+                name="customPrice"
+                value={
+                  useCustomPrice
+                    ? parseInt(formData.price || "0").toLocaleString()
+                    : ""
+                }
+                onChange={handleCustomPriceChange}
+                placeholder="예: 100000"
+                disabled={isLoadingPrice || lbankKrwPrice === null}
+                style={{
+                  borderColor:
+                    errors.price || priceError ? "#ef4444" : "#d1d5db",
+                }}
+              />
+              {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
+              {errors.price && !priceError && (
+                <ErrorMessage>{errors.price}</ErrorMessage>
+              )}
+            </FormStyles.PriceInputWrapper>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>소량 판매 허용 여부 *</Label>
+            <RadioGroup>
+              <RadioLabel>
+                <RadioInput
+                  type="radio"
+                  name="allowPartial"
+                  value="true"
+                  checked={formData.allowPartial === "true"}
+                  onChange={handleChange}
+                />
+                허용
+              </RadioLabel>
+              <RadioLabel>
+                <RadioInput
+                  type="radio"
+                  name="allowPartial"
+                  value="false"
+                  checked={formData.allowPartial === "false"}
+                  onChange={handleChange}
+                />
+                비허용
+              </RadioLabel>
+            </RadioGroup>
+            {errors.allowPartial && (
+              <ErrorMessage>{errors.allowPartial}</ErrorMessage>
             )}
-          </FormStyles.PriceInputWrapper>
-        </FormGroup>
+          </FormGroup>
 
-        <FormGroup>
-          <Label>소량 판매 허용 여부 *</Label>
-          <RadioGroup>
-            <RadioLabel>
-              <RadioInput
-                type="radio"
-                name="allowPartial"
-                value="true"
-                checked={formData.allowPartial === "true"}
-                onChange={handleChange}
-              />
-              허용
-            </RadioLabel>
-            <RadioLabel>
-              <RadioInput
-                type="radio"
-                name="allowPartial"
-                value="false"
-                checked={formData.allowPartial === "false"}
-                onChange={handleChange}
-              />
-              비허용
-            </RadioLabel>
-          </RadioGroup>
-          {errors.allowPartial && (
-            <ErrorMessage>{errors.allowPartial}</ErrorMessage>
-          )}
-        </FormGroup>
+          <FormGroup>
+            <Label htmlFor="branch">방문할 회관 선택 *</Label>
+            <Select
+              id="branch"
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
+            >
+              <option value="">회관을 선택하세요</option>
+              <option value="서울">서울</option>
+              <option value="광주">광주</option>
+              <option value="부산">부산</option>
+              <option value="대전">대전</option>
+            </Select>
+            {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
+          </FormGroup>
 
-        <FormGroup>
-          <Label htmlFor="branch">방문할 회관 선택 *</Label>
-          <Select
-            id="branch"
-            name="branch"
-            value={formData.branch}
-            onChange={handleChange}
-            style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
-          >
-            <option value="">회관을 선택하세요</option>
-            <option value="서울">서울</option>
-            <option value="광주">광주</option>
-            <option value="부산">부산</option>
-            <option value="대전">대전</option>
-          </Select>
-          {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
-        </FormGroup>
-
-        <SubmitButton type="submit">신청하기</SubmitButton>
-      </Form>
+          <SubmitButton type="submit">신청하기</SubmitButton>
+        </Form>
+      </FormContainer>
     </PageLayout>
   );
 }
