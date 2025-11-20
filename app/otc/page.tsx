@@ -53,7 +53,7 @@ const ContentWrapper = styled.div`
   gap: 2rem;
   align-items: center;
   background-color: #f9fafb;
-  padding: 2rem;
+  padding: 0.5rem;
   border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
 
@@ -336,15 +336,17 @@ const OrderBookList = styled.div`
   gap: 1rem;
 `;
 
+// 기존 OrderBookItem 스타일 수정
 const OrderBookItem = styled.div`
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 1rem;
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   transition: all 0.2s;
+  overflow: hidden;
 
   &:hover {
     border-color: #3b82f6;
@@ -356,39 +358,77 @@ const OrderBookItem = styled.div`
   }
 `;
 
-const OrderBookItemInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  flex: 1;
-`;
-
+// 가격 영역 (막대 그래프 밖에 배치)
 const OrderBookItemPrice = styled.div`
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: bold;
   color: #3b82f6;
+  min-width: 100px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2; /* 막대 그래프 위에 표시 */
 
   @media (min-width: 768px) {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    min-width: 150px;
   }
 `;
 
-const OrderBookItemDetails = styled.div`
+// 막대 그래프와 물량이 들어갈 영역
+const OrderBookItemBarContainer = styled.div`
+  position: relative;
+  flex: 1;
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 100%;
+  padding: 0.5rem 0;
+
+  @media (min-width: 768px) {
+    padding: 0.75rem 0;
+  }
+`;
+
+// 배경 막대 그래프 (물량 영역에만 표시)
+const OrderBookBar = styled.div<{ $width: number }>`
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: ${(props) => props.$width}%;
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(59, 130, 246, 0.15) 100%
+  );
+  transition: width 0.3s ease;
+  z-index: 0;
+`;
+
+// 물량 영역 (막대 그래프 위에 표시)
+const OrderBookItemRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 1; /* 막대 그래프 위에 표시 */
+`;
+
+const OrderBookItemVolume = styled.div`
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #111827;
+  font-weight: 600;
 
   @media (min-width: 768px) {
     font-size: 1rem;
-    gap: 1.5rem;
   }
 `;
 
-const OrderBookItemDetail = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+const OrderBookItemCount = styled.span`
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-left: 0.5rem;
+  font-weight: normal;
 `;
 
 interface SellerRequest {
@@ -454,6 +494,14 @@ export default function OTCPage() {
         count: data.ids.length, // 해당 가격대의 신청 건수
       }))
       .sort((a, b) => a.priceNum - b.priceNum);
+  };
+
+  // 최대 물량 계산 함수 추가
+  const getMaxVolume = (
+    aggregatedRequests: ReturnType<typeof aggregateRequestsByPrice>
+  ) => {
+    if (aggregatedRequests.length === 0) return 1;
+    return Math.max(...aggregatedRequests.map((req) => req.totalAmount));
   };
 
   // 호가창 데이터 불러오기
@@ -572,38 +620,45 @@ export default function OTCPage() {
                     <>
                       {listedRequests.length > 0 ? (
                         <OrderBookList>
-                          {aggregateRequestsByPrice(listedRequests).map(
-                            (aggregated, index) => (
-                              <OrderBookItem
-                                key={`${aggregated.priceNum}-${index}`}
-                              >
-                                <OrderBookItemInfo>
+                          {(() => {
+                            const aggregated =
+                              aggregateRequestsByPrice(listedRequests);
+                            const maxVolume = getMaxVolume(aggregated);
+
+                            return aggregated.map((item, index) => {
+                              const barWidth =
+                                (item.totalAmount / maxVolume) * 100;
+
+                              return (
+                                <OrderBookItem
+                                  key={`${item.priceNum}-${index}`}
+                                >
+                                  {/* 가격 (막대 그래프 밖, 왼쪽 고정) */}
                                   <OrderBookItemPrice>
-                                    {formatPrice(aggregated.price)}원
+                                    {formatPrice(item.price)}
                                   </OrderBookItemPrice>
-                                  <OrderBookItemDetails>
-                                    <OrderBookItemDetail>
-                                      총 물량:{" "}
-                                      <strong>
-                                        {aggregated.totalAmount} Mo
-                                      </strong>
-                                      {aggregated.count > 1 && (
-                                        <span
-                                          style={{
-                                            fontSize: "0.75rem",
-                                            color: "#6b7280",
-                                            marginLeft: "0.5rem",
-                                          }}
-                                        >
-                                          ({aggregated.count}건 합산)
-                                        </span>
-                                      )}
-                                    </OrderBookItemDetail>
-                                  </OrderBookItemDetails>
-                                </OrderBookItemInfo>
-                              </OrderBookItem>
-                            )
-                          )}
+
+                                  {/* 막대 그래프와 물량 영역 */}
+                                  <OrderBookItemBarContainer>
+                                    {/* 배경 막대 그래프 */}
+                                    <OrderBookBar $width={barWidth} />
+
+                                    {/* 물량 (막대 그래프 위에 표시) */}
+                                    <OrderBookItemRight>
+                                      <OrderBookItemVolume>
+                                        {item.totalAmount} Mo
+                                        {item.count > 1 && (
+                                          <OrderBookItemCount>
+                                            ({item.count}건)
+                                          </OrderBookItemCount>
+                                        )}
+                                      </OrderBookItemVolume>
+                                    </OrderBookItemRight>
+                                  </OrderBookItemBarContainer>
+                                </OrderBookItem>
+                              );
+                            });
+                          })()}
                         </OrderBookList>
                       ) : (
                         <OrderBookPlaceholder>
