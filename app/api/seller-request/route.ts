@@ -40,8 +40,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // allowPartial 변환 (string "yes"/"no" -> boolean)
-    const allowPartialBool = allowPartial === "yes" || allowPartial === true;
+    // allowPartial 변환 (string "yes"/"no", "true"/"false" 또는 boolean 모두 처리)
+    const allowPartialBool =
+      allowPartial === "yes" ||
+      allowPartial === "true" ||
+      allowPartial === true;
 
     // Prisma로 데이터 삽입
     const sellerRequest = await prisma.sellerRequest.create({

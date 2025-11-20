@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { STATUS_LABELS } from "@/lib/constants";
 
 const PageContainer = styled.div`
   display: flex;
@@ -327,60 +328,209 @@ const EmptyState = styled.div`
   }
 `;
 
-// 더미 카드 데이터 (가격순 정렬)
-const dummyCards = [
-  {
-    id: 1,
-    price: 850000,
-    amount: 5.2,
-    branch: "서울 서초",
-    allowPartial: false,
-    status: "대기중", // "대기중" | "진행중" | "완료"
-  },
-  {
-    id: 2,
-    price: 900000,
-    amount: 3.2,
-    branch: "광주",
-    allowPartial: false,
-    status: "진행중",
-  },
-  {
-    id: 3,
-    price: 920000,
-    amount: 10.5,
-    branch: "부산",
-    allowPartial: true,
-    status: "대기중",
-  },
-  {
-    id: 4,
-    price: 950000,
-    amount: 7.8,
-    branch: "대전",
-    allowPartial: false,
-    status: "진행중",
-  },
-  {
-    id: 5,
-    price: 980000,
-    amount: 2.1,
-    branch: "서울 서초",
-    allowPartial: true,
-    status: "대기중",
-  },
-  {
-    id: 6,
-    price: 1000000,
-    amount: 15.0,
-    branch: "광주",
-    allowPartial: false,
-    status: "진행중",
-  },
-].sort((a, b) => a.price - b.price); // 가격순 정렬
+// 호가 아이템 스타일 추가
+const OrderBookList = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const OrderBookItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  }
+
+  @media (min-width: 768px) {
+    padding: 1.25rem 1.5rem;
+  }
+`;
+
+const OrderBookItemInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+`;
+
+const OrderBookItemPrice = styled.div`
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #3b82f6;
+
+  @media (min-width: 768px) {
+    font-size: 1.5rem;
+  }
+`;
+
+const OrderBookItemDetails = styled.div`
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    gap: 1.5rem;
+  }
+`;
+
+const OrderBookItemDetail = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+interface SellerRequest {
+  id: number;
+  name: string;
+  phone: string;
+  amount: number;
+  price: string; // Decimal은 string으로 반환됨
+  allowPartial: boolean;
+  branch: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function OTCPage() {
   const [activeTab, setActiveTab] = useState<"orderbook" | "card">("orderbook");
+
+  // 호가창 데이터
+  const [listedRequests, setListedRequests] = useState<SellerRequest[]>([]);
+  const [listedLoading, setListedLoading] = useState(true);
+  const [listedError, setListedError] = useState<string | null>(null);
+
+  // 카드형 데이터
+  const [cardRequests, setCardRequests] = useState<SellerRequest[]>([]);
+  const [cardLoading, setCardLoading] = useState(true);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  // 동일 가격대 물량 합산 함수 (간소화 - 회관 정보 제거)
+  const aggregateRequestsByPrice = (requests: SellerRequest[]) => {
+    const priceMap = new Map<
+      number,
+      {
+        price: string;
+        totalAmount: number;
+        ids: number[];
+      }
+    >();
+
+    requests.forEach((request) => {
+      const priceNum = parseFloat(request.price);
+
+      if (priceMap.has(priceNum)) {
+        const existing = priceMap.get(priceNum)!;
+        existing.totalAmount += request.amount;
+        existing.ids.push(request.id);
+      } else {
+        priceMap.set(priceNum, {
+          price: request.price,
+          totalAmount: request.amount,
+          ids: [request.id],
+        });
+      }
+    });
+
+    // Map을 배열로 변환하고 가격순 정렬
+    return Array.from(priceMap.entries())
+      .map(([price, data]) => ({
+        price: data.price,
+        priceNum: price,
+        totalAmount: data.totalAmount,
+        ids: data.ids,
+        count: data.ids.length, // 해당 가격대의 신청 건수
+      }))
+      .sort((a, b) => a.priceNum - b.priceNum);
+  };
+
+  // 호가창 데이터 불러오기
+  useEffect(() => {
+    const fetchListedRequests = async () => {
+      try {
+        setListedLoading(true);
+        setListedError(null);
+
+        const response = await fetch("/api/otc/listed-requests");
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "호가 정보를 불러오는데 실패했습니다.");
+        }
+
+        const data = await response.json();
+        setListedRequests(data);
+      } catch (err) {
+        console.error("Error fetching listed requests:", err);
+        setListedError(
+          err instanceof Error
+            ? err.message
+            : "호가 정보를 불러오는데 실패했습니다."
+        );
+      } finally {
+        setListedLoading(false);
+      }
+    };
+
+    if (activeTab === "orderbook") {
+      fetchListedRequests();
+    }
+  }, [activeTab]);
+
+  // 카드형 데이터 불러오기
+  useEffect(() => {
+    const fetchCardRequests = async () => {
+      try {
+        setCardLoading(true);
+        setCardError(null);
+
+        const response = await fetch("/api/otc/card-requests");
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(
+            data.error || "카드형 정보를 불러오는데 실패했습니다."
+          );
+        }
+
+        const data = await response.json();
+        setCardRequests(data);
+      } catch (err) {
+        console.error("Error fetching card requests:", err);
+        setCardError(
+          err instanceof Error
+            ? err.message
+            : "카드형 정보를 불러오는데 실패했습니다."
+        );
+      } finally {
+        setCardLoading(false);
+      }
+    };
+
+    if (activeTab === "card") {
+      fetchCardRequests();
+    }
+  }, [activeTab]);
+
+  const formatPrice = (price: string) => {
+    return parseFloat(price).toLocaleString("ko-KR");
+  };
+
+  const formatTotalPrice = (price: string, amount: number) => {
+    return (parseFloat(price) * amount).toLocaleString("ko-KR");
+  };
 
   return (
     <PageContainer>
@@ -408,9 +558,60 @@ export default function OTCPage() {
               <>
                 <OrderBookSection>
                   <OrderBookTitle>호가</OrderBookTitle>
-                  <OrderBookPlaceholder>
-                    호가 정보가 여기에 표시됩니다.
-                  </OrderBookPlaceholder>
+                  {listedLoading && (
+                    <OrderBookPlaceholder>
+                      호가 정보를 불러오는 중...
+                    </OrderBookPlaceholder>
+                  )}
+                  {listedError && (
+                    <OrderBookPlaceholder style={{ color: "#dc2626" }}>
+                      {listedError}
+                    </OrderBookPlaceholder>
+                  )}
+                  {!listedLoading && !listedError && (
+                    <>
+                      {listedRequests.length > 0 ? (
+                        <OrderBookList>
+                          {aggregateRequestsByPrice(listedRequests).map(
+                            (aggregated, index) => (
+                              <OrderBookItem
+                                key={`${aggregated.priceNum}-${index}`}
+                              >
+                                <OrderBookItemInfo>
+                                  <OrderBookItemPrice>
+                                    {formatPrice(aggregated.price)}원
+                                  </OrderBookItemPrice>
+                                  <OrderBookItemDetails>
+                                    <OrderBookItemDetail>
+                                      총 물량:{" "}
+                                      <strong>
+                                        {aggregated.totalAmount} Mo
+                                      </strong>
+                                      {aggregated.count > 1 && (
+                                        <span
+                                          style={{
+                                            fontSize: "0.75rem",
+                                            color: "#6b7280",
+                                            marginLeft: "0.5rem",
+                                          }}
+                                        >
+                                          ({aggregated.count}건 합산)
+                                        </span>
+                                      )}
+                                    </OrderBookItemDetail>
+                                  </OrderBookItemDetails>
+                                </OrderBookItemInfo>
+                              </OrderBookItem>
+                            )
+                          )}
+                        </OrderBookList>
+                      ) : (
+                        <OrderBookPlaceholder>
+                          등록된 호가가 없습니다.
+                        </OrderBookPlaceholder>
+                      )}
+                    </>
+                  )}
                 </OrderBookSection>
                 <ButtonContainer>
                   <BuyButtonLink href="/otc/buy/apply?mode=free">
@@ -425,34 +626,62 @@ export default function OTCPage() {
 
             {activeTab === "card" && (
               <>
-                {dummyCards.length > 0 ? (
-                  <CardGrid>
-                    {dummyCards.map((card) => (
-                      <Card
-                        key={card.id}
-                        href={`/otc/buy/apply?mode=card&price=${card.price}&amount=${card.amount}`}
-                      >
-                        <CardHeader>
-                          <CardPrice>{card.price.toLocaleString()}원</CardPrice>
-                          <CardAmount>{card.amount} Mo</CardAmount>
-                        </CardHeader>
-                        <CardInfo>
-                          <CardInfoRow>
-                            <CardLabel>총 금액</CardLabel>
-                            <CardValue>
-                              {(card.price * card.amount).toLocaleString()}원
-                            </CardValue>
-                          </CardInfoRow>
-                          <CardInfoRow>
-                            <CardLabel>상태</CardLabel>
-                            <CardValue>{card.status}</CardValue>
-                          </CardInfoRow>
-                        </CardInfo>
-                      </Card>
-                    ))}
-                  </CardGrid>
-                ) : (
-                  <EmptyState>등록된 판매 정보가 없습니다.</EmptyState>
+                {cardLoading && (
+                  <EmptyState>카드형 정보를 불러오는 중...</EmptyState>
+                )}
+                {cardError && (
+                  <EmptyState style={{ color: "#dc2626" }}>
+                    {cardError}
+                  </EmptyState>
+                )}
+                {!cardLoading && !cardError && (
+                  <>
+                    {cardRequests.length > 0 ? (
+                      <CardGrid>
+                        {cardRequests.map((card) => {
+                          const priceNum = parseFloat(card.price);
+                          const amountNum = card.amount;
+
+                          return (
+                            <Card
+                              key={card.id}
+                              href={`/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}`}
+                            >
+                              <CardHeader>
+                                <CardPrice>
+                                  {formatPrice(card.price)}원
+                                </CardPrice>
+                                <CardAmount>{card.amount} Mo</CardAmount>
+                              </CardHeader>
+                              <CardInfo>
+                                <CardInfoRow>
+                                  <CardLabel>총 금액</CardLabel>
+                                  <CardValue>
+                                    {formatTotalPrice(card.price, card.amount)}
+                                    원
+                                  </CardValue>
+                                </CardInfoRow>
+                                <CardInfoRow>
+                                  <CardLabel>회관</CardLabel>
+                                  <CardValue>{card.branch}</CardValue>
+                                </CardInfoRow>
+                                <CardInfoRow>
+                                  <CardLabel>상태</CardLabel>
+                                  <CardValue>
+                                    {STATUS_LABELS[
+                                      card.status as keyof typeof STATUS_LABELS
+                                    ] || card.status}
+                                  </CardValue>
+                                </CardInfoRow>
+                              </CardInfo>
+                            </Card>
+                          );
+                        })}
+                      </CardGrid>
+                    ) : (
+                      <EmptyState>등록된 판매 정보가 없습니다.</EmptyState>
+                    )}
+                  </>
                 )}
               </>
             )}
