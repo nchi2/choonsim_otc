@@ -474,6 +474,16 @@ const AssetButton = styled.button<{ $active: boolean }>`
   }
 `;
 
+// OrderBookLevel 인터페이스 추가
+interface OrderBookLevel {
+  id: number;
+  assetType: string;
+  price: string; // Decimal은 string으로 반환됨
+  totalAmount: number;
+  requestCount: number;
+  updatedAt: string;
+}
+
 interface SellerRequest {
   id: number;
   name?: string; // optional로 변경 (카드형에서는 제외)
@@ -498,8 +508,8 @@ function OTCContent() {
     return searchParams.get("asset") || "BMB";
   });
 
-  // 호가창 데이터
-  const [listedRequests, setListedRequests] = useState<SellerRequest[]>([]);
+  // 호가창 데이터 (OrderBookLevel 사용)
+  const [orderBookLevels, setOrderBookLevels] = useState<OrderBookLevel[]>([]);
   const [listedLoading, setListedLoading] = useState(true);
   const [listedError, setListedError] = useState<string | null>(null);
 
@@ -547,12 +557,10 @@ function OTCContent() {
       .sort((a, b) => a.priceNum - b.priceNum);
   };
 
-  // 최대 물량 계산 함수 추가
-  const getMaxVolume = (
-    aggregatedRequests: ReturnType<typeof aggregateRequestsByPrice>
-  ) => {
-    if (aggregatedRequests.length === 0) return 1;
-    return Math.max(...aggregatedRequests.map((req) => req.totalAmount));
+  // 최대 물량 계산 함수 (OrderBookLevel용)
+  const getMaxVolume = (levels: OrderBookLevel[]) => {
+    if (levels.length === 0) return 1;
+    return Math.max(...levels.map((level) => level.totalAmount));
   };
 
   // assetType 변경 시 URL 업데이트 및 데이터 재로딩
@@ -571,16 +579,16 @@ function OTCContent() {
     }
   }, [searchParams, assetType]);
 
-  // 호가창 데이터 불러오기 (assetType 파라미터 추가)
+  // 호가창 데이터 불러오기 (OrderBookLevel API 사용)
   useEffect(() => {
-    const fetchListedRequests = async () => {
+    const fetchOrderBookLevels = async () => {
       if (activeTab === "orderbook") {
         try {
           setListedLoading(true);
           setListedError(null);
 
           const response = await fetch(
-            `/api/otc/listed-requests?assetType=${assetType}`
+            `/api/otc/orderbook-levels?assetType=${assetType}`
           );
 
           if (!response.ok) {
@@ -591,9 +599,9 @@ function OTCContent() {
           }
 
           const data = await response.json();
-          setListedRequests(data);
+          setOrderBookLevels(data);
         } catch (err) {
-          console.error("Error fetching listed requests:", err);
+          console.error("Error fetching orderbook levels:", err);
           setListedError(
             err instanceof Error
               ? err.message
@@ -605,8 +613,8 @@ function OTCContent() {
       }
     };
 
-    fetchListedRequests();
-  }, [activeTab, assetType]); // assetType 의존성 추가
+    fetchOrderBookLevels();
+  }, [activeTab, assetType]);
 
   // 카드형 데이터 불러오기 (assetType 파라미터 추가)
   useEffect(() => {
@@ -721,24 +729,21 @@ function OTCContent() {
                   )}
                   {!listedLoading && !listedError && (
                     <>
-                      {listedRequests.length > 0 ? (
+                      {orderBookLevels.length > 0 ? (
                         <OrderBookList>
                           {(() => {
-                            const aggregated =
-                              aggregateRequestsByPrice(listedRequests);
-                            const maxVolume = getMaxVolume(aggregated);
+                            const maxVolume = getMaxVolume(orderBookLevels);
 
-                            return aggregated.map((item, index) => {
+                            return orderBookLevels.map((level, index) => {
                               const barWidth =
-                                (item.totalAmount / maxVolume) * 100;
+                                (level.totalAmount / maxVolume) * 100;
+                              const priceNum = parseFloat(level.price);
 
                               return (
-                                <OrderBookItem
-                                  key={`${item.priceNum}-${index}`}
-                                >
+                                <OrderBookItem key={`${level.id}-${index}`}>
                                   {/* 가격 (막대 그래프 밖, 왼쪽 고정) */}
                                   <OrderBookItemPrice>
-                                    {formatPrice(item.price)}
+                                    {formatPrice(level.price)}
                                   </OrderBookItemPrice>
 
                                   {/* 막대 그래프와 물량 영역 */}
@@ -749,10 +754,10 @@ function OTCContent() {
                                     {/* 물량 (막대 그래프 위에 표시) */}
                                     <OrderBookItemRight>
                                       <OrderBookItemVolume>
-                                        {item.totalAmount} Mo
-                                        {item.count > 1 && (
+                                        {level.totalAmount} Mo
+                                        {level.requestCount > 1 && (
                                           <OrderBookItemCount>
-                                            ({item.count}건)
+                                            ({level.requestCount}건)
                                           </OrderBookItemCount>
                                         )}
                                       </OrderBookItemVolume>

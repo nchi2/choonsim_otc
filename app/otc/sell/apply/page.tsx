@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
 import * as FormStyles from "@/components/forms/styles";
@@ -58,7 +58,7 @@ const FormContainer = styled.div`
   }
 `;
 
-export default function SellApplyPage() {
+function SellApplyContent() {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -541,5 +541,21 @@ export default function SellApplyPage() {
         </Form>
       </FormContainer>
     </PageLayout>
+  );
+}
+
+// 로딩 컴포넌트
+const LoadingFallback = () => (
+  <PageLayout>
+    <Title>모빅 판매 신청</Title>
+    <PriceInfo>로딩 중...</PriceInfo>
+  </PageLayout>
+);
+
+export default function SellApplyPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SellApplyContent />
+    </Suspense>
   );
 }
