@@ -2,10 +2,13 @@
   "version": "0.2",
   "words": [
     // A
+    "autoincrement",
     // B
     "Bithumb",
     "bithumb",
     // C
+    "Choonsim",
+    "choonsim",
     // D
     // E
     // F
@@ -18,18 +21,34 @@
     "lbank",
     "LBANK",
     // M
+    "MOVL",
+    "movl",
+    "Mobick",
+    "mobick",
     // N
     // O
     // P
+    "PlanetScale",
+    "planetscale",
+    "Prisma",
+    "prisma",
+    "pscale",
     // Q
     // R
     // S
+    "SBMB",
+    "sbmb",
+
     // T
     // U
+    "upbit",
+    "Upbit",
     // V
     "vercel",
-    "Vercel"
+    "Vercel",
     // W
+    "WBMB",
+    "wbmb"
     // X
     // Y
     // Z

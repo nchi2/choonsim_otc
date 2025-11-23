@@ -6,6 +6,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { STATUS_LABELS } from "@/lib/constants";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const PageContainer = styled.div`
   display: flex;
@@ -431,21 +432,71 @@ const OrderBookItemCount = styled.span`
   font-weight: normal;
 `;
 
+// 자산 종류 선택 컴포넌트 스타일 추가
+const AssetSelectorContainer = styled.div`
+  width: 100%;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+
+  @media (min-width: 768px) {
+    gap: 1rem;
+    margin-bottom: 3rem;
+  }
+`;
+
+const AssetButton = styled.button<{ $active: boolean }>`
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  border: 2px solid ${(props) => (props.$active ? "#3b82f6" : "#e5e7eb")};
+  background-color: ${(props) => (props.$active ? "#eff6ff" : "#ffffff")};
+  color: ${(props) => (props.$active ? "#3b82f6" : "#6b7280")};
+  cursor: pointer;
+  transition: all 0.2s;
+  max-width: 120px;
+  flex: 1;
+  min-width: 80px;
+
+  &:hover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    color: #3b82f6;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+    max-width: 150px;
+  }
+`;
+
 interface SellerRequest {
   id: number;
-  name: string;
-  phone: string;
+  name?: string; // optional로 변경 (카드형에서는 제외)
+  phone?: string; // optional로 변경 (카드형에서는 제외)
   amount: number;
   price: string; // Decimal은 string으로 반환됨
   allowPartial: boolean;
   branch: string;
+  assetType?: string; // assetType 필드 추가
   status: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export default function OTCPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"orderbook" | "card">("orderbook");
+
+  // URL 쿼리 파라미터에서 assetType 가져오기 (기본값: "BMB")
+  const [assetType, setAssetType] = useState<string>(() => {
+    return searchParams.get("asset") || "BMB";
+  });
 
   // 호가창 데이터
   const [listedRequests, setListedRequests] = useState<SellerRequest[]>([]);
@@ -504,73 +555,95 @@ export default function OTCPage() {
     return Math.max(...aggregatedRequests.map((req) => req.totalAmount));
   };
 
-  // 호가창 데이터 불러오기
+  // assetType 변경 시 URL 업데이트 및 데이터 재로딩
+  const handleAssetTypeChange = (newAssetType: string) => {
+    setAssetType(newAssetType);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("asset", newAssetType);
+    router.push(`/otc?${params.toString()}`, { scroll: false });
+  };
+
+  // URL 쿼리 파라미터 변경 감지
+  useEffect(() => {
+    const assetFromUrl = searchParams.get("asset") || "BMB";
+    if (assetFromUrl !== assetType) {
+      setAssetType(assetFromUrl);
+    }
+  }, [searchParams, assetType]);
+
+  // 호가창 데이터 불러오기 (assetType 파라미터 추가)
   useEffect(() => {
     const fetchListedRequests = async () => {
-      try {
-        setListedLoading(true);
-        setListedError(null);
+      if (activeTab === "orderbook") {
+        try {
+          setListedLoading(true);
+          setListedError(null);
 
-        const response = await fetch("/api/otc/listed-requests");
+          const response = await fetch(
+            `/api/otc/listed-requests?assetType=${assetType}`
+          );
 
-        if (!response.ok) {
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(
+              data.error || "호가 정보를 불러오는데 실패했습니다."
+            );
+          }
+
           const data = await response.json();
-          throw new Error(data.error || "호가 정보를 불러오는데 실패했습니다.");
+          setListedRequests(data);
+        } catch (err) {
+          console.error("Error fetching listed requests:", err);
+          setListedError(
+            err instanceof Error
+              ? err.message
+              : "호가 정보를 불러오는데 실패했습니다."
+          );
+        } finally {
+          setListedLoading(false);
         }
-
-        const data = await response.json();
-        setListedRequests(data);
-      } catch (err) {
-        console.error("Error fetching listed requests:", err);
-        setListedError(
-          err instanceof Error
-            ? err.message
-            : "호가 정보를 불러오는데 실패했습니다."
-        );
-      } finally {
-        setListedLoading(false);
       }
     };
 
-    if (activeTab === "orderbook") {
-      fetchListedRequests();
-    }
-  }, [activeTab]);
+    fetchListedRequests();
+  }, [activeTab, assetType]); // assetType 의존성 추가
 
-  // 카드형 데이터 불러오기
+  // 카드형 데이터 불러오기 (assetType 파라미터 추가)
   useEffect(() => {
     const fetchCardRequests = async () => {
-      try {
-        setCardLoading(true);
-        setCardError(null);
+      if (activeTab === "card") {
+        try {
+          setCardLoading(true);
+          setCardError(null);
 
-        const response = await fetch("/api/otc/card-requests");
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(
-            data.error || "카드형 정보를 불러오는데 실패했습니다."
+          const response = await fetch(
+            `/api/otc/card-requests?assetType=${assetType}&status=LISTED`
           );
-        }
 
-        const data = await response.json();
-        setCardRequests(data);
-      } catch (err) {
-        console.error("Error fetching card requests:", err);
-        setCardError(
-          err instanceof Error
-            ? err.message
-            : "카드형 정보를 불러오는데 실패했습니다."
-        );
-      } finally {
-        setCardLoading(false);
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(
+              data.error || "카드형 정보를 불러오는데 실패했습니다."
+            );
+          }
+
+          const data = await response.json();
+          setCardRequests(data);
+        } catch (err) {
+          console.error("Error fetching card requests:", err);
+          setCardError(
+            err instanceof Error
+              ? err.message
+              : "카드형 정보를 불러오는데 실패했습니다."
+          );
+        } finally {
+          setCardLoading(false);
+        }
       }
     };
 
-    if (activeTab === "card") {
-      fetchCardRequests();
-    }
-  }, [activeTab]);
+    fetchCardRequests();
+  }, [activeTab, assetType]); // assetType 의존성 추가
 
   const formatPrice = (price: string) => {
     return parseFloat(price).toLocaleString("ko-KR");
@@ -584,8 +657,38 @@ export default function OTCPage() {
     <PageContainer>
       <Header />
       <MainContent>
-        <Title>OTC 메인</Title>
         <ContentWrapper>
+          <Title>OTC 거래</Title>
+
+          {/* 자산 종류 선택 컴포넌트 */}
+          <AssetSelectorContainer>
+            <AssetButton
+              $active={assetType === "BMB"}
+              onClick={() => handleAssetTypeChange("BMB")}
+            >
+              BMB
+            </AssetButton>
+            <AssetButton
+              $active={assetType === "MOVL"}
+              onClick={() => handleAssetTypeChange("MOVL")}
+            >
+              MOVL
+            </AssetButton>
+            <AssetButton
+              $active={assetType === "WBMB"}
+              onClick={() => handleAssetTypeChange("WBMB")}
+            >
+              WBMB
+            </AssetButton>
+            <AssetButton
+              $active={assetType === "SBMB"}
+              onClick={() => handleAssetTypeChange("SBMB")}
+            >
+              SBMB
+            </AssetButton>
+          </AssetSelectorContainer>
+
+          {/* 기존 TabContainer */}
           <TabContainer>
             <TabButton
               $active={activeTab === "orderbook"}
@@ -669,10 +772,14 @@ export default function OTCPage() {
                   )}
                 </OrderBookSection>
                 <ButtonContainer>
-                  <BuyButtonLink href="/otc/buy/apply?mode=free">
+                  <BuyButtonLink
+                    href={`/otc/buy/apply?mode=free&assetType=${assetType}`}
+                  >
                     <BuyButton>구매하기</BuyButton>
                   </BuyButtonLink>
-                  <SellButtonLink href="/otc/sell/apply">
+                  <SellButtonLink
+                    href={`/otc/sell/apply?assetType=${assetType}`}
+                  >
                     <SellButton>판매하기</SellButton>
                   </SellButtonLink>
                 </ButtonContainer>
@@ -700,7 +807,7 @@ export default function OTCPage() {
                           return (
                             <Card
                               key={card.id}
-                              href={`/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}`}
+                              href={`/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`}
                             >
                               <CardHeader>
                                 <CardPrice>

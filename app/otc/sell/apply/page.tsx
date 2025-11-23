@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
 import * as FormStyles from "@/components/forms/styles";
+import { BRANCH_NAMES } from "@/lib/branch-info";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const Title = styled.h1`
   font-size: 1.875rem;
@@ -70,22 +72,47 @@ export default function SellApplyPage() {
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [priceError, setPriceError] = useState("");
   const [useCustomPrice, setUseCustomPrice] = useState(false);
+  const [priceWarning, setPriceWarning] = useState(""); // 추가: 가격 경고 메시지
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const assetType = searchParams.get("assetType") || "BMB";
 
   // LBANK 가격 불러오기
   useEffect(() => {
     const fetchPrices = async () => {
       try {
         setIsLoadingPrice(true);
+        setPriceWarning(""); // 경고 초기화
         const response = await fetch("/api/market-prices");
         const data = await response.json();
 
         if (data.lbankKrwPrice) {
           setLbankKrwPrice(data.lbankKrwPrice);
+        } else {
+          // 가격을 가져올 수 없어도 직접 입력은 가능하도록 null로 설정
+          setLbankKrwPrice(null);
+
+          // 경고 메시지 설정
+          if (data.errors?.bithumb) {
+            setPriceWarning(
+              "현재 가격 정보를 불러올 수 없습니다. 직접 가격을 입력해주세요."
+            );
+          }
+        }
+
+        // 에러가 있으면 콘솔에 로그
+        if (data.errors) {
+          console.warn("가격 정보 가져오기 경고:", data.errors);
         }
       } catch (error) {
         console.error("Error fetching prices:", error);
+        setLbankKrwPrice(null);
+        setPriceWarning(
+          "가격 정보를 불러올 수 없습니다. 직접 가격을 입력해주세요."
+        );
       } finally {
         setIsLoadingPrice(false);
       }
@@ -221,6 +248,7 @@ export default function SellApplyPage() {
           price: formData.price,
           allowPartial: formData.allowPartial,
           branch: formData.branch,
+          assetType: assetType,
         }),
       });
 
@@ -248,21 +276,19 @@ export default function SellApplyPage() {
         return;
       }
 
-      // 성공 처리
-      alert("신청이 접수되었습니다.");
-
-      // 폼 초기화
-      setFormData({
-        name: "",
-        phone: "",
-        amount: "",
-        price: "",
-        allowPartial: "",
-        branch: "",
+      // 성공 처리 - 확인 페이지로 리다이렉트
+      const params = new URLSearchParams({
+        id: data.id.toString(),
+        name: data.name,
+        phone: data.phone,
+        amount: data.amount.toString(),
+        price: data.price.toString(),
+        allowPartial: data.allowPartial.toString(),
+        branch: data.branch,
+        assetType: assetType,
       });
-      setErrors({});
-      setPriceError("");
-      setUseCustomPrice(false);
+
+      router.push(`/otc/sell/apply/success?${params.toString()}`);
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("신청 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -359,7 +385,12 @@ export default function SellApplyPage() {
           lbankKrwPrice === null &&
           "LBANK 현재가를 불러오는 중..."}
         {lbankKrwPrice !== null &&
-          `LBANK 현재가: ${lbankKrwPrice.toLocaleString()}원`}
+          `LBANK 현재가: ${Math.floor(lbankKrwPrice).toLocaleString()}원`}
+        {!isLoadingPrice && lbankKrwPrice === null && priceWarning && (
+          <div style={{ color: "#f59e0b", marginTop: "0.5rem" }}>
+            {priceWarning}
+          </div>
+        )}
       </PriceInfo>
       <FormContainer>
         <Form onSubmit={handleSubmit}>
@@ -422,6 +453,8 @@ export default function SellApplyPage() {
               <option value="">
                 {isLoadingPrice
                   ? "가격 정보를 불러오는 중..."
+                  : lbankKrwPrice === null
+                  ? "가격 정보를 불러올 수 없습니다. 직접 입력을 사용해주세요."
                   : "가격을 선택하세요 (10,000원 단위)"}
               </option>
               {generatePriceOptions()}
@@ -442,7 +475,8 @@ export default function SellApplyPage() {
                 }
                 onChange={handleCustomPriceChange}
                 placeholder="예: 100000"
-                disabled={isLoadingPrice || lbankKrwPrice === null}
+                // 빗썸이 실패해도 직접 입력은 가능하도록 disabled 조건 수정
+                disabled={isLoadingPrice}
                 style={{
                   borderColor:
                     errors.price || priceError ? "#ef4444" : "#d1d5db",
@@ -494,10 +528,11 @@ export default function SellApplyPage() {
               style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
             >
               <option value="">회관을 선택하세요</option>
-              <option value="서울">서울</option>
-              <option value="광주">광주</option>
-              <option value="부산">부산</option>
-              <option value="대전">대전</option>
+              {BRANCH_NAMES.map((branchName) => (
+                <option key={branchName} value={branchName}>
+                  {branchName}
+                </option>
+              ))}
             </Select>
             {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
           </FormGroup>

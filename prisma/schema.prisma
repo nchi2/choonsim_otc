@@ -22,7 +22,21 @@ model SellerRequest {
   price       Decimal  @db.Decimal(18, 2)
   allowPartial Boolean
   branch      String
+  assetType   String   @default("BMB")
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model OrderBookLevel {
+  id          Int      @id @default(autoincrement())
+  assetType   String   @default("BMB")
+  price       Decimal  @db.Decimal(18, 2)
+  totalAmount Int      // 해당 가격대의 총 수량
+  requestCount Int     @default(1) // 해당 가격대의 신청 건수 (참고용)
+  updatedAt   DateTime @updatedAt
+
+  // 복합 유니크 인덱스: 같은 assetType과 price 조합은 하나만 존재
+  @@unique([assetType, price])
+  @@index([assetType, price])
 }

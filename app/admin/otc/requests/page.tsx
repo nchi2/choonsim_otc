@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import PageLayout from "@/components/layouts/PageLayout";
 import styled from "styled-components";
 import { useRouter } from "next/navigation";
+import { REQUEST_STATUS, STATUS_LABELS } from "@/lib/constants";
 
 const Container = styled.div`
   max-width: 1200px;
@@ -165,6 +166,74 @@ const LogoutButton = styled.button`
   }
 `;
 
+// 자산 종류 필터 스타일 추가
+const FilterContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+
+  @media (min-width: 768px) {
+    margin-bottom: 2rem;
+  }
+`;
+
+const FilterLabel = styled.label`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+`;
+
+const FilterSelect = styled.select`
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background-color: #ffffff;
+  color: #111827;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: #3b82f6;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+`;
+
+// 상태 변경 select 스타일 추가
+const StatusSelect = styled.select`
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background-color: #ffffff;
+  color: #111827;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: #3b82f6;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+  }
+`;
+
 interface SellerRequest {
   id: number;
   name: string;
@@ -173,6 +242,7 @@ interface SellerRequest {
   price: string;
   allowPartial: boolean;
   branch: string;
+  assetType?: string; // assetType 필드 추가
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -183,6 +253,8 @@ export default function AdminRequestsPage() {
   const [requests, setRequests] = useState<SellerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [assetType, setAssetType] = useState<string>(""); // 자산 종류 필터 state
+  const [updatingStatus, setUpdatingStatus] = useState<Set<number>>(new Set()); // 상태 변경 중인 ID 추적
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -190,7 +262,12 @@ export default function AdminRequestsPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/seller-requests");
+        // assetType이 있으면 쿼리 파라미터에 추가
+        const url = assetType
+          ? `/api/seller-requests?assetType=${assetType}`
+          : "/api/seller-requests";
+
+        const response = await fetch(url);
 
         if (!response.ok) {
           const data = await response.json();
@@ -212,7 +289,7 @@ export default function AdminRequestsPage() {
     };
 
     fetchRequests();
-  }, []);
+  }, [assetType]); // assetType 의존성 추가
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -254,13 +331,78 @@ export default function AdminRequestsPage() {
     }
   };
 
+  // 상태 변경 핸들러 추가
+  const handleStatusChange = async (requestId: number, newStatus: string) => {
+    // 이미 업데이트 중이면 무시
+    if (updatingStatus.has(requestId)) {
+      return;
+    }
+
+    try {
+      setUpdatingStatus((prev) => new Set(prev).add(requestId));
+
+      const response = await fetch(`/api/seller-request/${requestId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "상태 변경에 실패했습니다.");
+      }
+
+      // 성공 시 로컬 state 업데이트
+      setRequests((prevRequests) =>
+        prevRequests.map((req) =>
+          req.id === requestId ? { ...req, status: newStatus } : req
+        )
+      );
+    } catch (err) {
+      console.error("Error updating status:", err);
+      alert(
+        err instanceof Error ? err.message : "상태 변경 중 오류가 발생했습니다."
+      );
+    } finally {
+      setUpdatingStatus((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
+    }
+  };
+
   return (
     <PageLayout>
       <Container>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1rem",
+          }}
+        >
           <Title>OTC 판매 신청 내역</Title>
           <LogoutButton onClick={handleLogout}>로그아웃</LogoutButton>
         </div>
+
+        {/* 자산 종류 필터 추가 */}
+        <FilterContainer>
+          <FilterLabel>자산 종류:</FilterLabel>
+          <FilterSelect
+            value={assetType}
+            onChange={(e) => setAssetType(e.target.value)}
+          >
+            <option value="">전체</option>
+            <option value="BMB">BMB</option>
+            <option value="MOVL">MOVL</option>
+            <option value="WBMB">WBMB</option>
+            <option value="SBMB">SBMB</option>
+          </FilterSelect>
+        </FilterContainer>
 
         {loading && <LoadingText>데이터를 불러오는 중...</LoadingText>}
 
@@ -278,6 +420,7 @@ export default function AdminRequestsPage() {
                     <TableHeaderCell>작성일</TableHeaderCell>
                     <TableHeaderCell>성함</TableHeaderCell>
                     <TableHeaderCell>연락처</TableHeaderCell>
+                    <TableHeaderCell>자산 종류</TableHeaderCell>
                     <TableHeaderCell>수량</TableHeaderCell>
                     <TableHeaderCell>가격</TableHeaderCell>
                     <TableHeaderCell>소량 허용</TableHeaderCell>
@@ -292,6 +435,7 @@ export default function AdminRequestsPage() {
                       <TableCell>{formatDate(request.createdAt)}</TableCell>
                       <TableCell>{request.name}</TableCell>
                       <TableCell>{formatPhone(request.phone)}</TableCell>
+                      <TableCell>{request.assetType || "BMB"}</TableCell>
                       <TableCell>{request.amount}</TableCell>
                       <TableCell>{formatPrice(request.price)}원</TableCell>
                       <TableCell>
@@ -299,17 +443,25 @@ export default function AdminRequestsPage() {
                       </TableCell>
                       <TableCell>{request.branch}</TableCell>
                       <TableCell>
-                        <StatusBadge $status={request.status}>
-                          {request.status === "PENDING"
-                            ? "대기중"
-                            : request.status === "LISTED"
-                            ? "등록됨"
-                            : request.status === "MATCHED"
-                            ? "매칭됨"
-                            : request.status === "COMPLETED"
-                            ? "완료"
-                            : request.status}
-                        </StatusBadge>
+                        <StatusSelect
+                          value={request.status}
+                          onChange={(e) =>
+                            handleStatusChange(request.id, e.target.value)
+                          }
+                          disabled={updatingStatus.has(request.id)}
+                        >
+                          {Object.entries(REQUEST_STATUS).map(
+                            ([key, value]) => (
+                              <option key={value} value={value}>
+                                {
+                                  STATUS_LABELS[
+                                    value as keyof typeof STATUS_LABELS
+                                  ]
+                                }
+                              </option>
+                            )
+                          )}
+                        </StatusSelect>
                       </TableCell>
                     </TableRow>
                   ))}

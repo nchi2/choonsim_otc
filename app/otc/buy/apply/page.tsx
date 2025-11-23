@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
 import * as FormStyles from "@/components/forms/styles";
+import { BRANCH_NAMES } from "@/lib/branch-info";
+import { useRouter } from "next/navigation";
 
 const PageContainer = styled.div`
   display: flex;
@@ -228,9 +230,11 @@ export default function BuyApplyPage() {
 
 function BuyApplyContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const mode = searchParams.get("mode") || "free";
   const initialPrice = searchParams.get("price") || "";
   const initialAmount = searchParams.get("amount") || "";
+  const assetType = searchParams.get("assetType") || "BMB"; // assetType 추가
 
   const [formData, setFormData] = useState({
     name: "",
@@ -380,7 +384,7 @@ function BuyApplyContent() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // 에러 초기화
@@ -482,8 +486,20 @@ function BuyApplyContent() {
       agreedPrivacy,
     };
 
-    console.log("Form Data:", submitData);
-    alert(JSON.stringify(submitData, null, 2));
+    // TODO: 구매 신청 API가 생성되면 API 호출로 변경
+    // 현재는 쿼리 파라미터로 확인 페이지로 리다이렉트
+    const params = new URLSearchParams({
+      name: formData.name,
+      phone: formData.phone,
+      amount: formData.amount,
+      price: formData.price,
+      branch: formData.branch,
+      mode: mode,
+      assetType: assetType, // assetType 추가
+    });
+
+    // 확인 페이지로 리다이렉트
+    router.push(`/otc/buy/apply/success?${params.toString()}`);
   };
 
   return (
@@ -621,7 +637,8 @@ function BuyApplyContent() {
                     )}
                     {lbankKrwPrice !== null && (
                       <PriceInfo>
-                        LBANK 현재가: {lbankKrwPrice.toLocaleString()}원
+                        LBANK 현재가:{" "}
+                        {Math.floor(lbankKrwPrice).toLocaleString()}원
                         <br />
                         (10,000원 단위로 반올림:{" "}
                         {(
@@ -716,10 +733,11 @@ function BuyApplyContent() {
               }}
             >
               <option value="">회관을 선택하세요</option>
-              <option value="서울 서초">서울 서초</option>
-              <option value="광주">광주</option>
-              <option value="부산">부산</option>
-              <option value="대전">대전</option>
+              {BRANCH_NAMES.map((branchName) => (
+                <option key={branchName} value={branchName}>
+                  {branchName}
+                </option>
+              ))}
               <option value="기타(담당자와 조율)">기타(담당자와 조율)</option>
             </Select>
             {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}

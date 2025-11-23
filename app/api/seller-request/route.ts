@@ -6,7 +6,8 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 필수 필드 검증
-    const { name, phone, amount, price, branch, allowPartial } = body;
+    const { name, phone, amount, price, branch, allowPartial, assetType } =
+      body;
 
     if (
       !name ||
@@ -14,10 +15,20 @@ export async function POST(request: Request) {
       !amount ||
       !price ||
       !branch ||
-      allowPartial === undefined
+      allowPartial === undefined ||
+      !assetType // assetType 필수 필드 추가
     ) {
       return NextResponse.json(
         { error: "필수 필드가 누락되었습니다." },
+        { status: 400 }
+      );
+    }
+
+    // assetType 유효성 검증 (BMB, MOVL, WBMB, SBMB 중 하나여야 함)
+    const validAssetTypes = ["BMB", "MOVL", "WBMB", "SBMB"];
+    if (!validAssetTypes.includes(assetType)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 자산 종류입니다." },
         { status: 400 }
       );
     }
@@ -55,11 +66,27 @@ export async function POST(request: Request) {
         price: priceNum, // Decimal 타입은 자동으로 변환됨
         allowPartial: allowPartialBool,
         branch: branch.trim(),
+        assetType: assetType, // assetType 필드 추가
         status: "PENDING",
       },
     });
 
-    return NextResponse.json({ id: sellerRequest.id }, { status: 201 });
+    // 신청 상세 정보 반환
+    return NextResponse.json(
+      {
+        id: sellerRequest.id,
+        name: sellerRequest.name,
+        phone: sellerRequest.phone,
+        amount: sellerRequest.amount,
+        price: Number(sellerRequest.price),
+        allowPartial: sellerRequest.allowPartial,
+        branch: sellerRequest.branch,
+        assetType: sellerRequest.assetType, // 응답에 assetType 포함
+        status: sellerRequest.status,
+        createdAt: sellerRequest.createdAt,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating seller request:", error);
 

@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const assetType = searchParams.get("assetType"); // assetType 파라미터 (선택사항)
+
+    const whereClause: any = {};
+
+    // assetType이 있으면 필터링에 추가
+    if (assetType) {
+      whereClause.assetType = assetType;
+    }
+
     const sellerRequests = await prisma.sellerRequest.findMany({
+      where: whereClause,
       orderBy: {
         createdAt: "desc",
       },
