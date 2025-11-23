@@ -58,6 +58,73 @@ const FormContainer = styled.div`
   }
 `;
 
+// 운영 정책 안내문 스타일 추가
+const PolicyNotice = styled.div`
+  background-color: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #92400e;
+  line-height: 1.6;
+
+  @media (min-width: 768px) {
+    padding: 1.25rem;
+    font-size: 1rem;
+  }
+`;
+
+const PolicyTitle = styled.h3`
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #78350f;
+
+  @media (min-width: 768px) {
+    font-size: 1.125rem;
+  }
+`;
+
+const PolicyList = styled.ul`
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+`;
+
+const PolicyItem = styled.li`
+  margin-bottom: 0.5rem;
+`;
+
+// 강조 텍스트 스타일 추가
+const PolicyHighlight = styled.span`
+  color: #dc2626;
+  font-weight: 600;
+`;
+
+const CheckboxContainer = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+`;
+
+const CheckboxInput = styled.input`
+  margin-top: 0.25rem;
+  cursor: pointer;
+`;
+
+const CheckboxLabel = styled.label`
+  font-size: 0.875rem;
+  color: #111827;
+  cursor: pointer;
+  line-height: 1.5;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
 function SellApplyContent() {
   const [formData, setFormData] = useState({
     name: "",
@@ -73,6 +140,7 @@ function SellApplyContent() {
   const [priceError, setPriceError] = useState("");
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [priceWarning, setPriceWarning] = useState(""); // 추가: 가격 경고 메시지
+  const [agreedPolicy, setAgreedPolicy] = useState(false); // 운영 정책 동의 state 추가
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -215,6 +283,11 @@ function SellApplyContent() {
       newErrors.branch = "방문할 회관을 선택해주세요.";
     }
 
+    // 운영 정책 동의 검증 추가
+    if (!agreedPolicy) {
+      newErrors.agreedPolicy = "운영 정책에 동의해주세요.";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -249,6 +322,7 @@ function SellApplyContent() {
           allowPartial: formData.allowPartial,
           branch: formData.branch,
           assetType: assetType,
+          agreedPolicy: agreedPolicy, // agreedPolicy 추가
         }),
       });
 
@@ -536,6 +610,47 @@ function SellApplyContent() {
             </Select>
             {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
           </FormGroup>
+
+          {/* 운영 정책 안내문 추가 */}
+          <PolicyNotice>
+            <PolicyTitle>📋 운영 정책 안내</PolicyTitle>
+            <PolicyList>
+              <PolicyItem>
+                판매 신청 이후 가격/수량은 그 주 일요일 오전 09:00까지 고정되며,{" "}
+                <PolicyHighlight>
+                  취소/변경은 일요일까지 불가능합니다.
+                </PolicyHighlight>
+              </PolicyItem>
+              <PolicyItem>
+                일요일 09:00 이후 운영자가 연락을 드리며 판매의사(유지/변경/취소
+                여부)를 확인합니다.
+              </PolicyItem>
+              <PolicyItem>
+                연락이 닿지 않을 경우, 호가에서 제외되어 대기됩니다.
+              </PolicyItem>
+            </PolicyList>
+          </PolicyNotice>
+
+          {/* 운영 정책 동의 체크박스 추가 */}
+          <CheckboxContainer>
+            <CheckboxInput
+              type="checkbox"
+              id="agreedPolicy"
+              checked={agreedPolicy}
+              onChange={(e) => setAgreedPolicy(e.target.checked)}
+              style={{
+                borderColor: errors.agreedPolicy ? "#ef4444" : "#d1d5db",
+              }}
+            />
+            <CheckboxLabel htmlFor="agreedPolicy">
+              해당 운영 정책을 이해했습니다 *
+            </CheckboxLabel>
+          </CheckboxContainer>
+          {errors.agreedPolicy && (
+            <ErrorMessage style={{ marginTop: "-1rem", marginBottom: "1rem" }}>
+              {errors.agreedPolicy}
+            </ErrorMessage>
+          )}
 
           <SubmitButton type="submit">신청하기</SubmitButton>
         </Form>

@@ -86,6 +86,30 @@ export async function syncOrderBookLevels(assetType?: string) {
           });
         }
       }
+
+      // 데이터 불일치 모니터링 로그 추가
+      const totalFromSellerRequests = listedRequests.reduce(
+        (sum, req) => sum + req.amount,
+        0
+      );
+      const totalFromOrderBookLevels = Array.from(priceMap.values()).reduce(
+        (sum, data) => sum + data.totalAmount,
+        0
+      );
+
+      if (totalFromSellerRequests !== totalFromOrderBookLevels) {
+        console.warn(
+          `[OrderBookLevel Sync Warning] AssetType: ${at}, ` +
+            `SellerRequest total: ${totalFromSellerRequests}, ` +
+            `OrderBookLevel total: ${totalFromOrderBookLevels}`
+        );
+      } else {
+        console.log(
+          `[OrderBookLevel Sync Success] AssetType: ${at}, ` +
+            `Total amount: ${totalFromOrderBookLevels}, ` +
+            `Price levels: ${priceMap.size}`
+        );
+      }
     }
 
     return { success: true };

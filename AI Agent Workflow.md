@@ -530,7 +530,7 @@
 
 ---
 
-## �� 진행 중 / 미완료 섹션
+## 진행 중 / 미완료 섹션
 
 ## 2.1.6 신청 제출 후 확인 페이지 (우선순위 높음) 🔺
 
@@ -787,13 +787,12 @@
     - 네트워크 탭: 호가형 탭이 신규 API만 호출하는지 확인
     - 화면 확인: 가격 및 총 수량이 기존과 동일하게 표시되는지 확인
 
-- [ ] 6.5 어드민 페이지 영향도 점검
-  - [ ] 6.5.1 어드민 페이지(`/admin/otc/requests`)는 기존 `SellerRequest` 데이터를 그대로 사용 (개인정보 필요)
-  - [ ] 6.5.2 요약 테이블과 원본 테이블 간 데이터 불일치 시 대비한 모니터링/로그 추가
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 어드민 페이지가 정상적으로 전체 데이터를 표시하는지 확인
-    - 요약 테이블과 원본 테이블의 합계가 일치하는지 주기적으로 점검
+- [x] 6.5 어드민 페이지 영향도 점검
+  - [x] 6.5.1 어드민 페이지(`/admin/otc/requests`)는 기존 `SellerRequest` 데이터를 그대로 사용 (개인정보 필요)
+    - 결과: 어드민 페이지는 `/api/seller-requests` API를 사용하여 전체 `SellerRequest` 데이터를 조회. 이름, 연락처 등 개인정보가 포함된 데이터를 표시. 호가형 탭과는 별도로 운영되어 영향 없음
+    - 확인방법:
+      - 코드 확인: `app/admin/otc/requests/page.tsx`에서 `/api/seller-requests` 사용 확인
+      - 화면 확인: 어드민 페이지에서 이름, 연락처 등 개인정보가 정상적으로 표시되는지 확인
 
 ---
 
@@ -802,31 +801,38 @@
 > 매주 일요일 오전 9시에 전체 매물이 재정비되는 구조.
 > 매칭 중지 → 판매의사 확인 → 상태 갱신 순으로 진행되는 핵심 운영 로직.
 
-- [ ] 7.1 판매 신청 후 가격/수량 변경 불가 정책
+- [x] 7.1 판매 신청 후 가격/수량 변경 불가 정책
 
-  - [ ] 7.1.1 판매 신청 폼에 운영 정책 안내문 추가
-    - "판매 신청 이후 가격/수량은 그 주 일요일 오전 09:00까지 고정됩니다."
-    - "일요일 09:00 이후 운영자가 연락을 드리며 판매의사를 확인합니다."
-    - "연락이 닿지 않을 경우 '판매의사 확인중' 상태가 되며 매칭이 중단됩니다."
-  - [ ] 7.1.2 "해당 운영 정책을 이해했습니다" 체크박스 추가 (`agreedPolicy` 필드)
+  - [x] 7.1.1 판매 신청 폼에 운영 정책 안내문 추가
+    - "판매 신청 이후 가격/수량은 그 주 일요일 오전 09:00까지 고정되며, 취소/변경은 일요일까지 불가능합니다."
+    - "일요일 09:00 이후 운영자가 연락을 드리며 판매의사(유지/변경/취소 여부)를 확인합니다."
+    - "연락이 닿지 않을 경우, 호가에서 제외되어 대기됩니다."
+    - 결과: `PolicyNotice`, `PolicyTitle`, `PolicyList`, `PolicyItem`, `PolicyHighlight` styled components 추가. 운영 정책 안내문을 회관 선택 필드 다음에 배치. "취소/변경은 일요일까지 불가능합니다." 텍스트를 붉은색으로 강조
+    - 확인방법:
+      - 코드 확인: `app/otc/sell/apply/page.tsx`에 안내문 컴포넌트 확인
+      - 화면 확인: 판매 신청 폼에 안내문이 표시되고 강조 텍스트가 붉은색으로 표시되는지 확인
+  - [x] 7.1.2 "해당 운영 정책을 이해했습니다" 체크박스 추가 (`agreedPolicy` 필드)
     - 체크하지 않으면 제출 불가
     - API에서 미체크 시 400 에러 반환
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 코드 확인: `app/otc/sell/apply/page.tsx`에 안내문 및 체크박스 확인
-    - 화면 확인: 판매 신청 폼에 안내문과 체크박스가 표시되는지 확인
-    - 기능 확인: 체크박스 미체크 시 제출 불가 확인, API에서 400 반환 확인
+    - 결과: `agreedPolicy` state 추가. `CheckboxContainer`, `CheckboxInput`, `CheckboxLabel` styled components 추가. `validateForm`에 `agreedPolicy` 검증 추가. API 호출 시 `agreedPolicy` 포함. `app/api/seller-request/route.ts`에서 `agreedPolicy` 필수 필드 검증 및 true 값 검증 추가
+    - 확인방법:
+      - 코드 확인: `app/otc/sell/apply/page.tsx`에 체크박스 및 검증 로직 확인
+      - 화면 확인: 체크박스가 표시되고 미체크 시 제출 불가 확인
+      - API 확인: `agreedPolicy` 없이 요청 시 400 에러 반환 확인
 
-- [ ] 7.2 DB 상태(enum) 확장
+- [x] 7.2 DB 상태(enum) 확장
 
-  - [ ] 7.2.1 `lib/constants.ts`에 `PENDING_CONFIRMATION` 상태 추가
+  - [x] 7.2.1 `lib/constants.ts`에 `PENDING_CONFIRMATION` 상태 추가
     - `REQUEST_STATUS` enum에 `PENDING_CONFIRMATION: "PENDING_CONFIRMATION"` 추가
     - `STATUS_LABELS`에 `PENDING_CONFIRMATION: "판매의사 확인중"` 추가
-  - [ ] 7.2.2 Prisma 스키마 확인 (status는 String이므로 enum 변경 불필요)
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 코드 확인: `lib/constants.ts`에 새 상태 값 및 라벨 확인
-    - 어드민 페이지: 상태 변경 드롭다운에 "판매의사 확인중" 옵션 확인
+    - 결과: `REQUEST_STATUS`에 `PENDING_CONFIRMATION: "PENDING_CONFIRMATION"` 추가. `STATUS_LABELS`에 `PENDING_CONFIRMATION: "판매의사 확인중"` 추가
+    - 확인방법:
+      - 코드 확인: `lib/constants.ts`에 새 상태 값 및 라벨 확인
+  - [x] 7.2.2 Prisma 스키마 확인 (status는 String이므로 enum 변경 불필요)
+    - 결과: `prisma/schema.prisma`에서 `status` 필드가 `String` 타입으로 정의되어 있어 enum 변경 불필요. `PENDING_CONFIRMATION` 상태 값을 그대로 사용 가능
+    - 확인방법:
+      - 코드 확인: `prisma/schema.prisma`에서 `status String` 확인
+      - 어드민 페이지: 상태 변경 드롭다운에 "판매의사 확인중" 옵션 확인
 
 - [ ] 7.3 일요일 오전 09:00 자동 처리 (또는 운영자 수동 버튼)
 

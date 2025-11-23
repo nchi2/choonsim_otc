@@ -234,6 +234,34 @@ const StatusSelect = styled.select`
   }
 `;
 
+// 주간 재정비 버튼 스타일 추가
+const WeeklyResetButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background-color: #f59e0b;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: 1rem;
+
+  &:hover {
+    background-color: #d97706;
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    padding: 1rem 2rem;
+  }
+`;
+
 interface SellerRequest {
   id: number;
   name: string;
@@ -255,6 +283,7 @@ export default function AdminRequestsPage() {
   const [error, setError] = useState<string | null>(null);
   const [assetType, setAssetType] = useState<string>(""); // 자산 종류 필터 state
   const [updatingStatus, setUpdatingStatus] = useState<Set<number>>(new Set()); // 상태 변경 중인 ID 추적
+  const [isResetting, setIsResetting] = useState(false); // 주간 재정비 실행 중 상태
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -374,6 +403,62 @@ export default function AdminRequestsPage() {
     }
   };
 
+  // 주간 재정비 실행 핸들러
+  const handleWeeklyReset = async () => {
+    // 확인 다이얼로그
+    const confirmed = window.confirm(
+      "현재 LISTED 상태인 모든 판매 건을 '판매의사 확인중' 상태로 변경합니다.\n" +
+        "이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsResetting(true);
+      setError(null);
+
+      const response = await fetch("/api/admin/weekly-reset", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "주간 재정비 처리에 실패했습니다.");
+      }
+
+      const data = await response.json();
+
+      // 성공 메시지 표시
+      alert(data.message || `${data.updatedCount}건이 변경되었습니다.`);
+
+      // 데이터 새로고침
+      const url = assetType
+        ? `/api/seller-requests?assetType=${assetType}`
+        : "/api/seller-requests";
+      const refreshResponse = await fetch(url);
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        setRequests(refreshData);
+      }
+    } catch (err) {
+      console.error("Error in weekly reset:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "주간 재정비 처리 중 오류가 발생했습니다."
+      );
+      alert(
+        err instanceof Error
+          ? err.message
+          : "주간 재정비 처리 중 오류가 발생했습니다."
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <PageLayout>
       <Container>
@@ -385,7 +470,15 @@ export default function AdminRequestsPage() {
             marginBottom: "1rem",
           }}
         >
-          <Title>OTC 판매 신청 내역</Title>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Title>OTC 판매 신청 내역</Title>
+            <WeeklyResetButton
+              onClick={handleWeeklyReset}
+              disabled={isResetting || loading}
+            >
+              {isResetting ? "처리 중..." : "주간 재정비 실행"}
+            </WeeklyResetButton>
+          </div>
           <LogoutButton onClick={handleLogout}>로그아웃</LogoutButton>
         </div>
 

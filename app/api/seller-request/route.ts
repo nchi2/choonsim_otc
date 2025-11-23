@@ -6,8 +6,16 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 필수 필드 검증
-    const { name, phone, amount, price, branch, allowPartial, assetType } =
-      body;
+    const {
+      name,
+      phone,
+      amount,
+      price,
+      branch,
+      allowPartial,
+      assetType,
+      agreedPolicy,
+    } = body;
 
     if (
       !name ||
@@ -16,10 +24,19 @@ export async function POST(request: Request) {
       !price ||
       !branch ||
       allowPartial === undefined ||
-      !assetType // assetType 필수 필드 추가
+      !assetType ||
+      !agreedPolicy // agreedPolicy 필수 필드 추가
     ) {
       return NextResponse.json(
         { error: "필수 필드가 누락되었습니다." },
+        { status: 400 }
+      );
+    }
+
+    // agreedPolicy가 true가 아니면 에러 반환
+    if (agreedPolicy !== true && agreedPolicy !== "true") {
+      return NextResponse.json(
+        { error: "운영 정책에 동의해주세요." },
         { status: 400 }
       );
     }
