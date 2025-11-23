@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
 import { getBranchInfo, getBranchAddressText } from "@/lib/branch-info";
@@ -239,7 +239,7 @@ const ModalCloseButton = styled.button`
   }
 `;
 
-export default function BuyApplySuccessPage() {
+function BuyApplySuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [requestData, setRequestData] = useState<any>(null);
@@ -369,9 +369,7 @@ export default function BuyApplySuccessPage() {
         <WarningBox>
           <WarningTitle>⚠️ 주의사항</WarningTitle>
           <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
-            <li>
-              처음 연락할 때 확실한 구매의사를 밝혀야 합니다.
-            </li>
+            <li>처음 연락할 때 확실한 구매의사를 밝혀야 합니다.</li>
             <li>
               직접 방문이 근시일내 불가능할 경우, 먼저 입금한 구매자가 매칭을
               하게 됩니다.
@@ -381,8 +379,7 @@ export default function BuyApplySuccessPage() {
               불가능합니다.
             </li>
             <li>
-              절대적으로 지켜야 하며, 관리자 미팅 시 위 내용을 입증해야
-              합니다.
+              절대적으로 지켜야 하며, 관리자 미팅 시 위 내용을 입증해야 합니다.
             </li>
           </ul>
         </WarningBox>
@@ -395,10 +392,7 @@ export default function BuyApplySuccessPage() {
       </Container>
 
       {/* 모달 */}
-      <ModalOverlay
-        $isOpen={isModalOpen}
-        onClick={() => setIsModalOpen(false)}
-      >
+      <ModalOverlay $isOpen={isModalOpen} onClick={() => setIsModalOpen(false)}>
         <ModalContent onClick={(e) => e.stopPropagation()}>
           <ModalCloseButton onClick={() => setIsModalOpen(false)}>
             ×
@@ -470,5 +464,21 @@ export default function BuyApplySuccessPage() {
         </ModalContent>
       </ModalOverlay>
     </PageLayout>
+  );
+}
+
+export default function BuyApplySuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageLayout>
+          <Container>
+            <SuccessMessage>로딩 중...</SuccessMessage>
+          </Container>
+        </PageLayout>
+      }
+    >
+      <BuyApplySuccessContent />
+    </Suspense>
   );
 }

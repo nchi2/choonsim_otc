@@ -482,7 +482,7 @@
 
 - [x] 5.1 운영자 페이지에서 각 신청건의 상태를 변경할 수 있는 UI 추가 (`select` 또는 버튼).
 - [x] 5.2 새로운 API Route (예: `PATCH /api/seller-request/:id/status` 또는 `POST /api/seller-request/status`) 작성.
-- [x] 5.3 상태 값 상수/enum 정의: `PENDING`, `LISTED`, `MATCHED`, `COMPLETED` 등.
+- [x] 5.3 상태 값 상수/enum 정의: `PENDING`, `LISTED`, `MATCHED`, `COMPLETED` 등
   - 결과: `lib/constants.ts`에 `REQUEST_STATUS` 객체와 `STATUS_LABELS` 매핑 정의 완료. `PENDING`, `LISTED`, `MATCHED`, `COMPLETED` 4가지 상태 정의. `RequestStatus` 타입도 함께 정의
   - 확인방법:
     - 코드 확인: `lib/constants.ts`에서 `REQUEST_STATUS`와 `STATUS_LABELS` 확인

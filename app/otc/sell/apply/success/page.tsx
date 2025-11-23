@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
 import { getBranchInfo, getBranchAddressText } from "@/lib/branch-info";
@@ -247,7 +247,7 @@ const ModalCloseButton = styled.button`
   }
 `;
 
-export default function SellApplySuccessPage() {
+function SellApplySuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [requestData, setRequestData] = useState<any>(null);
@@ -260,8 +260,8 @@ export default function SellApplySuccessPage() {
     const phone = searchParams.get("phone");
     const amount = searchParams.get("amount");
     const price = searchParams.get("price");
-    const allowPartial = searchParams.get("allowPartial");
     const branch = searchParams.get("branch");
+    const assetType = searchParams.get("assetType");
 
     if (id && name && phone && amount && price && branch) {
       setRequestData({
@@ -270,8 +270,8 @@ export default function SellApplySuccessPage() {
         phone,
         amount: parseFloat(amount),
         price: parseFloat(price),
-        allowPartial: allowPartial === "true",
         branch,
+        assetType: assetType || "BMB",
       });
     } else {
       // 정보가 없으면 판매 신청 페이지로 리다이렉트
@@ -381,11 +381,8 @@ export default function SellApplySuccessPage() {
           </ul>
         </WarningBox>
         <ButtonGroup>
-          <PrimaryButton onClick={() => router.push("/")}>
-            메인화면 가기
-          </PrimaryButton>
           <SecondaryButton onClick={() => router.push("/otc")}>
-            OTC 거래하기
+            돌아가기
           </SecondaryButton>
         </ButtonGroup>
       </Container>
@@ -447,5 +444,21 @@ export default function SellApplySuccessPage() {
         </ModalContent>
       </ModalOverlay>
     </PageLayout>
+  );
+}
+
+export default function SellApplySuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageLayout>
+          <Container>
+            <SuccessMessage>로딩 중...</SuccessMessage>
+          </Container>
+        </PageLayout>
+      }
+    >
+      <SellApplySuccessContent />
+    </Suspense>
   );
 }
