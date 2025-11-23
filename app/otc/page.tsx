@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import styled from "styled-components";
 import Link from "next/link";
 import Header from "@/components/Header";
@@ -488,7 +488,7 @@ interface SellerRequest {
   updatedAt: string;
 }
 
-export default function OTCPage() {
+function OTCContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"orderbook" | "card">("orderbook");
@@ -852,5 +852,29 @@ export default function OTCPage() {
       </MainContent>
       <Footer />
     </PageContainer>
+  );
+}
+
+// 로딩 컴포넌트
+const LoadingFallback = () => (
+  <PageContainer>
+    <Header />
+    <MainContent>
+      <ContentWrapper>
+        <Title>OTC 거래</Title>
+        <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
+          로딩 중...
+        </div>
+      </ContentWrapper>
+    </MainContent>
+    <Footer />
+  </PageContainer>
+);
+
+export default function OTCPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <OTCContent />
+    </Suspense>
   );
 }

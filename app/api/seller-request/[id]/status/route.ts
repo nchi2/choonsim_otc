@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { REQUEST_STATUS } from "@/lib/constants";
+import { syncOrderBookLevels } from "@/lib/orderbook-sync";
 
 export async function PATCH(
   request: Request,
@@ -29,11 +30,35 @@ export async function PATCH(
       );
     }
 
+    // 기존 요청 정보 조회 (assetType 확인용)
+    const existingRequest = await prisma.sellerRequest.findUnique({
+      where: { id: idNum },
+      select: { assetType: true, allowPartial: true },
+    });
+
+    if (!existingRequest) {
+      return NextResponse.json(
+        { error: "해당 신청건을 찾을 수 없습니다." },
+        { status: 404 }
+      );
+    }
+
     // 상태 업데이트
     const updatedRequest = await prisma.sellerRequest.update({
       where: { id: idNum },
       data: { status },
     });
+
+    // allowPartial = true인 경우에만 OrderBookLevel 동기화
+    // 상태가 LISTED로 변경되거나 LISTED에서 다른 상태로 변경될 때 동기화 필요
+    if (existingRequest.allowPartial) {
+      try {
+        await syncOrderBookLevels(existingRequest.assetType);
+      } catch (syncError) {
+        // 동기화 실패해도 상태 변경은 성공한 것으로 처리 (로그만 남김)
+        console.error("OrderBookLevel sync failed:", syncError);
+      }
+    }
 
     return NextResponse.json(updatedRequest, { status: 200 });
   } catch (error) {

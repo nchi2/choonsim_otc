@@ -754,14 +754,17 @@
       - 코드 확인: `app/otc/page.tsx`에서 `SellerRequest` 인터페이스 확인
       - 화면 확인: 카드형 UI가 이름/연락처 없이도 정상 렌더링되는지 확인
 
-- [ ] 6.2 호가 요약 테이블 설계 (`OrderBookLevel` 가칭)
+- [x] 6.2 호가 요약 테이블 설계 (`OrderBookLevel` 가칭)
 
-  - [ ] 6.2.1 Prisma 스키마에 요약 테이블 추가 (필드 예시: `id`, `assetType`, `branch`, `price`, `totalAmount`, `updatedAt`)
-  - [ ] 6.2.2 PlanetScale에 실제 테이블 생성 (`prisma db push` 또는 DDL)
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 코드 확인: `prisma/schema.prisma`에 새 모델 존재
-    - DB 확인: `OrderBookLevel` 테이블이 생성되어 있는지 확인
+  - [x] 6.2.1 Prisma 스키마에 요약 테이블 추가 (필드 예시: `id`, `assetType`, `branch`, `price`, `totalAmount`, `updatedAt`)
+    - 결과: `prisma/schema.prisma`에 `OrderBookLevel` 모델 추가 완료. 필드: `id`, `assetType`, `price`, `totalAmount`, `requestCount`, `updatedAt`. 복합 유니크 인덱스 `@@unique([assetType, price])` 및 인덱스 `@@index([assetType, price])` 추가
+    - 확인방법:
+      - 코드 확인: `prisma/schema.prisma`에 `OrderBookLevel` 모델 존재 확인
+  - [x] 6.2.2 PlanetScale에 실제 테이블 생성 (`prisma db push` 또는 DDL)
+    - 결과: `npx prisma db push` 실행하여 PlanetScale에 `OrderBookLevel` 테이블 생성 완료
+    - 확인방법:
+      - DB 확인: PlanetScale 대시보드에서 `OrderBookLevel` 테이블이 생성되어 있는지 확인
+      - 명령어 실행: `npx prisma db push` 성공 메시지 확인
 
 - [ ] 6.3 요약 데이터 동기화 로직
 
