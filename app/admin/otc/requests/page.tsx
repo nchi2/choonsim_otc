@@ -446,6 +446,64 @@ const ClickableTableRow = styled(TableRow)`
   }
 `;
 
+const CancelButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #dc2626;
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
+const TradeGroupSection = styled.div`
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+`;
+
+const TradeGroupTitle = styled.h4`
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #991b1b;
+`;
+
+const ApproveButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: 0.5rem;
+
+  &:hover {
+    background-color: #059669;
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
 interface SellerRequest {
   id: number;
   name: string;
@@ -511,6 +569,12 @@ export default function AdminRequestsPage() {
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [isSellerModalOpen, setIsSellerModalOpen] = useState(false);
   const [isBuyerModalOpen, setIsBuyerModalOpen] = useState(false);
+  const [selectedTradeGroup, setSelectedTradeGroup] = useState<{
+    buyerRequestId: number;
+    matches: MatchInfo[];
+  } | null>(null);
+  const [isTradeGroupCompleteModalOpen, setIsTradeGroupCompleteModalOpen] =
+    useState(false);
 
   // 판매건 조회
   useEffect(() => {
@@ -663,6 +727,92 @@ export default function AdminRequestsPage() {
     setSelectedMatch(null);
     setSelectedSeller(null);
     setSelectedBuyer(null);
+  };
+
+  // 거래 그룹 취소 핸들러
+  const handleTradeGroupCancel = async (buyerRequestId: number) => {
+    // 확인 다이얼로그
+    const confirmed = window.confirm(
+      `구매건 #${buyerRequestId}와 연결된 모든 매칭을 취소합니다.\n` +
+        "이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/trade-group/${buyerRequestId}/cancel`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "거래 그룹 취소에 실패했습니다.");
+      }
+
+      alert(data.message || "거래 그룹이 취소되었습니다.");
+
+      // 데이터 새로고침
+      window.location.reload();
+    } catch (error) {
+      console.error("Error canceling trade group:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "거래 그룹 취소 중 오류가 발생했습니다."
+      );
+    }
+  };
+
+  // 거래 그룹 승인 핸들러
+  const handleTradeGroupComplete = async (buyerRequestId: number) => {
+    try {
+      const response = await fetch(
+        `/api/trade-group/${buyerRequestId}/complete`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "거래 그룹 승인에 실패했습니다.");
+      }
+
+      alert(data.message || "거래 그룹이 승인되었습니다.");
+      setIsTradeGroupCompleteModalOpen(false);
+      setSelectedTradeGroup(null);
+
+      // 데이터 새로고침
+      window.location.reload();
+    } catch (error) {
+      console.error("Error completing trade group:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "거래 그룹 승인 중 오류가 발생했습니다."
+      );
+    }
+  };
+
+  // 거래 그룹 승인 모달 열기 핸들러
+  const handleTradeGroupCompleteClick = (buyerRequestId: number) => {
+    const groupMatches = matches.filter(
+      (m) =>
+        m.buyerRequestId === buyerRequestId &&
+        m.status === REQUEST_STATUS.MATCHED
+    );
+    setSelectedTradeGroup({
+      buyerRequestId,
+      matches: groupMatches,
+    });
+    setIsTradeGroupCompleteModalOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -1113,6 +1263,83 @@ export default function AdminRequestsPage() {
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              {/* 거래 그룹별 취소 및 승인 버튼 */}
+              <TradeGroupSection style={{ marginTop: "1.5rem" }}>
+                <TradeGroupTitle>거래 그룹별 관리</TradeGroupTitle>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {Array.from(
+                    new Set(matches.map((m) => m.buyerRequestId))
+                  ).map((buyerRequestId) => {
+                    const groupMatches = matches.filter(
+                      (m) => m.buyerRequestId === buyerRequestId
+                    );
+                    const matchedGroupMatches = groupMatches.filter(
+                      (m) => m.status === REQUEST_STATUS.MATCHED
+                    );
+                    const buyerRequest = groupMatches[0]?.buyerRequest;
+                    const totalAmount = groupMatches.reduce(
+                      (sum, m) => sum + m.matchedAmount,
+                      0
+                    );
+                    const matchedPrice = groupMatches[0]?.matchedPrice || "0";
+
+                    return (
+                      <div
+                        key={buyerRequestId}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "0.75rem",
+                          backgroundColor: "#ffffff",
+                          borderRadius: "6px",
+                          border: "1px solid #e5e7eb",
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{ fontWeight: 600, marginBottom: "0.25rem" }}
+                          >
+                            구매건 #{buyerRequestId}
+                            {buyerRequest && ` - ${buyerRequest.name}`}
+                          </div>
+                          <div
+                            style={{ fontSize: "0.875rem", color: "#6b7280" }}
+                          >
+                            매칭 건수: {groupMatches.length}건 | 총 수량:{" "}
+                            {totalAmount} | 가격: {formatPrice(matchedPrice)}원
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          {matchedGroupMatches.length > 0 && (
+                            <ApproveButton
+                              onClick={() =>
+                                handleTradeGroupCompleteClick(buyerRequestId)
+                              }
+                            >
+                              거래 승인
+                            </ApproveButton>
+                          )}
+                          <CancelButton
+                            onClick={() =>
+                              handleTradeGroupCancel(buyerRequestId)
+                            }
+                          >
+                            거래 취소
+                          </CancelButton>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </TradeGroupSection>
             </MatchedSubSection>
           )}
         </MatchSection>
@@ -1430,9 +1657,35 @@ export default function AdminRequestsPage() {
                 {selectedMatch.status === REQUEST_STATUS.MATCHED && (
                   <ConfirmButton
                     onClick={async () => {
-                      // TODO: COMPLETED로 변경하는 로직 추가 (12.4에서 구현)
-                      alert("확인 완료 기능은 다음 단계에서 구현됩니다.");
-                      handleCloseModals();
+                      try {
+                        const response = await fetch(
+                          `/api/match/${selectedMatch.id}/complete`,
+                          {
+                            method: "POST",
+                          }
+                        );
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                          alert(
+                            `오류: ${
+                              data.error ||
+                              "매칭 완료 처리 중 오류가 발생했습니다."
+                            }`
+                          );
+                          return;
+                        }
+
+                        alert("매칭이 완료되었습니다.");
+                        handleCloseModals();
+
+                        // 목록 새로고침
+                        window.location.reload();
+                      } catch (error) {
+                        console.error("Error completing match:", error);
+                        alert("매칭 완료 처리 중 오류가 발생했습니다.");
+                      }
                     }}
                   >
                     확인 완료 (COMPLETED로 변경)
@@ -1622,6 +1875,157 @@ export default function AdminRequestsPage() {
                     확인 완료 (COMPLETED로 변경)
                   </ConfirmButton>
                 )}
+              </>
+            )}
+          </ModalContent>
+        </ModalOverlay>
+
+        {/* 거래 그룹 승인 모달 */}
+        <ModalOverlay
+          $isOpen={isTradeGroupCompleteModalOpen}
+          onClick={() => {
+            setIsTradeGroupCompleteModalOpen(false);
+            setSelectedTradeGroup(null);
+          }}
+        >
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalCloseButton
+              onClick={() => {
+                setIsTradeGroupCompleteModalOpen(false);
+                setSelectedTradeGroup(null);
+              }}
+            >
+              ×
+            </ModalCloseButton>
+            {selectedTradeGroup && (
+              <>
+                <ModalTitle>거래 그룹 승인</ModalTitle>
+                <ModalSection>
+                  <ModalSectionTitle>구매건 정보</ModalSectionTitle>
+                  <ModalInfoRow>
+                    <ModalInfoLabel>구매건 ID</ModalInfoLabel>
+                    <ModalInfoValue>
+                      #{selectedTradeGroup.buyerRequestId}
+                    </ModalInfoValue>
+                  </ModalInfoRow>
+                  {selectedTradeGroup.matches[0]?.buyerRequest && (
+                    <>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>구매자</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {selectedTradeGroup.matches[0].buyerRequest.name}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>연락처</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPhone(
+                            selectedTradeGroup.matches[0].buyerRequest.phone
+                          )}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                    </>
+                  )}
+                </ModalSection>
+
+                <ModalSection>
+                  <ModalSectionTitle>
+                    매칭 정보 ({selectedTradeGroup.matches.length}건)
+                  </ModalSectionTitle>
+                  {selectedTradeGroup.matches.map((match) => (
+                    <div
+                      key={match.id}
+                      style={{
+                        padding: "0.75rem",
+                        marginBottom: "0.5rem",
+                        backgroundColor: "#f9fafb",
+                        borderRadius: "6px",
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <ModalInfoRow>
+                        <ModalInfoLabel>판매건 ID</ModalInfoLabel>
+                        <ModalInfoValue>
+                          #{match.sellerRequestId}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      {match.sellerRequest && (
+                        <>
+                          <ModalInfoRow>
+                            <ModalInfoLabel>판매자</ModalInfoLabel>
+                            <ModalInfoValue>
+                              {match.sellerRequest.name}
+                            </ModalInfoValue>
+                          </ModalInfoRow>
+                          <ModalInfoRow>
+                            <ModalInfoLabel>연락처</ModalInfoLabel>
+                            <ModalInfoValue>
+                              {formatPhone(match.sellerRequest.phone)}
+                            </ModalInfoValue>
+                          </ModalInfoRow>
+                        </>
+                      )}
+                      <ModalInfoRow>
+                        <ModalInfoLabel>매칭 수량</ModalInfoLabel>
+                        <ModalInfoValue>{match.matchedAmount}</ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>매칭 가격</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPrice(match.matchedPrice)}원
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>총 금액</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPrice(
+                            (
+                              parseFloat(match.matchedPrice) *
+                              match.matchedAmount
+                            ).toString()
+                          )}
+                          원
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                    </div>
+                  ))}
+                </ModalSection>
+
+                <ModalSection>
+                  <ModalSectionTitle>요약</ModalSectionTitle>
+                  <ModalInfoRow>
+                    <ModalInfoLabel>총 매칭 건수</ModalInfoLabel>
+                    <ModalInfoValue>
+                      {selectedTradeGroup.matches.length}건
+                    </ModalInfoValue>
+                  </ModalInfoRow>
+                  <ModalInfoRow>
+                    <ModalInfoLabel>총 매칭 수량</ModalInfoLabel>
+                    <ModalInfoValue>
+                      {selectedTradeGroup.matches.reduce(
+                        (sum, m) => sum + m.matchedAmount,
+                        0
+                      )}
+                    </ModalInfoValue>
+                  </ModalInfoRow>
+                  <ModalInfoRow>
+                    <ModalInfoLabel>매칭 가격</ModalInfoLabel>
+                    <ModalInfoValue>
+                      {formatPrice(
+                        selectedTradeGroup.matches[0]?.matchedPrice || "0"
+                      )}
+                      원
+                    </ModalInfoValue>
+                  </ModalInfoRow>
+                </ModalSection>
+
+                <ConfirmButton
+                  onClick={() =>
+                    handleTradeGroupComplete(selectedTradeGroup.buyerRequestId)
+                  }
+                >
+                  승인 확인 (일괄 적용)
+                </ConfirmButton>
               </>
             )}
           </ModalContent>

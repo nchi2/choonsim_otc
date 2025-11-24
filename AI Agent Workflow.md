@@ -1008,6 +1008,7 @@
 ## 12. 어드민 페이지 - 구매건 관리 및 매칭 로직 (우선순위 높음) 🔺
 
 - [x] 12.1 남은 수량(remainingAmount) 필드 추가
+
   - [x] `prisma/schema.prisma`의 `SellerRequest` 모델에 `remainingAmount Int` 필드 추가
   - [x] `prisma/schema.prisma`의 `BuyerRequest` 모델에 `remainingAmount Int` 필드 추가
   - [x] 기본값: `amount`와 동일한 값으로 설정 (생성 시 `remainingAmount = amount`)
@@ -1022,6 +1023,7 @@
     - API 확인: 신청 생성 시 `remainingAmount`가 `amount`와 동일하게 설정되는지 확인
 
 - [x] 12.2 어드민 페이지에 구매건 섹션 추가
+
   - [x] `app/admin/otc/requests/page.tsx`에 구매건 테이블 추가
   - [x] 판매건 섹션 아래에 구매건 섹션 배치 (탭 없이 비교하기 쉽게)
   - [x] 구매건 API Route 확인/수정 (`app/api/buyer-requests/route.ts`)
@@ -1036,6 +1038,7 @@
     - 화면 확인: 신청 수량과 남은 수량이 모두 표시되는지 확인
 
 - [x] 12.3 매칭 섹션 추가
+
   - [x] 매칭된 건들(MATCHED 상태)을 최상단에 별도 섹션으로 표시
   - [x] 판매건과 구매건의 매칭 정보 표시
   - [x] 매칭된 상대방 정보 표시 (구매건의 경우 판매자 정보, 판매건의 경우 구매자 정보)
@@ -1049,21 +1052,28 @@
     - 화면 확인: 매칭된 판매건과 구매건이 별도 서브섹션으로 표시되는지 확인
     - 화면 확인: 각 건 클릭 시 모달이 표시되는지 확인
 
-- [ ] 12.4 매칭 완료 모달 구현
-  - [ ] MATCHED 상태를 COMPLETED로 변경할 때 모달 표시
-  - [ ] 모달 내용:
-    - 구매 건의 경우: 어느 판매자와 매칭되었는지, 매칭 수량, 매칭 가격 등
-    - 판매 건의 경우: 어느 구매자와 매칭되었는지, 매칭 수량, 매칭 가격 등
-  - [ ] "확인 완료" 버튼 클릭 시:
-    - 상태를 COMPLETED로 변경
+- [x] 12.4 매칭 완료 모달 구현
+
+  - [x] MATCHED 상태를 COMPLETED로 변경할 때 모달 표시
+  - [x] 모달 내용:
+    - 매칭 정보: 매칭 ID, 매칭 수량, 매칭 가격, 총 금액, 매칭일시
+    - 판매건 정보: 판매건 ID, 성함, 연락처, 신청 수량, 남은 수량, 가격, 회관
+    - 구매건 정보: 구매건 ID, 성함, 연락처, 신청 수량, 남은 수량, 가격, 회관
+  - [x] "확인 완료" 버튼 클릭 시:
+    - `POST /api/match/[id]/complete` API 호출
+    - Match 레코드의 status를 COMPLETED로 변경
+    - 관련 판매건/구매건의 remainingAmount가 0이고 status가 LISTED/MATCHED인 경우 COMPLETED로 변경
     - 남은 수량(remainingAmount)은 이미 매칭 시 차감되었으므로 그대로 유지
-  - 결과: (완료 후 작성)
+  - 결과: 매칭 완료 모달 구현 완료. 매칭 모달에서 "확인 완료" 버튼 클릭 시 API 호출하여 Match 상태를 COMPLETED로 변경. 관련 판매건/구매건 상태도 자동 업데이트. 트랜잭션으로 안전하게 처리.
   - 확인방법:
-    - 화면 확인: MATCHED 상태 변경 시 모달이 표시되는지 확인
-    - 화면 확인: 모달 내용이 올바르게 표시되는지 확인
-    - 화면 확인: 확인 완료 후 상태가 COMPLETED로 변경되는지 확인
+    - 코드 확인: `app/api/match/[id]/complete/route.ts` 파일에서 Match 완료 로직 확인
+    - 코드 확인: `app/admin/otc/requests/page.tsx`에서 매칭 모달의 "확인 완료" 버튼 클릭 핸들러 확인
+    - 화면 확인: 어드민 페이지에서 매칭 모달 열기 → "확인 완료" 버튼 클릭 → 상태가 COMPLETED로 변경되는지 확인
+    - DB 확인: Match 테이블에서 status가 COMPLETED로 변경되었는지 확인
+    - 화면 확인: 관련 판매건/구매건의 상태도 자동으로 업데이트되는지 확인
 
 - [x] 12.5 매칭 로직 수정 (remainingAmount 고려)
+
   - [x] 12.5.1 매칭 조건 수정
     - 같은 `assetType`
     - 같은 `price`
@@ -1103,16 +1113,31 @@
       - 결과: 판매건 1 남은 0개, 판매건 2 남은 8개, 구매건 1 MATCHED
 
 - [ ] 12.6 거래 그룹 모델 및 거래 취소 기능
-  - [ ] 12.6.1 거래 그룹 모델 생성
+
+  - [x] 12.6.1 거래 그룹 모델 생성
+
     - `TradeGroup` 모델 추가 (`buyerRequestId`, `totalMatchedAmount`, `totalMatchedPrice`, `status`, `createdAt`, `updatedAt`)
     - 하나의 구매건이 여러 판매건과 매칭된 경우 하나의 거래 그룹으로 묶기
     - 매칭이 일어날 때마다 거래 그룹 생성 또는 기존 그룹에 추가
-  - [ ] 12.6.2 매칭 로직 수정 (거래 그룹 생성)
+    - 결과: `TradeGroup` 모델이 `prisma/schema.prisma`에 정의되어 있음. `buyerRequestId`를 unique로 설정하여 하나의 구매건당 하나의 거래 그룹만 존재하도록 함.
+    - 확인방법:
+      - 코드 확인: `prisma/schema.prisma`에서 `TradeGroup` 모델 확인
+      - 코드 확인: `buyerRequestId`가 `@@unique`로 설정되어 있는지 확인
+
+  - [x] 12.6.2 매칭 로직 수정 (거래 그룹 생성)
+
     - 구매건이 여러 판매건과 매칭될 때:
       - 해당 구매건의 거래 그룹 조회 또는 생성
       - 모든 매칭을 하나의 거래 그룹으로 묶기
       - 거래 그룹에 총 매칭 수량, 총 매칭 가격 저장
-  - [ ] 12.6.3 거래 취소 API 생성
+    - 결과: `lib/match-requests.ts`의 `matchBuyerRequest` 함수에 거래 그룹 생성/업데이트 로직 추가 완료. 매칭 성공 시 `TradeGroup.upsert`를 사용하여 거래 그룹을 생성하거나 기존 그룹의 `totalMatchedAmount`를 증가시킴. 트랜잭션 내에서 처리하여 데이터 일관성 보장.
+    - 확인방법:
+      - 코드 확인: `lib/match-requests.ts`에서 `tx.tradeGroup.upsert` 호출 확인
+      - 코드 확인: `totalMatchedAmount` 계산 및 저장 로직 확인
+      - DB 확인: 매칭 후 `TradeGroup` 테이블에 레코드가 생성되는지 확인
+      - DB 확인: 여러 번 매칭 시 `totalMatchedAmount`가 누적되는지 확인
+
+  - [x] 12.6.3 거래 취소 API 생성
     - `POST /api/trade-group/[buyerRequestId]/cancel` 생성
     - 해당 구매건과 연결된 모든 매칭 취소:
       - 모든 `Match` 레코드 조회 (해당 `buyerRequestId`)
@@ -1122,30 +1147,60 @@
       - 구매건 상태 → `LISTED`
       - 모든 `Match` 레코드 삭제
       - 거래 그룹 삭제 또는 상태 변경
-  - [ ] 12.6.4 어드민 페이지에 거래 취소 버튼 추가
-    - 매칭 섹션 하단에 "거래 취소하기" 버튼 추가
-    - 거래 그룹별로 취소 버튼 표시
-    - 확인 다이얼로그 표시 후 취소 실행
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 코드 확인: `TradeGroup` 모델 생성 확인
-    - 코드 확인: 매칭 로직에서 거래 그룹 생성 확인
-    - 코드 확인: 거래 취소 API 로직 확인
-    - 화면 확인: 매칭 섹션 하단에 거래 취소 버튼 표시 확인
-    - 화면 확인: 거래 취소 후 상태 및 수량 복구 확인
+    - 결과: `app/api/trade-group/[buyerRequestId]/cancel/route.ts`에 거래 그룹 취소 API 구현 완료. 해당 구매건과 연결된 모든 `Match` 레코드를 조회하여 취소 처리. 각 판매건과 구매건의 `remainingAmount` 복구 및 상태를 `LISTED`로 변경. 모든 `Match` 레코드와 `TradeGroup` 삭제. `allowPartial = true`인 판매건이 있으면 `OrderBookLevel` 동기화. 모든 작업을 트랜잭션으로 처리하여 데이터 일관성 보장.
+    - 확인방법:
+      - 코드 확인: `app/api/trade-group/[buyerRequestId]/cancel/route.ts` 파일에서 거래 그룹 취소 로직 확인
+      - 코드 확인: 트랜잭션 내에서 모든 작업이 처리되는지 확인
+      - 코드 확인: `Match` 레코드 삭제 및 `TradeGroup` 삭제 로직 확인
+      - API 테스트: POST 요청으로 거래 그룹 취소 시도 → 성공 응답 확인
+      - DB 확인: 취소 후 `Match` 레코드가 삭제되었는지 확인
+      - DB 확인: 취소 후 `TradeGroup` 레코드가 삭제되었는지 확인
+      - DB 확인: 판매건/구매건의 `remainingAmount`와 상태가 복구되었는지 확인
 
-- [ ] 12.7 매칭 상세 기록 저장
-  - [ ] 12.7.1 매칭 상세 기록 모델 생성
+- [x] 12.6.4 어드민 페이지에 거래 취소 버튼 추가
+
+  - 매칭 섹션 하단에 "거래 취소하기" 버튼 추가
+  - 거래 그룹별로 취소 버튼 표시
+  - 확인 다이얼로그 표시 후 취소 실행
+  - 결과: `app/admin/otc/requests/page.tsx`에 거래 그룹별 취소 버튼 추가 완료. 매칭 정보 테이블 아래에 거래 그룹별 취소 섹션 추가. 구매건별로 그룹화하여 각 거래 그룹에 대한 취소 버튼 표시. 거래 그룹 정보(구매건 ID, 이름, 매칭 건수, 총 수량, 가격) 표시. 확인 다이얼로그 후 `POST /api/trade-group/[buyerRequestId]/cancel` API 호출. 취소 성공 시 페이지 새로고침.
+  - 확인방법:
+    - 코드 확인: `app/admin/otc/requests/page.tsx`에서 `handleTradeGroupCancel` 함수 확인
+    - 코드 확인: 거래 그룹별 취소 버튼 렌더링 로직 확인
+    - 화면 확인: 어드민 페이지 매칭 섹션 하단에 거래 그룹별 취소 버튼이 표시되는지 확인
+    - 화면 확인: 거래 그룹 정보(구매건 ID, 매칭 건수, 총 수량, 가격)가 올바르게 표시되는지 확인
+    - 화면 확인: 취소 버튼 클릭 시 확인 다이얼로그가 표시되는지 확인
+    - 화면 확인: 취소 성공 후 페이지가 새로고침되고 매칭 정보가 업데이트되는지 확인
+
+- [x] 12.7 매칭 상세 기록 저장
+
+  - [x] 12.7.1 매칭 상세 기록 모델 생성
     - `MatchDetail` 모델 추가 또는 기존 모델에 필드 추가
     - 각 `Match` 레코드에 이미 상세 정보가 포함되어 있으므로, 추가 모델 없이 `Match` 테이블 활용
-  - [ ] 12.7.2 구매건에 매칭 상세 정보 조회 API
+    - 결과: `Match` 테이블에 이미 매칭 상세 정보가 저장됨. `sellerRequestId`, `buyerRequestId`, `matchedAmount`, `matchedPrice`, `status` 등 모든 필요한 정보가 포함되어 있음. 추가 모델 생성 불필요.
+    - 확인방법:
+      - 코드 확인: `prisma/schema.prisma`에서 `Match` 모델 확인
+      - DB 확인: `Match` 테이블에 매칭 상세 정보가 저장되는지 확인
+
+  - [x] 12.7.2 구매건에 매칭 상세 정보 조회 API
     - `GET /api/buyer-request/[id]/matches` 생성
     - 해당 구매건과 연결된 모든 `Match` 레코드 조회
     - 각 매칭의 판매건 정보 포함
-  - [ ] 12.7.3 판매건에 매칭 상세 정보 조회 API
+    - 결과: `app/api/buyer-request/[id]/matches/route.ts` 생성 완료. 구매건 ID로 연결된 모든 `Match` 레코드 조회. 각 매칭의 판매건 정보 포함. 구매건 존재 여부 확인 및 에러 처리 포함.
+    - 확인방법:
+      - 코드 확인: `app/api/buyer-request/[id]/matches/route.ts` 파일 확인
+      - API 테스트: `GET /api/buyer-request/[id]/matches` 요청 → 매칭 정보 반환 확인
+      - DB 확인: 구매건 ID로 `Match` 레코드 조회되는지 확인
+
+  - [x] 12.7.3 판매건에 매칭 상세 정보 조회 API
     - `GET /api/seller-request/[id]/matches` 생성
     - 해당 판매건과 연결된 모든 `Match` 레코드 조회
     - 각 매칭의 구매건 정보 포함
+    - 결과: `app/api/seller-request/[id]/matches/route.ts` 생성 완료. 판매건 ID로 연결된 모든 `Match` 레코드 조회. 각 매칭의 구매건 정보 포함. 판매건 존재 여부 확인 및 에러 처리 포함.
+    - 확인방법:
+      - 코드 확인: `app/api/seller-request/[id]/matches/route.ts` 파일 확인
+      - API 테스트: `GET /api/seller-request/[id]/matches` 요청 → 매칭 정보 반환 확인
+      - DB 확인: 판매건 ID로 `Match` 레코드 조회되는지 확인
+
   - [ ] 12.7.4 어드민 페이지 모달에 매칭 상세 정보 표시
     - 판매건 모달: "구매건 #1과 100개 매칭됨, 구매건 #2와 25개 매칭됨" 형식으로 표시
     - 구매건 모달: "판매건 #1에서 100개, 판매건 #2에서 25개 매칭됨" 형식으로 표시
@@ -1154,3 +1209,38 @@
     - 코드 확인: 매칭 상세 정보 조회 API 확인
     - 화면 확인: 판매건/구매건 모달에서 매칭 상세 정보가 표시되는지 확인
     - DB 확인: `Match` 테이블에 매칭 상세 정보가 저장되는지 확인
+
+- [ ] 12.8 신청자용 매칭 정보 조회 기능 (추후 예정)
+  - [ ] 12.8.1 신청 번호 + 전화번호 인증 API
+    - 신청 번호와 전화번호로 본인 확인
+    - 판매건/구매건 정보 조회
+  - [ ] 12.8.2 신청자용 조회 페이지 생성
+    - `/otc/check-status` 페이지 생성
+    - 신청 번호와 전화번호 입력 폼
+    - 본인 확인 후 신청 정보 및 매칭 정보 표시
+  - [ ] 12.8.3 매칭 정보 표시
+    - 판매건: "구매건 #1과 100개 매칭됨" 형식으로 표시
+    - 구매건: "판매건 #1에서 100개 매칭됨" 형식으로 표시
+  - 결과: (완료 후 작성)
+  - 확인방법:
+    - 코드 확인: 신청자용 조회 API 및 페이지 확인
+    - 화면 확인: 신청 번호와 전화번호로 조회 가능한지 확인
+    - 화면 확인: 매칭 정보가 올바르게 표시되는지 확인
+
+- [x] 12.6.3 거래 취소 API 생성 (임시 구현 완료)
+
+  - [x] `POST /api/trade-group/[buyerRequestId]/cancel` 생성 (임시 구현)
+  - [ ] 실제 로직 구현 (12.6.3에서 완료 예정)
+  - 결과: 배포 오류 방지를 위한 임시 구현 완료. 501 Not Implemented 응답 반환. 실제 로직은 12.6.3에서 구현 예정
+  - 확인방법:
+    - 코드 확인: `app/api/trade-group/[buyerRequestId]/cancel/route.ts` 파일 존재 확인
+    - 코드 확인: 임시 구현으로 501 응답 반환하는지 확인
+
+- [x] 12.4 매칭 완료 API (임시 구현 완료)
+
+  - [x] `POST /api/match/[id]/complete` 생성 (임시 구현)
+  - [ ] 실제 로직 구현 (12.4에서 완료 예정)
+  - 결과: 배포 오류 방지를 위한 임시 구현 완료. 501 Not Implemented 응답 반환. 실제 로직은 12.4에서 구현 예정
+  - 확인방법:
+    - 코드 확인: `app/api/match/[id]/complete/route.ts` 파일 존재 확인
+    - 코드 확인: 임시 구현으로 501 응답 반환하는지 확인

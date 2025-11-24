@@ -131,6 +131,34 @@ export async function matchBuyerRequest(
         },
       });
 
+      // 거래 그룹 생성 또는 업데이트
+      if (matches.length > 0) {
+        const totalMatchedAmount = matches.reduce(
+          (sum, match) => sum + match.matchedAmount,
+          0
+        );
+
+        // 기존 거래 그룹 조회 또는 생성
+        await tx.tradeGroup.upsert({
+          where: {
+            buyerRequestId: buyerRequestId,
+          },
+          create: {
+            buyerRequestId: buyerRequestId,
+            totalMatchedAmount: totalMatchedAmount,
+            totalMatchedPrice: buyerRequest.price,
+            status: REQUEST_STATUS.MATCHED,
+          },
+          update: {
+            totalMatchedAmount: {
+              increment: totalMatchedAmount, // 기존 수량에 추가
+            },
+            // 가격은 동일해야 하므로 업데이트하지 않음
+            // status는 MATCHED로 유지 (이미 COMPLETED인 경우는 유지)
+          },
+        });
+      }
+
       return { matches, remainingBuyAmount };
     });
 
