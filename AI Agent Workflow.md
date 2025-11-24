@@ -1174,6 +1174,7 @@
 - [x] 12.7 매칭 상세 기록 저장
 
   - [x] 12.7.1 매칭 상세 기록 모델 생성
+
     - `MatchDetail` 모델 추가 또는 기존 모델에 필드 추가
     - 각 `Match` 레코드에 이미 상세 정보가 포함되어 있으므로, 추가 모델 없이 `Match` 테이블 활용
     - 결과: `Match` 테이블에 이미 매칭 상세 정보가 저장됨. `sellerRequestId`, `buyerRequestId`, `matchedAmount`, `matchedPrice`, `status` 등 모든 필요한 정보가 포함되어 있음. 추가 모델 생성 불필요.
@@ -1182,6 +1183,7 @@
       - DB 확인: `Match` 테이블에 매칭 상세 정보가 저장되는지 확인
 
   - [x] 12.7.2 구매건에 매칭 상세 정보 조회 API
+
     - `GET /api/buyer-request/[id]/matches` 생성
     - 해당 구매건과 연결된 모든 `Match` 레코드 조회
     - 각 매칭의 판매건 정보 포함
@@ -1192,6 +1194,7 @@
       - DB 확인: 구매건 ID로 `Match` 레코드 조회되는지 확인
 
   - [x] 12.7.3 판매건에 매칭 상세 정보 조회 API
+
     - `GET /api/seller-request/[id]/matches` 생성
     - 해당 판매건과 연결된 모든 `Match` 레코드 조회
     - 각 매칭의 구매건 정보 포함
@@ -1201,16 +1204,48 @@
       - API 테스트: `GET /api/seller-request/[id]/matches` 요청 → 매칭 정보 반환 확인
       - DB 확인: 판매건 ID로 `Match` 레코드 조회되는지 확인
 
-  - [ ] 12.7.4 어드민 페이지 모달에 매칭 상세 정보 표시
-    - 판매건 모달: "구매건 #1과 100개 매칭됨, 구매건 #2와 25개 매칭됨" 형식으로 표시
-    - 구매건 모달: "판매건 #1에서 100개, 판매건 #2에서 25개 매칭됨" 형식으로 표시
-  - 결과: (완료 후 작성)
+  - [x] 12.7.4 어드민 페이지 모달에 매칭 상세 정보 표시
+    - 거래 그룹별 승인 모달 구현
+    - 거래 그룹별 승인 버튼 클릭 시 해당 거래 그룹의 모든 매칭 정보 표시
+    - 모달 내용:
+      - 구매건 정보 (구매건 ID, 구매자 이름, 연락처)
+      - 매칭 정보 목록 (각 매칭의 판매건 ID, 판매자 이름, 연락처, 매칭 수량, 매칭 가격, 총 금액)
+      - 요약 정보 (총 매칭 건수, 총 매칭 수량, 매칭 가격)
+    - 승인 확인 버튼 클릭 시 일괄 승인 처리
+    - 결과: 거래 그룹별 승인 기능 구현 완료. `POST /api/trade-group/[buyerRequestId]/complete` API 생성. 어드민 페이지에 거래 그룹별 승인 버튼 추가. 거래 그룹 승인 모달에서 해당 거래 그룹의 모든 매칭 정보(구매건과 어떤 판매건들이 매칭됐는지, 각각 수량은 몇개씩 매칭됐는지) 표시. 승인 확인 버튼 클릭 시 모든 MATCHED 상태의 Match를 COMPLETED로 일괄 변경. 관련 판매건/구매건 상태도 자동 업데이트.
+    - 확인방법:
+      - 코드 확인: `app/api/trade-group/[buyerRequestId]/complete/route.ts` 파일 확인
+      - 코드 확인: 어드민 페이지의 `handleTradeGroupCompleteClick` 함수 확인
+      - 코드 확인: 거래 그룹 승인 모달 렌더링 로직 확인
+      - 화면 확인: 거래 그룹별 승인 버튼 클릭 시 모달이 표시되는지 확인
+      - 화면 확인: 모달에 구매건 정보, 매칭 정보 목록, 요약 정보가 표시되는지 확인
+      - 화면 확인: 승인 확인 버튼 클릭 시 일괄 승인되는지 확인
+      - DB 확인: 승인 후 모든 Match 레코드의 status가 COMPLETED로 변경되는지 확인
+
+- [x] 12.7.5 거래 그룹 조회 API 생성
+
+  - `GET /api/trade-group/[buyerRequestId]` 생성
+  - 거래 그룹 정보와 함께 관련된 모든 Match 정보 조회
+  - 각 Match의 판매건 정보 포함
+  - 구매건 정보 포함
+  - 결과: `app/api/trade-group/[buyerRequestId]/route.ts` 생성 완료. 거래 그룹 조회 시 `TradeGroup`, `BuyerRequest`, 관련된 모든 `Match` 레코드 및 각 매칭의 판매건 정보를 함께 반환. 거래 그룹의 세부 매칭 정보(어떤 판매건들과 매칭됐는지, 각각 수량은 몇개씩 매칭됐는지)를 조회할 수 있음.
   - 확인방법:
-    - 코드 확인: 매칭 상세 정보 조회 API 확인
-    - 화면 확인: 판매건/구매건 모달에서 매칭 상세 정보가 표시되는지 확인
-    - DB 확인: `Match` 테이블에 매칭 상세 정보가 저장되는지 확인
+    - 코드 확인: `app/api/trade-group/[buyerRequestId]/route.ts` 파일 확인
+    - API 테스트: `GET /api/trade-group/[buyerRequestId]` 요청 → 거래 그룹 정보 및 매칭 정보 반환 확인
+    - DB 확인: 거래 그룹 조회 시 관련 Match 레코드가 함께 조회되는지 확인
+
+- [x] 12.7.6 Vercel 빌드 오류 해결 (Prisma Client 생성)
+
+  - `package.json`에 `postinstall` 스크립트 추가
+  - `build` 스크립트에 `prisma generate` 추가
+  - 결과: `package.json`에 `postinstall: "prisma generate"` 추가 및 `build` 스크립트에 `prisma generate &&` 추가 완료. Vercel 빌드 시 Prisma Client가 자동으로 생성되어 `prisma.buyerRequest`, `prisma.sellerRequest`, `prisma.match`, `prisma.tradeGroup` 등을 사용할 수 있음.
+  - 확인방법:
+    - 코드 확인: `package.json`에서 `postinstall` 및 `build` 스크립트 확인
+    - 빌드 확인: Vercel 빌드가 성공적으로 완료되는지 확인
+    - 빌드 확인: TypeScript 오류가 해결되었는지 확인
 
 - [ ] 12.8 신청자용 매칭 정보 조회 기능 (추후 예정)
+
   - [ ] 12.8.1 신청 번호 + 전화번호 인증 API
     - 신청 번호와 전화번호로 본인 확인
     - 판매건/구매건 정보 조회
@@ -1226,21 +1261,3 @@
     - 코드 확인: 신청자용 조회 API 및 페이지 확인
     - 화면 확인: 신청 번호와 전화번호로 조회 가능한지 확인
     - 화면 확인: 매칭 정보가 올바르게 표시되는지 확인
-
-- [x] 12.6.3 거래 취소 API 생성 (임시 구현 완료)
-
-  - [x] `POST /api/trade-group/[buyerRequestId]/cancel` 생성 (임시 구현)
-  - [ ] 실제 로직 구현 (12.6.3에서 완료 예정)
-  - 결과: 배포 오류 방지를 위한 임시 구현 완료. 501 Not Implemented 응답 반환. 실제 로직은 12.6.3에서 구현 예정
-  - 확인방법:
-    - 코드 확인: `app/api/trade-group/[buyerRequestId]/cancel/route.ts` 파일 존재 확인
-    - 코드 확인: 임시 구현으로 501 응답 반환하는지 확인
-
-- [x] 12.4 매칭 완료 API (임시 구현 완료)
-
-  - [x] `POST /api/match/[id]/complete` 생성 (임시 구현)
-  - [ ] 실제 로직 구현 (12.4에서 완료 예정)
-  - 결과: 배포 오류 방지를 위한 임시 구현 완료. 501 Not Implemented 응답 반환. 실제 로직은 12.4에서 구현 예정
-  - 확인방법:
-    - 코드 확인: `app/api/match/[id]/complete/route.ts` 파일 존재 확인
-    - 코드 확인: 임시 구현으로 501 응답 반환하는지 확인

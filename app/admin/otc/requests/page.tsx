@@ -504,6 +504,27 @@ const ApproveButton = styled.button`
   }
 `;
 
+const DetailButton = styled.button`
+  padding: 0.25rem 0.5rem;
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
 interface SellerRequest {
   id: number;
   name: string;
@@ -572,9 +593,27 @@ export default function AdminRequestsPage() {
   const [selectedTradeGroup, setSelectedTradeGroup] = useState<{
     buyerRequestId: number;
     matches: MatchInfo[];
+    buyerRequest?: BuyerRequest | null;
+    tradeGroup?: {
+      id: number;
+      buyerRequestId: number;
+      totalMatchedAmount: number;
+      totalMatchedPrice: string;
+      status: string;
+      createdAt: string;
+      updatedAt: string;
+    } | null;
   } | null>(null);
   const [isTradeGroupCompleteModalOpen, setIsTradeGroupCompleteModalOpen] =
     useState(false);
+  const [detailSellerRequest, setDetailSellerRequest] =
+    useState<SellerRequest | null>(null);
+  const [detailBuyerRequest, setDetailBuyerRequest] =
+    useState<BuyerRequest | null>(null);
+  const [detailSellerMatches, setDetailSellerMatches] = useState<any[]>([]);
+  const [detailBuyerMatches, setDetailBuyerMatches] = useState<any[]>([]);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   // 판매건 조회
   useEffect(() => {
@@ -802,17 +841,39 @@ export default function AdminRequestsPage() {
   };
 
   // 거래 그룹 승인 모달 열기 핸들러
-  const handleTradeGroupCompleteClick = (buyerRequestId: number) => {
-    const groupMatches = matches.filter(
-      (m) =>
-        m.buyerRequestId === buyerRequestId &&
-        m.status === REQUEST_STATUS.MATCHED
-    );
-    setSelectedTradeGroup({
-      buyerRequestId,
-      matches: groupMatches,
-    });
-    setIsTradeGroupCompleteModalOpen(true);
+  const handleTradeGroupCompleteClick = async (buyerRequestId: number) => {
+    try {
+      const response = await fetch(`/api/trade-group/${buyerRequestId}`);
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(
+          data.error || "거래 그룹 정보를 불러오는데 실패했습니다."
+        );
+      }
+
+      const data = await response.json();
+
+      // MATCHED 상태의 매칭만 필터링
+      const matchedMatches = data.matches.filter(
+        (m: MatchInfo) => m.status === REQUEST_STATUS.MATCHED
+      );
+
+      setSelectedTradeGroup({
+        buyerRequestId,
+        matches: matchedMatches,
+        buyerRequest: data.buyerRequest,
+        tradeGroup: data.tradeGroup,
+      });
+      setIsTradeGroupCompleteModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching trade group:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "거래 그룹 정보를 불러오는 중 오류가 발생했습니다."
+      );
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -1009,6 +1070,66 @@ export default function AdminRequestsPage() {
     }
   };
 
+  // 판매건 상세 정보 조회 핸들러
+  const handleSellerDetailClick = async (seller: SellerRequest) => {
+    try {
+      setIsLoadingDetail(true);
+      setDetailSellerRequest(seller);
+      setDetailBuyerRequest(null);
+      setDetailBuyerMatches([]);
+
+      // 매칭 정보 조회 (완료 건인 경우)
+      if (
+        seller.status === REQUEST_STATUS.COMPLETED ||
+        seller.status === REQUEST_STATUS.MATCHED
+      ) {
+        const response = await fetch(
+          `/api/seller-request/${seller.id}/matches`
+        );
+        if (response.ok) {
+          const matches = await response.json();
+          setDetailSellerMatches(matches);
+        }
+      }
+
+      setIsDetailModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching seller detail:", error);
+      alert("상세 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
+  // 구매건 상세 정보 조회 핸들러
+  const handleBuyerDetailClick = async (buyer: BuyerRequest) => {
+    try {
+      setIsLoadingDetail(true);
+      setDetailBuyerRequest(buyer);
+      setDetailSellerRequest(null);
+      setDetailSellerMatches([]);
+
+      // 매칭 정보 조회 (완료 건인 경우)
+      if (
+        buyer.status === REQUEST_STATUS.COMPLETED ||
+        buyer.status === REQUEST_STATUS.MATCHED
+      ) {
+        const response = await fetch(`/api/buyer-request/${buyer.id}/matches`);
+        if (response.ok) {
+          const matches = await response.json();
+          setDetailBuyerMatches(matches);
+        }
+      }
+
+      setIsDetailModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching buyer detail:", error);
+      alert("상세 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
   return (
     <PageLayout>
       <Container>
@@ -1087,6 +1208,9 @@ export default function AdminRequestsPage() {
                       <TableHeaderCell>남은 수량</TableHeaderCell>
                       <TableHeaderCell>가격</TableHeaderCell>
                       <TableHeaderCell>상태</TableHeaderCell>
+                      <TableHeaderCell style={{ width: "80px" }}>
+                        상세
+                      </TableHeaderCell>
                     </TableHeaderRow>
                   </TableHeader>
                   <TableBody>
@@ -1111,6 +1235,17 @@ export default function AdminRequestsPage() {
                               request.status as keyof typeof STATUS_LABELS
                             ] || request.status}
                           </StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <DetailButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSellerDetailClick(request);
+                            }}
+                            disabled={isLoadingDetail}
+                          >
+                            상세
+                          </DetailButton>
                         </TableCell>
                       </ClickableTableRow>
                     ))}
@@ -1141,6 +1276,9 @@ export default function AdminRequestsPage() {
                       <TableHeaderCell>남은 수량</TableHeaderCell>
                       <TableHeaderCell>가격</TableHeaderCell>
                       <TableHeaderCell>상태</TableHeaderCell>
+                      <TableHeaderCell style={{ width: "80px" }}>
+                        상세
+                      </TableHeaderCell>
                     </TableHeaderRow>
                   </TableHeader>
                   <TableBody>
@@ -1165,6 +1303,17 @@ export default function AdminRequestsPage() {
                               request.status as keyof typeof STATUS_LABELS
                             ] || request.status}
                           </StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <DetailButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBuyerDetailClick(request);
+                            }}
+                            disabled={isLoadingDetail}
+                          >
+                            상세
+                          </DetailButton>
                         </TableCell>
                       </ClickableTableRow>
                     ))}
@@ -1367,6 +1516,9 @@ export default function AdminRequestsPage() {
                     <TableHeaderCell>소량 허용</TableHeaderCell>
                     <TableHeaderCell>회관</TableHeaderCell>
                     <TableHeaderCell>상태</TableHeaderCell>
+                    <TableHeaderCell style={{ width: "80px" }}>
+                      상세
+                    </TableHeaderCell>
                   </TableHeaderRow>
                 </TableHeader>
                 <TableBody>
@@ -1409,6 +1561,17 @@ export default function AdminRequestsPage() {
                           )}
                         </StatusSelect>
                       </TableCell>
+                      <TableCell>
+                        <DetailButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSellerDetailClick(request);
+                          }}
+                          disabled={isLoadingDetail}
+                        >
+                          상세
+                        </DetailButton>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1438,6 +1601,9 @@ export default function AdminRequestsPage() {
                     <TableHeaderCell>가격</TableHeaderCell>
                     <TableHeaderCell>회관</TableHeaderCell>
                     <TableHeaderCell>상태</TableHeaderCell>
+                    <TableHeaderCell style={{ width: "80px" }}>
+                      상세
+                    </TableHeaderCell>
                   </TableHeaderRow>
                 </TableHeader>
                 <TableBody>
@@ -1476,6 +1642,17 @@ export default function AdminRequestsPage() {
                             )
                           )}
                         </StatusSelect>
+                      </TableCell>
+                      <TableCell>
+                        <DetailButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBuyerDetailClick(request);
+                          }}
+                          disabled={isLoadingDetail}
+                        >
+                          상세
+                        </DetailButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1908,20 +2085,18 @@ export default function AdminRequestsPage() {
                       #{selectedTradeGroup.buyerRequestId}
                     </ModalInfoValue>
                   </ModalInfoRow>
-                  {selectedTradeGroup.matches[0]?.buyerRequest && (
+                  {selectedTradeGroup.buyerRequest && (
                     <>
                       <ModalInfoRow>
                         <ModalInfoLabel>구매자</ModalInfoLabel>
                         <ModalInfoValue>
-                          {selectedTradeGroup.matches[0].buyerRequest.name}
+                          {selectedTradeGroup.buyerRequest.name}
                         </ModalInfoValue>
                       </ModalInfoRow>
                       <ModalInfoRow>
                         <ModalInfoLabel>연락처</ModalInfoLabel>
                         <ModalInfoValue>
-                          {formatPhone(
-                            selectedTradeGroup.matches[0].buyerRequest.phone
-                          )}
+                          {formatPhone(selectedTradeGroup.buyerRequest.phone)}
                         </ModalInfoValue>
                       </ModalInfoRow>
                     </>
@@ -2026,6 +2201,369 @@ export default function AdminRequestsPage() {
                 >
                   승인 확인 (일괄 적용)
                 </ConfirmButton>
+              </>
+            )}
+          </ModalContent>
+        </ModalOverlay>
+
+        {/* 상세 정보 모달 */}
+        <ModalOverlay
+          $isOpen={isDetailModalOpen}
+          onClick={() => {
+            setIsDetailModalOpen(false);
+            setDetailSellerRequest(null);
+            setDetailBuyerRequest(null);
+            setDetailSellerMatches([]);
+            setDetailBuyerMatches([]);
+          }}
+        >
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalCloseButton
+              onClick={() => {
+                setIsDetailModalOpen(false);
+                setDetailSellerRequest(null);
+                setDetailBuyerRequest(null);
+                setDetailSellerMatches([]);
+                setDetailBuyerMatches([]);
+              }}
+            >
+              ×
+            </ModalCloseButton>
+            {isLoadingDetail ? (
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <LoadingText>상세 정보를 불러오는 중...</LoadingText>
+              </div>
+            ) : (
+              <>
+                {/* 판매건 상세 정보 */}
+                {detailSellerRequest && (
+                  <>
+                    <ModalTitle>판매건 상세 정보</ModalTitle>
+                    <ModalSection>
+                      <ModalSectionTitle>기본 정보</ModalSectionTitle>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>판매건 ID</ModalInfoLabel>
+                        <ModalInfoValue>
+                          #{detailSellerRequest.id}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>성함</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailSellerRequest.name}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>연락처</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPhone(detailSellerRequest.phone)}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>신청 수량</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailSellerRequest.amount}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>남은 수량</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailSellerRequest.remainingAmount !== undefined
+                            ? detailSellerRequest.remainingAmount
+                            : detailSellerRequest.amount}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>가격</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPrice(detailSellerRequest.price)}원
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>소량 허용</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailSellerRequest.allowPartial ? "허용" : "비허용"}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>회관</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailSellerRequest.branch}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>자산 종류</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailSellerRequest.assetType || "BMB"}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>상태</ModalInfoLabel>
+                        <ModalInfoValue>
+                          <StatusBadge $status={detailSellerRequest.status}>
+                            {STATUS_LABELS[
+                              detailSellerRequest.status as keyof typeof STATUS_LABELS
+                            ] || detailSellerRequest.status}
+                          </StatusBadge>
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>신청일시</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatDate(detailSellerRequest.createdAt)}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                    </ModalSection>
+
+                    {/* 매칭 정보 (완료/매칭된 건인 경우) */}
+                    {(detailSellerRequest.status === REQUEST_STATUS.COMPLETED ||
+                      detailSellerRequest.status === REQUEST_STATUS.MATCHED) &&
+                      detailSellerMatches.length > 0 && (
+                        <ModalSection>
+                          <ModalSectionTitle>
+                            매칭 정보 ({detailSellerMatches.length}건)
+                          </ModalSectionTitle>
+                          {detailSellerMatches.map((match) => (
+                            <div
+                              key={match.id}
+                              style={{
+                                padding: "0.75rem",
+                                marginBottom: "0.5rem",
+                                backgroundColor: "#f9fafb",
+                                borderRadius: "6px",
+                                border: "1px solid #e5e7eb",
+                              }}
+                            >
+                              <ModalInfoRow>
+                                <ModalInfoLabel>구매건 ID</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  #{match.buyerRequestId}
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              {match.buyerRequest && (
+                                <>
+                                  <ModalInfoRow>
+                                    <ModalInfoLabel>구매자</ModalInfoLabel>
+                                    <ModalInfoValue>
+                                      {match.buyerRequest.name}
+                                    </ModalInfoValue>
+                                  </ModalInfoRow>
+                                  <ModalInfoRow>
+                                    <ModalInfoLabel>연락처</ModalInfoLabel>
+                                    <ModalInfoValue>
+                                      {formatPhone(match.buyerRequest.phone)}
+                                    </ModalInfoValue>
+                                  </ModalInfoRow>
+                                </>
+                              )}
+                              <ModalInfoRow>
+                                <ModalInfoLabel>매칭 수량</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {match.matchedAmount}
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>매칭 가격</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {formatPrice(match.matchedPrice)}원
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>총 금액</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {formatPrice(
+                                    (
+                                      parseFloat(match.matchedPrice) *
+                                      match.matchedAmount
+                                    ).toString()
+                                  )}
+                                  원
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>매칭일시</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {formatDate(match.createdAt)}
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>상태</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  <StatusBadge $status={match.status}>
+                                    {STATUS_LABELS[
+                                      match.status as keyof typeof STATUS_LABELS
+                                    ] || match.status}
+                                  </StatusBadge>
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                            </div>
+                          ))}
+                        </ModalSection>
+                      )}
+                  </>
+                )}
+
+                {/* 구매건 상세 정보 */}
+                {detailBuyerRequest && (
+                  <>
+                    <ModalTitle>구매건 상세 정보</ModalTitle>
+                    <ModalSection>
+                      <ModalSectionTitle>기본 정보</ModalSectionTitle>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>구매건 ID</ModalInfoLabel>
+                        <ModalInfoValue>
+                          #{detailBuyerRequest.id}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>성함</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailBuyerRequest.name}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>연락처</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPhone(detailBuyerRequest.phone)}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>신청 수량</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailBuyerRequest.amount}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>남은 수량</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailBuyerRequest.remainingAmount !== undefined
+                            ? detailBuyerRequest.remainingAmount
+                            : detailBuyerRequest.amount}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>가격</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatPrice(detailBuyerRequest.price)}원
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>회관</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailBuyerRequest.branch}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>자산 종류</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {detailBuyerRequest.assetType || "BMB"}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>상태</ModalInfoLabel>
+                        <ModalInfoValue>
+                          <StatusBadge $status={detailBuyerRequest.status}>
+                            {STATUS_LABELS[
+                              detailBuyerRequest.status as keyof typeof STATUS_LABELS
+                            ] || detailBuyerRequest.status}
+                          </StatusBadge>
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                      <ModalInfoRow>
+                        <ModalInfoLabel>신청일시</ModalInfoLabel>
+                        <ModalInfoValue>
+                          {formatDate(detailBuyerRequest.createdAt)}
+                        </ModalInfoValue>
+                      </ModalInfoRow>
+                    </ModalSection>
+
+                    {/* 매칭 정보 (완료/매칭된 건인 경우) */}
+                    {(detailBuyerRequest.status === REQUEST_STATUS.COMPLETED ||
+                      detailBuyerRequest.status === REQUEST_STATUS.MATCHED) &&
+                      detailBuyerMatches.length > 0 && (
+                        <ModalSection>
+                          <ModalSectionTitle>
+                            매칭 정보 ({detailBuyerMatches.length}건)
+                          </ModalSectionTitle>
+                          {detailBuyerMatches.map((match) => (
+                            <div
+                              key={match.id}
+                              style={{
+                                padding: "0.75rem",
+                                marginBottom: "0.5rem",
+                                backgroundColor: "#f9fafb",
+                                borderRadius: "6px",
+                                border: "1px solid #e5e7eb",
+                              }}
+                            >
+                              <ModalInfoRow>
+                                <ModalInfoLabel>판매건 ID</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  #{match.sellerRequestId}
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              {match.sellerRequest && (
+                                <>
+                                  <ModalInfoRow>
+                                    <ModalInfoLabel>판매자</ModalInfoLabel>
+                                    <ModalInfoValue>
+                                      {match.sellerRequest.name}
+                                    </ModalInfoValue>
+                                  </ModalInfoRow>
+                                  <ModalInfoRow>
+                                    <ModalInfoLabel>연락처</ModalInfoLabel>
+                                    <ModalInfoValue>
+                                      {formatPhone(match.sellerRequest.phone)}
+                                    </ModalInfoValue>
+                                  </ModalInfoRow>
+                                </>
+                              )}
+                              <ModalInfoRow>
+                                <ModalInfoLabel>매칭 수량</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {match.matchedAmount}
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>매칭 가격</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {formatPrice(match.matchedPrice)}원
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>총 금액</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {formatPrice(
+                                    (
+                                      parseFloat(match.matchedPrice) *
+                                      match.matchedAmount
+                                    ).toString()
+                                  )}
+                                  원
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>매칭일시</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  {formatDate(match.createdAt)}
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                              <ModalInfoRow>
+                                <ModalInfoLabel>상태</ModalInfoLabel>
+                                <ModalInfoValue>
+                                  <StatusBadge $status={match.status}>
+                                    {STATUS_LABELS[
+                                      match.status as keyof typeof STATUS_LABELS
+                                    ] || match.status}
+                                  </StatusBadge>
+                                </ModalInfoValue>
+                              </ModalInfoRow>
+                            </div>
+                          ))}
+                        </ModalSection>
+                      )}
+                  </>
+                )}
               </>
             )}
           </ModalContent>
