@@ -12,9 +12,9 @@ export async function POST(request: Request) {
       amount,
       price,
       branch,
-      allowPartial,
       assetType,
-      agreedPolicy,
+      agreedRisk,
+      agreedPrivacy,
     } = body;
 
     if (
@@ -23,9 +23,9 @@ export async function POST(request: Request) {
       !amount ||
       !price ||
       !branch ||
-      allowPartial === undefined ||
       !assetType ||
-      !agreedPolicy // agreedPolicy 필수 필드 추가
+      agreedRisk === undefined ||
+      agreedPrivacy === undefined
     ) {
       return NextResponse.json(
         { error: "필수 필드가 누락되었습니다." },
@@ -33,15 +33,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // agreedPolicy가 true가 아니면 에러 반환
-    if (agreedPolicy !== true && agreedPolicy !== "true") {
+    // 동의 필드 검증
+    if (agreedRisk !== true && agreedRisk !== "true") {
       return NextResponse.json(
-        { error: "운영 정책에 동의해주세요." },
+        { error: "보이스피싱 안내 동의는 필수입니다." },
         { status: 400 }
       );
     }
 
-    // assetType 유효성 검증 (BMB, MOVL, WBMB, SBMB 중 하나여야 함)
+    if (agreedPrivacy !== true && agreedPrivacy !== "true") {
+      return NextResponse.json(
+        { error: "개인정보 수집 동의는 필수입니다." },
+        { status: 400 }
+      );
+    }
+
+    // assetType 유효성 검증
     const validAssetTypes = ["BMB", "MOVL", "WBMB", "SBMB"];
     if (!validAssetTypes.includes(assetType)) {
       return NextResponse.json(
@@ -68,48 +75,47 @@ export async function POST(request: Request) {
       );
     }
 
-    // allowPartial 변환 (string "yes"/"no", "true"/"false" 또는 boolean 모두 처리)
-    const allowPartialBool =
-      allowPartial === "yes" ||
-      allowPartial === "true" ||
-      allowPartial === true;
+    // 동의 필드 boolean 변환
+    const agreedRiskBool =
+      agreedRisk === "true" || agreedRisk === true;
+    const agreedPrivacyBool =
+      agreedPrivacy === "true" || agreedPrivacy === true;
 
     // Prisma로 데이터 삽입
-    const sellerRequest = await prisma.sellerRequest.create({
+    const buyerRequest = await prisma.buyerRequest.create({
       data: {
         name: name.trim(),
         phone: phone.trim(),
-        amount: Math.floor(amountNum), // Int 필드이므로 정수로 변환 (소수점 버림)
+        amount: Math.floor(amountNum), // Int 필드이므로 정수로 변환
         remainingAmount: Math.floor(amountNum), // 남은 수량 = 신청 수량
         price: priceNum, // Decimal 타입은 자동으로 변환됨
-        allowPartial: allowPartialBool,
         branch: branch.trim(),
         assetType: assetType,
         status: "PENDING",
+        agreedRisk: agreedRiskBool,
+        agreedPrivacy: agreedPrivacyBool,
       },
     });
 
     // 신청 상세 정보 반환
     return NextResponse.json(
       {
-        id: sellerRequest.id,
-        name: sellerRequest.name,
-        phone: sellerRequest.phone,
-        amount: sellerRequest.amount,
-        remainingAmount: sellerRequest.remainingAmount, // remainingAmount 추가
-        price: Number(sellerRequest.price),
-        allowPartial: sellerRequest.allowPartial,
-        branch: sellerRequest.branch,
-        assetType: sellerRequest.assetType,
-        status: sellerRequest.status,
-        createdAt: sellerRequest.createdAt,
+        id: buyerRequest.id,
+        name: buyerRequest.name,
+        phone: buyerRequest.phone,
+        amount: buyerRequest.amount,
+        remainingAmount: buyerRequest.remainingAmount, // remainingAmount 추가
+        price: Number(buyerRequest.price),
+        branch: buyerRequest.branch,
+        assetType: buyerRequest.assetType,
+        status: buyerRequest.status,
+        createdAt: buyerRequest.createdAt,
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating seller request:", error);
+    console.error("Error creating buyer request:", error);
 
-    // 더 자세한 에러 정보 반환
     const errorMessage =
       error instanceof Error ? error.message : "알 수 없는 오류";
     const errorStack = error instanceof Error ? error.stack : undefined;

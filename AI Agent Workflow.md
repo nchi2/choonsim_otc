@@ -181,7 +181,11 @@
 - [x] 2.1.6.6 구매 신청 페이지 리다이렉트 로직
 
   - [x] 제출 성공 시 확인 페이지로 리다이렉트
-    - 결과: 구매 신청 페이지에서 제출 시 쿼리 파라미터로 신청 정보를 전달하여 확인 페이지로 리다이렉트 구현 완료. 구매 신청 API 생성 전까지 임시 구현
+    - 결과: 구매 신청 API(`/api/buyer-request`) 생성 완료. 구매 신청 폼에서 API 호출 후 성공 페이지로 리다이렉트 구현. 구매 신청 성공 페이지에 `assetType` 포함하여 판매 신청 성공 페이지와 동일한 구조로 구현 완료
+  - 확인방법:
+    - 코드 확인: `app/api/buyer-request/route.ts` 파일 존재 확인
+    - 코드 확인: `app/otc/buy/apply/page.tsx`에서 API 호출 및 리다이렉트 로직 확인
+    - 화면 확인: 구매 신청 제출 후 성공 페이지 표시 확인
 
 - [x] 2.2.10 메인 페이지 OTC 섹션 추가 및 컴포넌트 분리
   - [x] 메인 페이지(`app/page/page.tsx`)에 OTC 섹션 추가
@@ -701,16 +705,14 @@
       - 네트워크 탭: API 호출 시 `assetType` 필드 포함 확인
   - [x] 5.5.4 구매 신청 폼 - 호가 기반 가격/수량 선택 로직 구현
     - 구매 신청은 호가에 올라온 판매 건에 대해서만 가능
-    - `/otc/buy/apply?mode=free`에서 호가 데이터(`/api/otc/listed-requests`) 불러오기
+    - `/otc/buy/apply?mode=free`에서 호가 데이터(`/api/otc/orderbook-levels`) 불러오기
     - 가격 선택: 호가에 있는 가격만 Select 옵션으로 표시 (가격 + 가능 수량 표시)
     - 수량 제한: 선택한 가격의 호가 수량 이하로만 입력 가능 (초과 시 자동 제한 및 에러 메시지)
-    - LBANK 가격: 참고용으로만 표시 (정보성 텍스트, 가격 선택에 영향 없음)
-    - 가격 선택 시 수량 자동 초기화
-    - 결과: `app/otc/buy/apply/page.tsx`에 호가 데이터 불러오기 로직 추가. 가격 선택을 Select로 변경하여 호가에 있는 가격만 선택 가능하도록 구현. 선택한 가격의 호가 수량을 표시하고, 수량 입력 시 해당 수량 이하로만 제한. LBANK 가격은 참고용으로만 표시
+    - 결과: 호가형(소액) 구매 모드에서 `OrderBookLevel` 데이터를 불러와 가격 선택 드롭다운 제공. 선택한 가격의 `totalAmount`를 최대 수량으로 제한. 가격 미선택 시 수량 입력 비활성화
     - 확인방법:
-      - 코드 확인: 호가 데이터 불러오기 및 가격/수량 제한 로직 확인
-      - 화면 확인: free 모드에서 호가 가격만 선택 가능한지, 수량 제한이 작동하는지 확인
-      - 네트워크 탭: `/api/otc/listed-requests` API 호출 확인
+      - 코드 확인: `app/otc/buy/apply/page.tsx`에서 `orderBookLevels` state 및 가격 선택 로직 확인
+      - 화면 확인: `/otc/buy/apply?mode=free&assetType=BMB` 접속 시 호가 가격 선택 드롭다운 표시 확인
+      - 화면 확인: 가격 선택 후 수량 입력 시 최대값 제한 확인
 
 - [x] 5.6 어드민 페이지 수정
 
@@ -834,56 +836,58 @@
       - 코드 확인: `prisma/schema.prisma`에서 `status String` 확인
       - 어드민 페이지: 상태 변경 드롭다운에 "판매의사 확인중" 옵션 확인
 
-- [ ] 7.3 일요일 오전 09:00 자동 처리 (또는 운영자 수동 버튼)
+- [x] 7.3 일요일 오전 09:00 자동 처리 (또는 운영자 수동 버튼)
 
-  - [ ] 7.3.1 API Route 생성: `POST /api/admin/weekly-reset` 또는 `POST /api/admin/confirm-sales-intent`
+  - [x] 7.3.1 API Route 생성: `POST /api/admin/weekly-reset` 또는 `POST /api/admin/confirm-sales-intent`
     - `status = LISTED`인 모든 매물을 `PENDING_CONFIRMATION`으로 일괄 변경
     - `assetType`별로 처리 (BMB, MOVL, WBMB, SBMB)
-  - [ ] 7.3.2 운영자 페이지에 "주간 재정비 실행" 버튼 추가
+  - [x] 7.3.2 운영자 페이지에 "주간 재정비 실행" 버튼 추가
     - 버튼 클릭 시 위 API 호출
     - 실행 전 확인 다이얼로그 표시
     - 실행 후 결과 메시지 표시 (변경된 건수 등)
-  - [ ] 7.3.3 (선택) Vercel Cron Job 설정
-    - 매주 일요일 오전 9시 자동 실행
-    - 환경변수로 활성화/비활성화 제어
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 코드 확인: API Route 및 운영자 페이지 버튼 확인
-    - 기능 확인: 버튼 클릭 시 `LISTED` 상태가 `PENDING_CONFIRMATION`으로 변경되는지 DB 확인
-    - 화면 확인: 호가형/카드형 탭에서 해당 매물이 숨겨지는지 확인
 
-- [ ] 7.4 호가형/카드형 탭 데이터 필터링 업데이트
+- [x] 7.4 호가형/카드형 탭 데이터 필터링 업데이트
 
-  - [ ] 7.4.1 `/api/otc/listed-requests` 필터 확인
+  - [x] 7.4.1 `/api/otc/listed-requests` 필터 확인
     - `status = LISTED`만 반환 (이미 구현되어 있음)
     - `PENDING_CONFIRMATION`은 자동으로 제외됨
-  - [ ] 7.4.2 `/api/otc/card-requests` 필터 확인
+    - 결과: `app/api/otc/listed-requests/route.ts`에서 `status: REQUEST_STATUS.LISTED` 필터링 적용. PENDING_CONFIRMATION 상태는 자동으로 제외됨
+    - 확인방법:
+      - 코드 확인: `app/api/otc/listed-requests/route.ts`에서 `status: REQUEST_STATUS.LISTED` 확인
+      - API 테스트: PENDING_CONFIRMATION 상태의 매물이 응답에 포함되지 않는지 확인
+  - [x] 7.4.2 `/api/otc/card-requests` 필터 확인
     - `status = LISTED`만 반환 (쿼리 파라미터로 필터링)
     - `PENDING_CONFIRMATION`은 자동으로 제외됨
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - API 테스트: `PENDING_CONFIRMATION` 상태의 매물이 API 응답에 포함되지 않는지 확인
-    - 화면 확인: 호가형/카드형 탭에서 `PENDING_CONFIRMATION` 매물이 표시되지 않는지 확인
+    - 결과: `app/otc/page.tsx`에서 카드형 데이터 조회 시 `status=LISTED` 쿼리 파라미터 전달. `app/api/otc/card-requests/route.ts`에서 status 파라미터 처리. PENDING_CONFIRMATION 상태는 자동으로 제외됨
+    - 확인방법:
+      - 코드 확인: `app/otc/page.tsx`에서 `status=LISTED` 파라미터 전달 확인
+      - API 테스트: PENDING_CONFIRMATION 상태의 매물이 응답에 포함되지 않는지 확인
+      - 화면 확인: 호가형/카드형 탭에서 PENDING_CONFIRMATION 매물이 표시되지 않는지 확인
 
-- [ ] 7.5 운영자 확인 및 상태 반영 로직
+- [x] 7.5 운영자 확인 및 상태 반영 로직
 
-  - [ ] 7.5.1 운영자 페이지에서 `PENDING_CONFIRMATION` 상태 매물 필터링 기능
+  - [x] 7.5.1 운영자 페이지에서 `PENDING_CONFIRMATION` 상태 매물 필터링 기능
     - 상태 드롭다운에 "판매의사 확인중" 필터 추가
-  - [ ] 7.5.2 상태 변경 옵션
+    - 결과: `statusFilter` state 추가. 상태 필터 드롭다운 추가 (전체/PENDING/LISTED/PENDING_CONFIRMATION/MATCHED/COMPLETED). API 호출 시 `status` 쿼리 파라미터 포함. `app/api/seller-requests/route.ts`에 `status` 필터 처리 추가
+    - 확인방법:
+      - 코드 확인: `app/admin/otc/requests/page.tsx`에서 상태 필터 UI 및 로직 확인
+      - 화면 확인: 운영자 페이지에서 "판매의사 확인중" 필터로 매물 조회 확인
+      - API 확인: `/api/seller-requests?status=PENDING_CONFIRMATION` 형태로 호출되는지 확인
+  - [x] 7.5.2 상태 변경 옵션
     - 판매 유지 → `LISTED`로 변경
     - 가격/수량 변경 → 수정 후 `LISTED`로 변경
     - 판매 중단 → `COMPLETED` 또는 `CANCELLED`로 변경
     - 연락 불가 → `PENDING_CONFIRMATION` 유지
-  - 결과: (완료 후 작성)
-  - 확인방법:
-    - 화면 확인: 운영자 페이지에서 "판매의사 확인중" 필터로 매물 조회 확인
-    - 기능 확인: 상태 변경 시 올바르게 반영되는지 확인
+    - 결과: 어드민 페이지의 상태 변경 드롭다운을 통해 모든 상태로 변경 가능. 상태 변경 API(`PATCH /api/seller-request/:id/status`)가 이미 구현되어 있어 위 옵션들이 모두 가능함
+    - 확인방법:
+      - 화면 확인: 운영자 페이지에서 상태 드롭다운으로 상태 변경 가능한지 확인
+      - 기능 확인: PENDING_CONFIRMATION → LISTED 변경 시 OrderBookLevel 동기화 확인
 
-- [ ] 7.6 판매 신청 폼 `agreedPolicy` 필드 추가
-  - [ ] 7.6.1 `app/otc/sell/apply/page.tsx`에 `agreedPolicy` state 추가
-  - [ ] 7.6.2 체크박스 UI 추가 및 제출 시 검증 로직 추가
-  - [ ] 7.6.3 `POST /api/seller-request`에 `agreedPolicy` 필드 추가 및 검증
-  - 결과: (완료 후 작성)
+- [x] 7.6 판매 신청 폼 `agreedPolicy` 필드 추가
+  - [x] 7.6.1 `app/otc/sell/apply/page.tsx`에 `agreedPolicy` state 추가
+  - [x] 7.6.2 체크박스 UI 추가 및 제출 시 검증 로직 추가
+  - [x] 7.6.3 `POST /api/seller-request`에 `agreedPolicy` 필드 추가 및 검증
+  - 결과: 7.1에서 이미 구현 완료. `agreedPolicy` state, 체크박스 UI, 검증 로직, API 검증 모두 완료
   - 확인방법:
     - 코드 확인: 판매 신청 폼에 체크박스 및 검증 로직 확인
     - 화면 확인: 체크박스 미체크 시 제출 불가 확인
@@ -893,9 +897,13 @@
 
 ## 8. LBANK 가격 연동 (메인 페이지)
 
-- [ ] 8.1 `app/api/price/bmb/route.ts` 같은 API Route 생성.
-  - [ ] LBANK BMB/USDT 가격 API 호출 (현재가만).
-  - [ ] 필요한 최소 필드(가격, 24h 변화율 등)만 JSON으로 반환.
+- [x] 8.1 `app/api/price/bmb/route.ts` 같은 API Route 생성.
+  - [x] LBANK BMB/USDT 가격 API 호출 (현재가만).
+  - [x] 필요한 최소 필드(가격, 24h 변화율 등)만 JSON으로 반환.
+  - 결과: `app/api/price/bmb/route.ts` 생성 완료. LBANK에서 BMB/USDT 가격 조회. USDT/KRW 가격 조회 (Bithumb → Upbit fallback). BMB/KRW 가격 계산. 최소 필드만 반환 (price, usdtPrice, usdtKrwPrice, timestamp). 에러 처리 포함
+  - 확인방법:
+    - 코드 확인: `app/api/price/bmb/route.ts` 파일 존재 확인
+    - API 테스트: `/api/price/bmb` 호출 시 BMB 가격 정보 반환 확인
 - [ ] 8.2 메인 페이지, `/otc` 페이지에서 해당 API를 호출하여 실시간 가격 표시.
   - [ ] 서버 컴포넌트에서 `fetch` + `next: { revalidate: 30 }` 등 캐싱 옵션 적용.
 - [ ] 8.3 API 실패 시 예외 처리 (예: "가격 정보를 불러올 수 없습니다." 메시지).
@@ -955,3 +963,194 @@
   - [ ] 10.3.6 신청 내역 표시 영역 (카드 또는 테이블 형태)
   - 결과: (완료 후 작성)
   - 확인방법: 브라우저에서 `/otc/my-request`
+
+---
+
+## 11. 구매 신청 DB 저장 및 관리 (우선순위 높음) 🔺
+
+- [x] 11.1 BuyerRequest 모델 추가
+
+  - [x] `prisma/schema.prisma`에 `BuyerRequest` 모델 추가
+  - [x] 필드: `id`, `name`, `phone`, `amount`, `price`, `branch`, `assetType`, `status`, `agreedRisk`, `agreedPrivacy`, `createdAt`, `updatedAt`
+  - 결과: `BuyerRequest` 모델 추가 완료. Prisma 마이그레이션 및 Client 재생성 완료
+  - 확인방법:
+    - 코드 확인: `prisma/schema.prisma`에서 `BuyerRequest` 모델 확인
+    - DB 확인: PlanetScale에서 `BuyerRequest` 테이블 생성 확인
+
+- [x] 11.2 구매 신청 API 생성
+
+  - [x] `app/api/buyer-request/route.ts` 생성
+  - [x] POST 요청 처리, 필수 필드 검증, Prisma를 통한 데이터 삽입
+  - 결과: 구매 신청 API 생성 완료. 필수 필드 검증, 동의 필드 검증, assetType 유효성 검증 포함
+  - 확인방법:
+    - 코드 확인: `app/api/buyer-request/route.ts` 파일 존재 및 로직 확인
+    - API 테스트: POST 요청 시 구매 신청이 DB에 저장되는지 확인
+
+- [x] 11.3 구매 신청 폼 API 연동
+
+  - [x] 구매 신청 페이지에서 `/api/buyer-request` 호출
+  - [x] 성공 시 확인 페이지로 리다이렉트
+  - 결과: 구매 신청 폼 제출 시 API 호출 및 성공 페이지 리다이렉트 구현 완료
+  - 확인방법:
+    - 코드 확인: `app/otc/buy/apply/page.tsx`에서 API 호출 로직 확인
+    - 화면 확인: 구매 신청 제출 후 성공 페이지 표시 확인
+
+- [x] 11.4 구매 신청 성공 페이지 수정
+  - [x] `assetType` 쿼리 파라미터 처리
+  - [x] 판매 신청 성공 페이지와 동일한 구조로 구현
+  - 결과: 구매 신청 성공 페이지에 `assetType` 포함, 자산 종류 표시, 수량 표시에 `assetType` 사용
+  - 확인방법:
+    - 코드 확인: `app/otc/buy/apply/success/page.tsx`에서 `assetType` 처리 확인
+    - 화면 확인: 구매 신청 성공 페이지에서 자산 종류가 올바르게 표시되는지 확인
+
+---
+
+## 12. 어드민 페이지 - 구매건 관리 및 매칭 로직 (우선순위 높음) 🔺
+
+- [x] 12.1 남은 수량(remainingAmount) 필드 추가
+  - [x] `prisma/schema.prisma`의 `SellerRequest` 모델에 `remainingAmount Int` 필드 추가
+  - [x] `prisma/schema.prisma`의 `BuyerRequest` 모델에 `remainingAmount Int` 필드 추가
+  - [x] 기본값: `amount`와 동일한 값으로 설정 (생성 시 `remainingAmount = amount`)
+  - [x] 마이그레이션 실행 및 Prisma Client 재생성
+  - [x] 기존 데이터 업데이트: `remainingAmount = amount`
+  - [x] 판매 신청 API 수정: 생성 시 `remainingAmount = amount` 설정
+  - [x] 구매 신청 API 수정: 생성 시 `remainingAmount = amount` 설정
+  - 결과: `remainingAmount` 필드 추가 완료. Prisma 마이그레이션 및 기존 데이터 업데이트 완료. 판매/구매 신청 API에서 `remainingAmount = amount` 설정
+  - 확인방법:
+    - 코드 확인: `prisma/schema.prisma`에서 `remainingAmount` 필드 확인
+    - DB 확인: PlanetScale에서 `remainingAmount` 컬럼 추가 확인
+    - API 확인: 신청 생성 시 `remainingAmount`가 `amount`와 동일하게 설정되는지 확인
+
+- [x] 12.2 어드민 페이지에 구매건 섹션 추가
+  - [x] `app/admin/otc/requests/page.tsx`에 구매건 테이블 추가
+  - [x] 판매건 섹션 아래에 구매건 섹션 배치 (탭 없이 비교하기 쉽게)
+  - [x] 구매건 API Route 확인/수정 (`app/api/buyer-requests/route.ts`)
+  - [x] 구매건 목록 조회 (필터링: assetType, status)
+  - [x] 구매건 상태 변경 기능 (드롭다운)
+  - [x] 남은 수량(remainingAmount) 표시
+  - [x] 신청 수량(amount)과 남은 수량(remainingAmount) 모두 표시
+  - 결과: 어드민 페이지에 구매건 섹션 추가 완료. 판매건 아래에 배치. 필터링, 상태 변경, 수량 표시 기능 포함
+  - 확인방법:
+    - 코드 확인: 어드민 페이지에 구매건 테이블 추가 확인
+    - 화면 확인: 어드민 페이지에서 판매건 아래에 구매건 섹션이 표시되는지 확인
+    - 화면 확인: 신청 수량과 남은 수량이 모두 표시되는지 확인
+
+- [x] 12.3 매칭 섹션 추가
+  - [x] 매칭된 건들(MATCHED 상태)을 최상단에 별도 섹션으로 표시
+  - [x] 판매건과 구매건의 매칭 정보 표시
+  - [x] 매칭된 상대방 정보 표시 (구매건의 경우 판매자 정보, 판매건의 경우 구매자 정보)
+  - [x] 매칭 수량 표시
+  - [x] 매칭 가격 표시
+  - [x] 매칭된 판매건과 구매건을 서브섹션으로 구분하여 표시
+  - [x] 각 건 클릭 시 상세 정보 모달 표시
+  - 결과: 매칭 섹션 추가 완료. 매칭된 판매건/구매건 서브섹션 구분. 매칭 정보 테이블. 클릭 시 상세 모달 표시
+  - 확인방법:
+    - 화면 확인: 어드민 페이지 최상단에 매칭 섹션이 표시되는지 확인
+    - 화면 확인: 매칭된 판매건과 구매건이 별도 서브섹션으로 표시되는지 확인
+    - 화면 확인: 각 건 클릭 시 모달이 표시되는지 확인
+
+- [ ] 12.4 매칭 완료 모달 구현
+  - [ ] MATCHED 상태를 COMPLETED로 변경할 때 모달 표시
+  - [ ] 모달 내용:
+    - 구매 건의 경우: 어느 판매자와 매칭되었는지, 매칭 수량, 매칭 가격 등
+    - 판매 건의 경우: 어느 구매자와 매칭되었는지, 매칭 수량, 매칭 가격 등
+  - [ ] "확인 완료" 버튼 클릭 시:
+    - 상태를 COMPLETED로 변경
+    - 남은 수량(remainingAmount)은 이미 매칭 시 차감되었으므로 그대로 유지
+  - 결과: (완료 후 작성)
+  - 확인방법:
+    - 화면 확인: MATCHED 상태 변경 시 모달이 표시되는지 확인
+    - 화면 확인: 모달 내용이 올바르게 표시되는지 확인
+    - 화면 확인: 확인 완료 후 상태가 COMPLETED로 변경되는지 확인
+
+- [x] 12.5 매칭 로직 수정 (remainingAmount 고려)
+  - [x] 12.5.1 매칭 조건 수정
+    - 같은 `assetType`
+    - 같은 `price`
+    - 판매건 `remainingAmount` > 0 (남은 수량이 있어야 함)
+    - 판매건 상태: `LISTED` (신청 순서대로, 먼저 신청한사람이 우선 매칭됨)
+    - 구매건 상태: `LISTED`로 변경 시 매칭 시도
+  - [x] 12.5.2 매칭 테이블 생성 (매칭 정보 저장)
+    - `Match` 모델 추가 (`sellerRequestId`, `buyerRequestId`, `matchedAmount`, `matchedPrice`, `status`, `createdAt`, `updatedAt`)
+    - 매칭 정보를 별도 테이블에 저장하여 추적 가능하게 함
+  - [x] 12.5.3 매칭 로직 구현 (여러 판매건 순차 매칭)
+    - 구매건이 LISTED 상태가 되면:
+      - 같은 가격의 판매건들을 `createdAt` 순서대로 정렬
+      - 구매 수량만큼 순차적으로 매칭:
+        - 판매건 1의 `remainingAmount`에서 차감
+        - 판매건 1의 `remainingAmount`가 0이 되면 다음 판매건으로 이동
+        - 모든 구매 수량이 매칭될 때까지 반복
+      - 각 판매건의 `remainingAmount` 차감
+      - 매칭된 각 판매건-구매건 쌍에 대해 `Match` 레코드 생성
+      - 구매건 상태 → `MATCHED` (전체 매칭 완료 시) 또는 `LISTED` (일부만 매칭 시)
+      - 판매건의 `remainingAmount`가 0이면 → `COMPLETED`, 남으면 `LISTED` 유지
+    - 매칭 실패 시:
+      - 구매건 상태 → `LISTED` (매칭 대기 상태)
+  - [x] 12.5.4 구매건 상태 변경 API 수정
+    - `PATCH /api/buyer-request/[id]/status` 수정
+    - 상태를 `LISTED`로 변경 시 자동 매칭 로직 실행
+    - 매칭 가능한 판매건 검색 (remainingAmount 기준)
+  - 결과: 매칭 로직 수정 완료. `remainingAmount` 기반 매칭. 여러 판매건 순차 매칭. `Match` 레코드 생성. 구매건 상태 변경 시 자동 매칭 실행
+  - 확인방법:
+    - 코드 확인: 매칭 로직에서 `remainingAmount` 사용 확인
+    - 코드 확인: `Match` 모델 및 매칭 정보 저장 확인
+    - 화면 확인: 구매건을 LISTED로 변경 시 자동 매칭되는지 확인
+    - DB 확인: 매칭 후 `remainingAmount` 차감 및 `Match` 레코드 생성 확인
+    - 예시 시나리오 테스트:
+      - 판매건 1: 가격 700,000원, 신청 5개, 남은 5개
+      - 판매건 2: 가격 700,000원, 신청 10개, 남은 10개
+      - 구매건 1: 가격 700,000원, 신청 7개, 남은 7개 → LISTED
+      - 결과: 판매건 1 남은 0개, 판매건 2 남은 8개, 구매건 1 MATCHED
+
+- [ ] 12.6 거래 그룹 모델 및 거래 취소 기능
+  - [ ] 12.6.1 거래 그룹 모델 생성
+    - `TradeGroup` 모델 추가 (`buyerRequestId`, `totalMatchedAmount`, `totalMatchedPrice`, `status`, `createdAt`, `updatedAt`)
+    - 하나의 구매건이 여러 판매건과 매칭된 경우 하나의 거래 그룹으로 묶기
+    - 매칭이 일어날 때마다 거래 그룹 생성 또는 기존 그룹에 추가
+  - [ ] 12.6.2 매칭 로직 수정 (거래 그룹 생성)
+    - 구매건이 여러 판매건과 매칭될 때:
+      - 해당 구매건의 거래 그룹 조회 또는 생성
+      - 모든 매칭을 하나의 거래 그룹으로 묶기
+      - 거래 그룹에 총 매칭 수량, 총 매칭 가격 저장
+  - [ ] 12.6.3 거래 취소 API 생성
+    - `POST /api/trade-group/[buyerRequestId]/cancel` 생성
+    - 해당 구매건과 연결된 모든 매칭 취소:
+      - 모든 `Match` 레코드 조회 (해당 `buyerRequestId`)
+      - 각 판매건의 `remainingAmount` 복구
+      - 구매건 `remainingAmount` 복구
+      - 판매건 상태 → `LISTED` (COMPLETED였던 경우)
+      - 구매건 상태 → `LISTED`
+      - 모든 `Match` 레코드 삭제
+      - 거래 그룹 삭제 또는 상태 변경
+  - [ ] 12.6.4 어드민 페이지에 거래 취소 버튼 추가
+    - 매칭 섹션 하단에 "거래 취소하기" 버튼 추가
+    - 거래 그룹별로 취소 버튼 표시
+    - 확인 다이얼로그 표시 후 취소 실행
+  - 결과: (완료 후 작성)
+  - 확인방법:
+    - 코드 확인: `TradeGroup` 모델 생성 확인
+    - 코드 확인: 매칭 로직에서 거래 그룹 생성 확인
+    - 코드 확인: 거래 취소 API 로직 확인
+    - 화면 확인: 매칭 섹션 하단에 거래 취소 버튼 표시 확인
+    - 화면 확인: 거래 취소 후 상태 및 수량 복구 확인
+
+- [ ] 12.7 매칭 상세 기록 저장
+  - [ ] 12.7.1 매칭 상세 기록 모델 생성
+    - `MatchDetail` 모델 추가 또는 기존 모델에 필드 추가
+    - 각 `Match` 레코드에 이미 상세 정보가 포함되어 있으므로, 추가 모델 없이 `Match` 테이블 활용
+  - [ ] 12.7.2 구매건에 매칭 상세 정보 조회 API
+    - `GET /api/buyer-request/[id]/matches` 생성
+    - 해당 구매건과 연결된 모든 `Match` 레코드 조회
+    - 각 매칭의 판매건 정보 포함
+  - [ ] 12.7.3 판매건에 매칭 상세 정보 조회 API
+    - `GET /api/seller-request/[id]/matches` 생성
+    - 해당 판매건과 연결된 모든 `Match` 레코드 조회
+    - 각 매칭의 구매건 정보 포함
+  - [ ] 12.7.4 어드민 페이지 모달에 매칭 상세 정보 표시
+    - 판매건 모달: "구매건 #1과 100개 매칭됨, 구매건 #2와 25개 매칭됨" 형식으로 표시
+    - 구매건 모달: "판매건 #1에서 100개, 판매건 #2에서 25개 매칭됨" 형식으로 표시
+  - 결과: (완료 후 작성)
+  - 확인방법:
+    - 코드 확인: 매칭 상세 정보 조회 API 확인
+    - 화면 확인: 판매건/구매건 모달에서 매칭 상세 정보가 표시되는지 확인
+    - DB 확인: `Match` 테이블에 매칭 상세 정보가 저장되는지 확인

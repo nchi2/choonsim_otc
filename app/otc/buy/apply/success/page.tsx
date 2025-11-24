@@ -253,6 +253,7 @@ function BuyApplySuccessContent() {
     const amount = searchParams.get("amount");
     const price = searchParams.get("price");
     const branch = searchParams.get("branch");
+    const assetType = searchParams.get("assetType"); // assetType 추가
     const mode = searchParams.get("mode");
 
     if (name && phone && amount && price && branch) {
@@ -263,6 +264,7 @@ function BuyApplySuccessContent() {
         amount: parseFloat(amount),
         price: parseFloat(price),
         branch,
+        assetType: assetType || "BMB", // assetType 추가
         mode: mode || "free",
       });
     } else {
@@ -339,8 +341,15 @@ function BuyApplySuccessContent() {
         <Section>
           <SectionTitle>신청 내용</SectionTitle>
           <InfoRow>
+            <InfoLabel>자산 종류</InfoLabel>
+            <InfoValue>{requestData.assetType || "BMB"}</InfoValue>
+          </InfoRow>
+          <InfoRow>
             <InfoLabel>수량</InfoLabel>
-            <InfoValue>{requestData.amount.toLocaleString()} BMB</InfoValue>
+            <InfoValue>
+              {requestData.amount.toLocaleString()}{" "}
+              {requestData.assetType || "BMB"}
+            </InfoValue>
           </InfoRow>
           <InfoRow>
             <InfoLabel>단가</InfoLabel>
@@ -361,7 +370,7 @@ function BuyApplySuccessContent() {
           <InfoRow>
             <InfoLabel>구매 모드</InfoLabel>
             <InfoValue>
-              {requestData.mode === "card" ? "카드형 매물" : "자유 호가"}
+              {requestData.mode === "card" ? "카드형 매물" : "호가형(소액)"}
             </InfoValue>
           </InfoRow>
         </Section>
@@ -456,8 +465,6 @@ function BuyApplySuccessContent() {
                 관리자가 입금을 확인한 후 즉시 매칭을 완료합니다.
                 <br />
                 관리자가 구매자에게 모빅코인을 전송합니다.
-                <br />
-                상태: PENDING → LISTED → MATCHED → COMPLETED
               </ProcessItem>
             </ProcessList>
           </Section>

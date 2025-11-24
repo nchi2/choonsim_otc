@@ -474,6 +474,57 @@ const AssetButton = styled.button<{ $active: boolean }>`
   }
 `;
 
+// 가격 정보 스타일 추가
+const PriceInfoSection = styled.div`
+  width: 100%;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 1.5rem;
+  }
+`;
+
+const PriceInfoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const PriceLabel = styled.span`
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+  }
+`;
+
+const PriceValue = styled.span`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+
+  @media (min-width: 768px) {
+    font-size: 1.5rem;
+  }
+`;
+
+const PriceUnit = styled.span`
+  font-size: 0.75rem;
+  color: #9ca3af;
+`;
+
 // OrderBookLevel 인터페이스 추가
 interface OrderBookLevel {
   id: number;
@@ -517,6 +568,19 @@ function OTCContent() {
   const [cardRequests, setCardRequests] = useState<SellerRequest[]>([]);
   const [cardLoading, setCardLoading] = useState(true);
   const [cardError, setCardError] = useState<string | null>(null);
+
+  // BMB 가격 정보 state 추가
+  const [bmbPrice, setBmbPrice] = useState<{
+    price: number | null;
+    usdtPrice: number | null;
+    usdtKrwPrice: number | null;
+  }>({
+    price: null,
+    usdtPrice: null,
+    usdtKrwPrice: null,
+  });
+  const [priceLoading, setPriceLoading] = useState(true);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   // 동일 가격대 물량 합산 함수 (간소화 - 회관 정보 제거)
   const aggregateRequestsByPrice = (requests: SellerRequest[]) => {
@@ -653,6 +717,48 @@ function OTCContent() {
     fetchCardRequests();
   }, [activeTab, assetType]); // assetType 의존성 추가
 
+  // BMB 가격 정보 불러오기
+  useEffect(() => {
+    const fetchBmbPrice = async () => {
+      try {
+        setPriceLoading(true);
+        setPriceError(null);
+
+        const response = await fetch("/api/price/bmb", {
+          next: { revalidate: 30 }, // 30초 캐시
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "가격 정보를 불러오는데 실패했습니다.");
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          setPriceError("가격 정보를 불러올 수 없습니다.");
+          return;
+        }
+
+        setBmbPrice({
+          price: data.price,
+          usdtPrice: data.usdtPrice,
+          usdtKrwPrice: data.usdtKrwPrice,
+        });
+      } catch (err) {
+        console.error("Error fetching BMB price:", err);
+        setPriceError("가격 정보를 불러올 수 없습니다.");
+      } finally {
+        setPriceLoading(false);
+      }
+    };
+
+    fetchBmbPrice();
+    // 30초마다 업데이트
+    const interval = setInterval(fetchBmbPrice, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const formatPrice = (price: string) => {
     return parseFloat(price).toLocaleString("ko-KR");
   };
@@ -667,6 +773,37 @@ function OTCContent() {
       <MainContent>
         <ContentWrapper>
           <Title>OTC 거래</Title>
+
+          {/* BMB 가격 정보 섹션 추가 */}
+          {!priceLoading && !priceError && bmbPrice.price !== null && (
+            <PriceInfoSection>
+              <PriceInfoItem>
+                <PriceLabel>BMB/USDT</PriceLabel>
+                <PriceValue>
+                  {bmbPrice.usdtPrice ? bmbPrice.usdtPrice.toFixed(4) : "N/A"}
+                </PriceValue>
+                <PriceUnit>USDT</PriceUnit>
+              </PriceInfoItem>
+              <PriceInfoItem>
+                <PriceLabel>BMB/KRW (LBANK)</PriceLabel>
+                <PriceValue>
+                  {bmbPrice.price
+                    ? Math.round(bmbPrice.price).toLocaleString("ko-KR")
+                    : "N/A"}
+                </PriceValue>
+                <PriceUnit>원</PriceUnit>
+              </PriceInfoItem>
+              <PriceInfoItem>
+                <PriceLabel>USDT/KRW</PriceLabel>
+                <PriceValue>
+                  {bmbPrice.usdtKrwPrice
+                    ? Math.round(bmbPrice.usdtKrwPrice).toLocaleString("ko-KR")
+                    : "N/A"}
+                </PriceValue>
+                <PriceUnit>원</PriceUnit>
+              </PriceInfoItem>
+            </PriceInfoSection>
+          )}
 
           {/* 자산 종류 선택 컴포넌트 */}
           <AssetSelectorContainer>
@@ -740,7 +877,15 @@ function OTCContent() {
                               const priceNum = parseFloat(level.price);
 
                               return (
-                                <OrderBookItem key={`${level.id}-${index}`}>
+                                <OrderBookItem
+                                  key={`${level.id}-${index}`}
+                                  onClick={() => {
+                                    router.push(
+                                      `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`
+                                    );
+                                  }}
+                                  style={{ cursor: "pointer" }}
+                                >
                                   {/* 가격 (막대 그래프 밖, 왼쪽 고정) */}
                                   <OrderBookItemPrice>
                                     {formatPrice(level.price)}

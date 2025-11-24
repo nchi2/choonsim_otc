@@ -15,17 +15,18 @@ datasource db {
 }
 
 model SellerRequest {
-  id          Int      @id @default(autoincrement())
-  name        String
-  phone       String
-  amount      Int
-  price       Decimal  @db.Decimal(18, 2)
-  allowPartial Boolean
-  branch      String
-  assetType   String   @default("BMB")
-  status      String   @default("PENDING")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  name            String
+  phone           String
+  amount          Int      // 신청 수량
+  remainingAmount Int      @default(0) // 남은 수량 (매칭 시 차감)
+  price           Decimal  @db.Decimal(18, 2)
+  allowPartial    Boolean
+  branch          String
+  assetType       String   @default("BMB")
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model OrderBookLevel {
@@ -39,4 +40,51 @@ model OrderBookLevel {
   // 복합 유니크 인덱스: 같은 assetType과 price 조합은 하나만 존재
   @@unique([assetType, price])
   @@index([assetType, price])
+}
+
+model BuyerRequest {
+  id              Int      @id @default(autoincrement())
+  name            String
+  phone           String
+  amount          Int      // 신청 수량
+  remainingAmount Int      @default(0) // 남은 수량 (매칭 시 차감)
+  price           Decimal  @db.Decimal(18, 2) // 구매 가격
+  branch          String
+  assetType       String   @default("BMB")
+  status          String   @default("PENDING") // PENDING → LISTED → MATCHED → COMPLETED
+  agreedRisk      Boolean  @default(false) // 보이스피싱 안내 동의
+  agreedPrivacy   Boolean  @default(false) // 개인정보 수집 동의
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Match {
+  id              Int      @id @default(autoincrement())
+  sellerRequestId Int
+  buyerRequestId  Int
+  matchedAmount   Int      // 매칭된 수량
+  matchedPrice    Decimal  @db.Decimal(18, 2) // 매칭 가격
+  status          String   @default("MATCHED") // MATCHED → COMPLETED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // PlanetScale은 foreign key를 지원하지 않으므로 인덱스만 사용
+  @@index([sellerRequestId])
+  @@index([buyerRequestId])
+  @@index([status])
+  @@index([sellerRequestId, buyerRequestId])
+}
+
+model TradeGroup {
+  id              Int      @id @default(autoincrement())
+  buyerRequestId  Int      // 구매건 ID
+  totalMatchedAmount Int   // 총 매칭 수량
+  totalMatchedPrice Decimal @db.Decimal(18, 2) // 매칭 가격 (모든 매칭이 같은 가격)
+  status          String   @default("MATCHED") // MATCHED → COMPLETED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([buyerRequestId])
+  @@index([buyerRequestId])
+  @@index([status])
 }

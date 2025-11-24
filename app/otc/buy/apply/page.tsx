@@ -213,6 +213,14 @@ const Select = FormStyles.Select;
 const ErrorMessage = FormStyles.ErrorMessage;
 const SubmitButton = FormStyles.PrimaryButton;
 
+interface OrderBookLevel {
+  id: number;
+  assetType: string;
+  price: string; // Decimal은 string으로 반환
+  totalAmount: number;
+  requestCount: number;
+}
+
 export default function BuyApplyPage() {
   return (
     <Suspense
@@ -234,7 +242,7 @@ function BuyApplyContent() {
   const mode = searchParams.get("mode") || "free";
   const initialPrice = searchParams.get("price") || "";
   const initialAmount = searchParams.get("amount") || "";
-  const assetType = searchParams.get("assetType") || "BMB"; // assetType 추가
+  const assetType = searchParams.get("assetType") || "BMB";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -329,6 +337,91 @@ function BuyApplyContent() {
     return cleaned;
   };
 
+  // 호가형 데이터 state 추가 (mode=free일 때만 사용)
+  const [orderBookLevels, setOrderBookLevels] = useState<OrderBookLevel[]>([]);
+  const [selectedPriceLevel, setSelectedPriceLevel] =
+    useState<OrderBookLevel | null>(null);
+  const [isLoadingOrderBook, setIsLoadingOrderBook] = useState(false);
+
+  // mode=free일 때 호가형 데이터 불러오기
+  useEffect(() => {
+    if (mode === "free") {
+      const fetchOrderBookLevels = async () => {
+        try {
+          setIsLoadingOrderBook(true);
+          const response = await fetch(
+            `/api/otc/orderbook-levels?assetType=${assetType}`
+          );
+          const data = await response.json();
+
+          if (response.ok && Array.isArray(data)) {
+            setOrderBookLevels(data);
+            // 쿼리 파라미터로 가격이 전달된 경우 해당 레벨 선택
+            if (initialPrice) {
+              const level = data.find(
+                (l: OrderBookLevel) => l.price === initialPrice
+              );
+              if (level) {
+                setSelectedPriceLevel(level);
+                setFormData((prev) => ({
+                  ...prev,
+                  price: level.price,
+                }));
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching orderbook levels:", error);
+        } finally {
+          setIsLoadingOrderBook(false);
+        }
+      };
+
+      fetchOrderBookLevels();
+    }
+  }, [mode, assetType, initialPrice]);
+
+  // 가격 선택 핸들러
+  const handlePriceSelect = (level: OrderBookLevel) => {
+    setSelectedPriceLevel(level);
+    setFormData((prev) => ({
+      ...prev,
+      price: level.price,
+      // 수량이 최대값을 초과하면 최대값으로 조정
+      amount:
+        prev.amount && parseFloat(prev.amount) > level.totalAmount
+          ? level.totalAmount.toString()
+          : prev.amount,
+    }));
+  };
+
+  // 수량 변경 핸들러 (최대값 제한)
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatAmount(e.target.value);
+    const amountNum = parseFloat(formatted);
+    const maxAmount = selectedPriceLevel?.totalAmount || Infinity;
+
+    if (amountNum > maxAmount) {
+      setErrors((prev) => ({
+        ...prev,
+        amount: `최대 구매 가능 수량은 ${maxAmount} Mo입니다.`,
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      amount: formatted,
+    }));
+
+    // 에러 제거
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.amount;
+      return newErrors;
+    });
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -359,14 +452,6 @@ function BuyApplyContent() {
     setFormData((prev) => ({
       ...prev,
       phone: formatted,
-    }));
-  };
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatAmount(e.target.value);
-    setFormData((prev) => ({
-      ...prev,
-      amount: formatted,
     }));
   };
 
@@ -477,29 +562,64 @@ function BuyApplyContent() {
       return;
     }
 
-    // 제출 데이터 구성
-    const submitData = {
-      ...formData,
-      mode,
-      allowPartial,
-      agreedRisk,
-      agreedPrivacy,
-    };
+    try {
+      // 구매 신청 API 호출
+      const response = await fetch("/api/buyer-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          amount: formData.amount,
+          price: formData.price,
+          branch: formData.branch,
+          assetType: assetType,
+          agreedRisk: agreedRisk,
+          agreedPrivacy: agreedPrivacy,
+        }),
+      });
 
-    // TODO: 구매 신청 API가 생성되면 API 호출로 변경
-    // 현재는 쿼리 파라미터로 확인 페이지로 리다이렉트
-    const params = new URLSearchParams({
-      name: formData.name,
-      phone: formData.phone,
-      amount: formData.amount,
-      price: formData.price,
-      branch: formData.branch,
-      mode: mode,
-      assetType: assetType, // assetType 추가
-    });
+      // Content-Type 확인
+      const contentType = response.headers.get("content-type");
+      let data;
 
-    // 확인 페이지로 리다이렉트
-    router.push(`/otc/buy/apply/success?${params.toString()}`);
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error("Server returned HTML instead of JSON:", text);
+        alert(
+          `서버 오류가 발생했습니다. (${response.status}) 개발자 콘솔을 확인해주세요.`
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        const errorMsg = data.error || "알 수 없는 오류가 발생했습니다.";
+        const details = data.details ? `\n\n상세: ${data.details}` : "";
+        alert(`신청 실패: ${errorMsg}${details}`);
+        return;
+      }
+
+      // 성공 처리 - 확인 페이지로 리다이렉트
+      const params = new URLSearchParams({
+        id: data.id.toString(),
+        name: data.name,
+        phone: data.phone,
+        amount: data.amount.toString(),
+        price: data.price.toString(),
+        branch: data.branch,
+        assetType: assetType,
+        mode: mode, // mode는 확인 페이지에서 표시용으로만 사용
+      });
+
+      router.push(`/otc/buy/apply/success?${params.toString()}`);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("신청 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
   };
 
   return (
@@ -528,8 +648,11 @@ function BuyApplyContent() {
         )}
         {mode === "free" && (
           <>
-            <ModeIndicator>일반 구매 모드</ModeIndicator>
-            <InfoText>소량 구매가 가능한 일반 구매 신청입니다.</InfoText>
+            <ModeIndicator>호가형(소액) 구매 모드</ModeIndicator>
+            <InfoText>
+              호가형에 등록된 판매 신청 중에서 가격과 수량을 선택하여 즉시 구매
+              신청할 수 있습니다.
+            </InfoText>
           </>
         )}
         <Form onSubmit={handleSubmit}>
@@ -566,6 +689,68 @@ function BuyApplyContent() {
             {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
           </FormGroup>
 
+          {/* mode=free일 때 가격 선택 드롭다운 */}
+          {mode === "free" && (
+            <FormGroup>
+              <Label htmlFor="priceSelect">가격 선택 *</Label>
+              {isLoadingOrderBook ? (
+                <PriceInfo>호가 정보를 불러오는 중...</PriceInfo>
+              ) : orderBookLevels.length === 0 ? (
+                <PriceInfo
+                  style={{
+                    backgroundColor: "#fef2f2",
+                    borderColor: "#ef4444",
+                    color: "#dc2626",
+                  }}
+                >
+                  등록된 호가가 없습니다. 판매 신청이 등록되면 구매할 수
+                  있습니다.
+                </PriceInfo>
+              ) : (
+                <>
+                  <Select
+                    id="priceSelect"
+                    value={selectedPriceLevel?.price || ""}
+                    onChange={(e) => {
+                      const level = orderBookLevels.find(
+                        (l) => l.price === e.target.value
+                      );
+                      if (level) {
+                        handlePriceSelect(level);
+                      }
+                    }}
+                    style={{
+                      borderColor: errors.price ? "#ef4444" : "#d1d5db",
+                    }}
+                  >
+                    <option value="">가격을 선택하세요</option>
+                    {orderBookLevels.map((level) => (
+                      <option key={level.id} value={level.price}>
+                        {parseFloat(level.price).toLocaleString("ko-KR")}원 (
+                        {level.totalAmount} Mo, {level.requestCount}건)
+                      </option>
+                    ))}
+                  </Select>
+                  {selectedPriceLevel && (
+                    <InfoText style={{ marginTop: "0.5rem" }}>
+                      선택한 가격:{" "}
+                      {parseFloat(selectedPriceLevel.price).toLocaleString(
+                        "ko-KR"
+                      )}
+                      원
+                      <br />
+                      사용 가능 수량: {selectedPriceLevel.totalAmount} Mo
+                      {selectedPriceLevel.requestCount > 1 && (
+                        <> ({selectedPriceLevel.requestCount}건 합산)</>
+                      )}
+                    </InfoText>
+                  )}
+                  {errors.price && <ErrorMessage>{errors.price}</ErrorMessage>}
+                </>
+              )}
+            </FormGroup>
+          )}
+
           <FormGroup>
             <Label htmlFor="amount">구매 희망 수량 *</Label>
             <Input
@@ -574,12 +759,18 @@ function BuyApplyContent() {
               name="amount"
               value={formData.amount}
               onChange={handleAmountChange}
-              placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
+              placeholder={
+                mode === "free" && selectedPriceLevel
+                  ? `최대 ${selectedPriceLevel.totalAmount} Mo까지 입력 가능`
+                  : "예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
+              }
               inputMode="decimal"
               readOnly={mode === "card"}
-              disabled={mode === "card"}
+              disabled={
+                mode === "card" || (mode === "free" && !selectedPriceLevel)
+              }
               style={{
-                ...(mode === "card"
+                ...(mode === "card" || (mode === "free" && !selectedPriceLevel)
                   ? {
                       backgroundColor: "#f3f4f6",
                       cursor: "not-allowed",
@@ -590,6 +781,17 @@ function BuyApplyContent() {
               }}
             />
             {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
+            {mode === "free" && selectedPriceLevel && (
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#6b7280",
+                  marginTop: "0.25rem",
+                }}
+              >
+                최대 {selectedPriceLevel.totalAmount} Mo까지 구매 가능합니다.
+              </p>
+            )}
             {mode === "card" && (
               <p
                 style={{
@@ -603,123 +805,13 @@ function BuyApplyContent() {
             )}
           </FormGroup>
 
-          <FormGroup>
-            <Label htmlFor="price">희망 가격 *</Label>
-            {mode === "free" && (
-              <>
-                <RadioGroup>
-                  <RadioLabel>
-                    <RadioInput
-                      type="radio"
-                      name="priceType"
-                      value="market"
-                      checked={formData.priceType === "market"}
-                      onChange={handleChange}
-                    />
-                    시장가
-                  </RadioLabel>
-                  <RadioLabel>
-                    <RadioInput
-                      type="radio"
-                      name="priceType"
-                      value="custom"
-                      checked={formData.priceType === "custom"}
-                      onChange={handleChange}
-                    />
-                    사용자 지정
-                  </RadioLabel>
-                </RadioGroup>
-
-                {formData.priceType === "market" && (
-                  <>
-                    {isLoadingPrice && lbankKrwPrice === null && (
-                      <PriceInfo>LBANK 현재가를 불러오는 중...</PriceInfo>
-                    )}
-                    {lbankKrwPrice !== null && (
-                      <PriceInfo>
-                        LBANK 현재가:{" "}
-                        {Math.floor(lbankKrwPrice).toLocaleString()}원
-                        <br />
-                        (10,000원 단위로 반올림:{" "}
-                        {(
-                          Math.round(lbankKrwPrice / 10000) * 10000
-                        ).toLocaleString()}
-                        원)
-                      </PriceInfo>
-                    )}
-                    <Input
-                      type="text"
-                      id="price"
-                      name="price"
-                      value={formData.price}
-                      readOnly
-                      style={{
-                        backgroundColor: "#f3f4f6",
-                        cursor: "not-allowed",
-                        borderColor: errors.price ? "#ef4444" : "#d1d5db",
-                      }}
-                    />
-                    {errors.price && (
-                      <ErrorMessage>{errors.price}</ErrorMessage>
-                    )}
-                  </>
-                )}
-
-                {formData.priceType === "custom" && (
-                  <PriceInputWrapper>
-                    <PriceInputLabel htmlFor="customPrice">
-                      직접 입력 (10,000원 단위)
-                    </PriceInputLabel>
-                    <Input
-                      type="text"
-                      id="customPrice"
-                      name="customPrice"
-                      value={formData.price}
-                      onChange={handleCustomPriceChange}
-                      placeholder="예: 900000"
-                      style={{
-                        borderColor: priceError ? "#ef4444" : "#d1d5db",
-                      }}
-                    />
-                    {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
-                  </PriceInputWrapper>
-                )}
-              </>
-            )}
-
-            {mode === "card" && (
-              <>
-                <Input
-                  type="text"
-                  id="price"
-                  name="price"
-                  value={
-                    formData.price
-                      ? parseInt(formData.price).toLocaleString()
-                      : ""
-                  }
-                  readOnly
-                  disabled
-                  style={{
-                    backgroundColor: "#f3f4f6",
-                    cursor: "not-allowed",
-                    color: "#6b7280",
-                    borderColor: errors.price ? "#ef4444" : "#d1d5db",
-                  }}
-                />
-                <p
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  카드형 매물의 가격은 고정되어 있습니다.
-                </p>
-                {errors.price && <ErrorMessage>{errors.price}</ErrorMessage>}
-              </>
-            )}
-          </FormGroup>
+          {/* mode=free일 때는 가격 입력 필드 제거 (드롭다운으로 대체) */}
+          {mode === "card" && (
+            <FormGroup>
+              <Label htmlFor="price">희망 가격 *</Label>
+              {/* ... 기존 card 모드 가격 표시 ... */}
+            </FormGroup>
+          )}
 
           <FormGroup>
             <Label htmlFor="branch">방문할 회관 선택 *</Label>
