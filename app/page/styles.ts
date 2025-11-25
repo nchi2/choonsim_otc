@@ -160,7 +160,6 @@ export const OTCButton = styled(Link)`
     padding: 1.25rem 2.5rem;
   }
 `;
-
 export const Section = styled.section`
   width: 100%;
   max-width: 800px;
@@ -168,8 +167,7 @@ export const Section = styled.section`
   padding: 2rem;
   border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
-  margin-bottom: 2rem;
-
+  margin: 0 0 2rem; // 위쪽 0, 아래쪽만 2rem
   @media (min-width: 768px) {
     padding: 3rem;
     margin-bottom: 3rem;
@@ -545,6 +543,7 @@ export const HighValueContainer = styled.section`
   flex-direction: column;
   gap: 24px;
   margin-top: 1.5rem;
+  margin-bottom: 2rem;
   @media (min-width: 768px) {
     padding: 3rem;
     margin-top: 2rem;
