@@ -31,10 +31,12 @@ export default function HighValueSection() {
 
         <S.HighValueImageBox>
           <Image
-            src="/hwallets/img_section_hwallets.png"
+            src="/hwallets/img_products.png"
             alt="고액권 및 SBMB 안내"
-            width={340}
-            height={240}
+            width={1360}
+            height={960}
+            sizes="(max-width: 768px) 100vw, 680px" // 데스크톱 기준 680px 정도로 지정
+            quality={95} // 필요하면 품질도 올리기
             priority
           />
         </S.HighValueImageBox>
