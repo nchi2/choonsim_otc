@@ -4,15 +4,25 @@ import { useState, useEffect, Suspense } from "react";
 import styled from "styled-components";
 import Link from "next/link";
 import Header from "@/components/Header";
+import OTCSection from "../page/components/OTCSection";
 import Footer from "@/components/Footer";
 import { STATUS_LABELS } from "@/lib/constants";
 import { useSearchParams, useRouter } from "next/navigation";
+
+// 컬러 팔레트
+const COLORS = {
+  primaryPurple: "#434392",
+  accentPurple: "#434392",
+  lightPurple: "#AFA5DD",
+  bgGray: "#F5F5F7",
+  borderLightPurple: "#E8E2F4",
+};
 
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: ${COLORS.bgGray};
 `;
 
 const MainContent = styled.main`
@@ -21,80 +31,176 @@ const MainContent = styled.main`
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 2rem 1rem;
-  background-color: #ffffff;
-  margin: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-  @media (min-width: 768px) {
-    padding: 4rem 2rem;
-    margin: 2rem;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 1.875rem;
-  font-weight: bold;
-  color: #111827;
-  text-align: center;
-  margin-bottom: 2rem;
-
-  @media (min-width: 768px) {
-    font-size: 2.5rem;
-    margin-bottom: 3rem;
-  }
+  padding: 0 8px;
+  background-color: ${COLORS.bgGray};
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  margin-top: 20px;
 `;
 
 const ContentWrapper = styled.div`
   width: 100%;
-  max-width: 1200px;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  align-items: center;
-  background-color: #f9fafb;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
+  gap: 24px;
+  align-items: stretch;
 
   @media (min-width: 768px) {
-    padding: 3rem;
+    max-width: 100%;
+    gap: 2rem;
   }
 `;
 
+// 자산 선택기 - 드롭다운 스타일
+const AssetSelectorWrapper = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0;
+
+  @media (min-width: 768px) {
+    margin-bottom: 1.5rem;
+  }
+`;
+
+const AssetDropdown = styled.div`
+  position: relative;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: 180px;
+  }
+`;
+
+const AssetDropdownButton = styled.button<{ $isOpen: boolean }>`
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  background-color: #ffffff;
+  border: 1.5px solid ${COLORS.primaryPurple};
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${COLORS.primaryPurple};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(149, 128, 180, 0.1);
+
+  &:hover {
+    background-color: ${COLORS.borderLightPurple};
+  }
+
+  &::after {
+    content: "▼";
+    font-size: 16px;
+    transition: transform 0.2s;
+    transform: ${(props) =>
+      props.$isOpen ? "rotate(180deg)" : "rotate(0deg)"};
+  }
+
+  @media (min-width: 768px) {
+    height: auto;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border-width: 2px;
+    box-shadow: none;
+
+    &::after {
+      font-size: 0.75rem;
+    }
+  }
+`;
+
+const AssetDropdownMenu = styled.div<{ $isOpen: boolean }>`
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 2px solid ${COLORS.primaryPurple};
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(149, 128, 180, 0.15);
+  z-index: 10;
+  display: ${(props) => (props.$isOpen ? "block" : "none")};
+  overflow: hidden;
+`;
+
+const AssetDropdownItem = styled.button`
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #ffffff;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${COLORS.primaryPurple};
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: ${COLORS.borderLightPurple};
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid ${COLORS.borderLightPurple};
+  }
+`;
+
+// 탭 네비게이션
 const TabContainer = styled.div`
   width: 100%;
   display: flex;
-  gap: 0.5rem;
-  border-bottom: 2px solid #e5e7eb;
-  margin-bottom: 2rem;
+  gap: 0;
+  border-bottom: none;
+  margin-bottom: 0;
 
   @media (min-width: 768px) {
-    gap: 1rem;
-    margin-bottom: 3rem;
+    border-bottom: 2px solid ${COLORS.borderLightPurple};
+    margin-bottom: 2rem;
   }
 `;
 
 const TabButton = styled.button<{ $active: boolean }>`
-  padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
+  flex: 1;
+  height: 44px;
+  padding: 0;
+  font-size: 15px;
   font-weight: 600;
-  color: ${(props) => (props.$active ? "#3b82f6" : "#6b7280")};
-  background-color: transparent;
+  color: ${(props) => (props.$active ? COLORS.primaryPurple : "#6b7280")};
+  background-color: ${(props) => (props.$active ? "#ffffff" : "#E5E7EB")};
   border: none;
-  border-bottom: 3px solid
-    ${(props) => (props.$active ? "#3b82f6" : "transparent")};
+  border-top-left-radius: ${(props) => (props.$active ? "8px" : "8px")};
+  border-top-right-radius: ${(props) => (props.$active ? "8px" : "8px")};
+  border-bottom: ${(props) =>
+    props.$active ? `3px solid ${COLORS.primaryPurple}` : "none"};
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    color: #3b82f6;
+    color: ${COLORS.primaryPurple};
+    background-color: ${(props) => (props.$active ? "#ffffff" : "#f3f4f6")};
   }
 
   @media (min-width: 768px) {
-    font-size: 1.125rem;
-    padding: 1rem 2rem;
+    height: auto;
+    padding: 1rem 1.5rem;
+    font-size: 0.875rem;
+    border-radius: 0;
+    border-bottom: 4px solid
+      ${(props) => (props.$active ? COLORS.primaryPurple : "transparent")};
+
+    &:hover {
+      background-color: ${(props) => (props.$active ? "#ffffff" : "#f3f4f6")};
+    }
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    padding: 1.25rem 2rem;
   }
 `;
 
@@ -102,37 +208,275 @@ const TabContent = styled.div`
   width: 100%;
 `;
 
-const OrderBookSection = styled.div`
-  width: 100%;
+// 호가 테이블 섹션
+const OrderBookCard = styled.div`
+  background-color: #ffffff;
+  border-radius: 0;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 16px;
 
   @media (min-width: 768px) {
-    margin-bottom: 3rem;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    gap: 0;
+  }
+
+  @media (min-width: 768px) {
+    padding: 2.5rem;
+  }
+`;
+
+const OrderBookHeader = styled.div`
+  margin-bottom: 0;
+
+  @media (min-width: 768px) {
+    margin-bottom: 1.5rem;
   }
 `;
 
 const OrderBookTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: #111827;
-  text-align: center;
+  margin-bottom: 0.5rem;
 
   @media (min-width: 768px) {
     font-size: 1.5rem;
   }
+
+  @media (min-width: 768px) {
+    font-size: 1.75rem;
+  }
+`;
+
+const OrderBookDescription = styled.p`
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+// 모바일용 호가 카드 리스트
+const OrderBookList = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+`;
+
+const OrderBookCardItem = styled.div`
+  width: 100%;
+  background-color: #ffffff;
+  border: 1.5px solid ${COLORS.borderLightPurple};
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(149, 128, 180, 0.1);
+
+  &:hover {
+    border-color: ${COLORS.lightPurple};
+    box-shadow: 0 2px 6px rgba(149, 128, 180, 0.15);
+  }
+`;
+
+const OrderBookCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const OrderBookCardPrice = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${COLORS.primaryPurple};
+`;
+
+const OrderBookCardVolume = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+`;
+
+const OrderBookCardBarContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background-color: ${COLORS.borderLightPurple};
+  border-radius: 4px;
+  overflow: hidden;
+`;
+
+const OrderBookCardBar = styled.div<{ $width: number }>`
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: ${(props) => props.$width}%;
+  background: linear-gradient(
+    90deg,
+    ${COLORS.lightPurple} 0%,
+    ${COLORS.primaryPurple} 100%
+  );
+  transition: width 0.3s ease;
+  border-radius: 4px;
+`;
+
+// 데스크톱용 테이블 (모바일에서 숨김)
+const OrderBookTable = styled.div`
+  display: none;
+
+  @media (min-width: 768px) {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+`;
+
+const OrderBookTableHeader = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 2px solid ${COLORS.borderLightPurple};
+  margin-bottom: 0.5rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+`;
+
+const OrderBookTableHeaderCell = styled.div`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${COLORS.primaryPurple};
+  text-align: left;
+
+  &:nth-child(3) {
+    @media (max-width: 640px) {
+      display: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+const OrderBookTableRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 2px solid ${COLORS.borderLightPurple};
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: ${COLORS.lightPurple};
+    box-shadow: 0 4px 12px rgba(149, 128, 180, 0.15);
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+`;
+
+const OrderBookTableCell = styled.div`
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #434392;
+
+  &:nth-child(1) {
+    font-weight: 700;
+    color: ${COLORS.primaryPurple};
+  }
+
+  &:nth-child(3) {
+    @media (max-width: 640px) {
+      display: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+const OrderBookBarContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 24px;
+  background-color: ${COLORS.borderLightPurple};
+  border-radius: 12px;
+  overflow: hidden;
+`;
+
+const OrderBookBar = styled.div<{ $width: number }>`
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: ${(props) => props.$width}%;
+  background: linear-gradient(
+    90deg,
+    ${COLORS.lightPurple} 0%,
+    ${COLORS.primaryPurple} 100%
+  );
+  transition: width 0.3s ease;
+  border-radius: 12px;
 `;
 
 const OrderBookPlaceholder = styled.div`
-  padding: 3rem 2rem;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  height: 80px;
+  padding: 0;
+  background-color: #f3f4f6;
+  border: none;
+  border-radius: 8px;
   text-align: center;
   color: #6b7280;
-  font-size: 0.875rem;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @media (min-width: 768px) {
+    height: auto;
+    padding: 3rem 2rem;
+    background-color: #ffffff;
+    border: 2px solid ${COLORS.borderLightPurple};
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+  }
 
   @media (min-width: 768px) {
     padding: 4rem 3rem;
@@ -140,40 +484,87 @@ const OrderBookPlaceholder = styled.div`
   }
 `;
 
-const ButtonContainer = styled.div`
+// CTA 섹션
+const CTASection = styled.div`
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-  background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
+  gap: 16px;
 
   @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 1.5rem;
-    max-width: 100%;
     padding: 2rem;
+    gap: 0;
+  }
+
+  @media (min-width: 768px) {
+    padding: 2.5rem;
   }
 `;
 
-const Button = styled.button`
-  padding: 1rem 2rem;
-  font-size: 1rem;
+const CTATitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0;
+
+  @media (min-width: 768px) {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1.5rem;
+  }
+`;
+
+const CTAButtonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+
+  @media (min-width: 768px) {
+    gap: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+`;
+
+const CTAButton = styled(Link)`
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  font-size: 16px;
   font-weight: 600;
-  border: none;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;
-  width: 100%;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 
   @media (min-width: 768px) {
+    height: auto;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    width: auto;
+    min-width: 180px;
     font-size: 1.125rem;
     padding: 1.25rem 2.5rem;
-    width: auto;
   }
 
   &:hover {
@@ -186,44 +577,62 @@ const Button = styled.button`
   }
 `;
 
-const BuyButton = styled(Button)`
-  background-color: #3b82f6;
+const CTABuyButton = styled(CTAButton)`
+  background-color: ${COLORS.primaryPurple};
   color: white;
+  border: 2px solid ${COLORS.primaryPurple};
 
   &:hover {
-    background-color: #2563eb;
+    background-color: ${COLORS.accentPurple};
+    border-color: ${COLORS.accentPurple};
   }
 `;
 
-const SellButton = styled(Button)`
-  background-color: #10b981;
-  color: white;
+const CTASellButton = styled(CTAButton)`
+  background-color: #ffffff;
+  color: ${COLORS.primaryPurple};
+  border: 2px solid ${COLORS.primaryPurple};
 
   &:hover {
-    background-color: #059669;
+    background-color: ${COLORS.borderLightPurple};
   }
 `;
 
-const BuyButtonLink = styled(Link)`
-  width: 100%;
-  text-decoration: none;
-  display: block;
+// 카드형 콘텐츠 헤더
+const CardTypeHeader = styled.div`
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 
   @media (min-width: 768px) {
-    width: auto;
+    margin-bottom: 2.5rem;
   }
 `;
 
-const SellButtonLink = styled(Link)`
-  width: 100%;
-  text-decoration: none;
-  display: block;
+const CardTypeTitle = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
 
   @media (min-width: 768px) {
-    width: auto;
+    font-size: 24px;
   }
 `;
 
+const CardTypeDescription = styled.p`
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+  }
+`;
+
+// 카드형 거래 카드 그리드
 const CardGrid = styled.div`
   width: 100%;
   display: grid;
@@ -234,87 +643,175 @@ const CardGrid = styled.div`
     grid-template-columns: repeat(2, 1fr);
   }
 
-  @media (min-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
+  @media (min-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: flex-start;
   }
 `;
 
-const Card = styled(Link)`
+// 카드형 거래 카드
+const TradeCard = styled.div`
+  width: 100%;
+  height: auto;
+  min-height: 280px;
+  background-color: #ffffff;
+  border: 1px solid ${COLORS.borderLightPurple};
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  background-color: #ffffff;
-  border: 2px solid #e5e7eb;
-  border-radius: 0.5rem;
-  text-decoration: none;
-  color: inherit;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   transition: all 0.2s;
-  cursor: pointer;
 
   &:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 6px 24px rgba(149, 128, 180, 0.1);
     transform: translateY(-2px);
   }
 
   @media (min-width: 768px) {
-    padding: 2rem;
+    width: 240px;
+    height: 280px;
+    min-height: 280px;
   }
 `;
 
-const CardHeader = styled.div`
+// 카드 헤더 (수량 + 상태 배지)
+const TradeCardHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  align-items: flex-start;
+  margin-bottom: 0;
 `;
 
-const CardPrice = styled.div`
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #3b82f6;
+const TradeCardAmount = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  color: ${COLORS.accentPurple};
+  line-height: 1.2;
 
   @media (min-width: 768px) {
-    font-size: 1.75rem;
+    font-size: 22px;
   }
 `;
 
-const CardAmount = styled.div`
-  font-size: 0.875rem;
-  color: #6b7280;
+const StatusBadge = styled.div<{ $status: string }>`
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  ${(props) => {
+    switch (props.$status) {
+      case "LISTED":
+      case "대기중":
+        return `
+          background-color: ${COLORS.borderLightPurple};
+          color: ${COLORS.primaryPurple};
+        `;
+      case "MATCHED":
+      case "진행중":
+        return `
+          background-color: #D4E9FF;
+          color: #2563EB;
+        `;
+      case "COMPLETED":
+      case "완료":
+        return `
+          background-color: #F1F5F9;
+          color: #64748B;
+        `;
+      default:
+        return `
+          background-color: ${COLORS.borderLightPurple};
+          color: ${COLORS.primaryPurple};
+        `;
+    }
+  }}
 
   @media (min-width: 768px) {
-    font-size: 1rem;
+    font-size: 13px;
+    padding: 5px 14px;
   }
 `;
 
-const CardInfo = styled.div`
+// 카드 세부 정보
+const TradeCardInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 8px;
+  flex: 1;
 `;
 
-const CardInfoRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-  color: #374151;
+const TradeCardPrice = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
 
   @media (min-width: 768px) {
-    font-size: 1rem;
+    font-size: 18px;
   }
 `;
 
-const CardLabel = styled.span`
+const TradeCardTotal = styled.div`
+  font-size: 14px;
   color: #6b7280;
+  line-height: 1.4;
+
+  @media (min-width: 768px) {
+    font-size: 15px;
+  }
 `;
 
-const CardValue = styled.span`
+const TradeCardBranch = styled.div`
+  font-size: 13px;
+  color: ${COLORS.lightPurple};
+  line-height: 1.4;
+
+  @media (min-width: 768px) {
+    font-size: 14px;
+  }
+`;
+
+// 구매 버튼
+const TradeCardButton = styled.button<{ $status: string }>`
+  width: 100%;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+
+  ${(props) => {
+    const isCompleted =
+      props.$status === "COMPLETED" || props.$status === "완료";
+    if (isCompleted) {
+      return `
+        background-color: #E5E7EB;
+        color: #9CA3AF;
+        cursor: not-allowed;
+      `;
+    }
+    return `
+      background-color: ${COLORS.accentPurple};
+      color: #ffffff;
+      
+      &:hover {
+        background-color: ${COLORS.primaryPurple};
+      }
+      
+      &:active {
+        transform: scale(0.98);
+      }
+    `;
+  }}
 `;
 
 const EmptyState = styled.div`
@@ -322,6 +819,9 @@ const EmptyState = styled.div`
   text-align: center;
   color: #6b7280;
   font-size: 0.875rem;
+  background-color: #ffffff;
+  border: 2px solid ${COLORS.borderLightPurple};
+  border-radius: 0.75rem;
 
   @media (min-width: 768px) {
     padding: 4rem 3rem;
@@ -329,207 +829,11 @@ const EmptyState = styled.div`
   }
 `;
 
-// 호가 아이템 스타일 추가
-const OrderBookList = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-// 기존 OrderBookItem 스타일 수정
-const OrderBookItem = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 1rem;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-  overflow: hidden;
-
-  &:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-  }
-
-  @media (min-width: 768px) {
-    padding: 1.25rem 1.5rem;
-  }
-`;
-
-// 가격 영역 (막대 그래프 밖에 배치)
-const OrderBookItemPrice = styled.div`
-  font-size: 1rem;
-  font-weight: bold;
-  color: #3b82f6;
-  min-width: 100px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 2; /* 막대 그래프 위에 표시 */
-
-  @media (min-width: 768px) {
-    font-size: 1.25rem;
-    min-width: 150px;
-  }
-`;
-
-// 막대 그래프와 물량이 들어갈 영역
-const OrderBookItemBarContainer = styled.div`
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 100%;
-  padding: 0.5rem 0;
-
-  @media (min-width: 768px) {
-    padding: 0.75rem 0;
-  }
-`;
-
-// 배경 막대 그래프 (물량 영역에만 표시)
-const OrderBookBar = styled.div<{ $width: number }>`
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: ${(props) => props.$width}%;
-  background: linear-gradient(
-    90deg,
-    rgba(59, 130, 246, 0.1) 0%,
-    rgba(59, 130, 246, 0.15) 100%
-  );
-  transition: width 0.3s ease;
-  z-index: 0;
-`;
-
-// 물량 영역 (막대 그래프 위에 표시)
-const OrderBookItemRight = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-  z-index: 1; /* 막대 그래프 위에 표시 */
-`;
-
-const OrderBookItemVolume = styled.div`
-  font-size: 0.875rem;
-  color: #111827;
-  font-weight: 600;
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-  }
-`;
-
-const OrderBookItemCount = styled.span`
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-left: 0.5rem;
-  font-weight: normal;
-`;
-
-// 자산 종류 선택 컴포넌트 스타일 추가
-const AssetSelectorContainer = styled.div`
-  width: 100%;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-
-  @media (min-width: 768px) {
-    gap: 1rem;
-    margin-bottom: 3rem;
-  }
-`;
-
-const AssetButton = styled.button<{ $active: boolean }>`
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0.375rem;
-  border: 2px solid ${(props) => (props.$active ? "#3b82f6" : "#e5e7eb")};
-  background-color: ${(props) => (props.$active ? "#eff6ff" : "#ffffff")};
-  color: ${(props) => (props.$active ? "#3b82f6" : "#6b7280")};
-  cursor: pointer;
-  transition: all 0.2s;
-  max-width: 120px;
-  flex: 1;
-  min-width: 80px;
-
-  &:hover {
-    border-color: #3b82f6;
-    background-color: #eff6ff;
-    color: #3b82f6;
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1rem;
-    padding: 1rem 1.5rem;
-    max-width: 150px;
-  }
-`;
-
-// 가격 정보 스타일 추가
-const PriceInfoSection = styled.div`
-  width: 100%;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-
-  @media (min-width: 768px) {
-    flex-direction: row;
-    justify-content: space-around;
-    padding: 1.5rem;
-  }
-`;
-
-const PriceInfoItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-`;
-
-const PriceLabel = styled.span`
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-weight: 500;
-
-  @media (min-width: 768px) {
-    font-size: 0.875rem;
-  }
-`;
-
-const PriceValue = styled.span`
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-
-  @media (min-width: 768px) {
-    font-size: 1.5rem;
-  }
-`;
-
-const PriceUnit = styled.span`
-  font-size: 0.75rem;
-  color: #9ca3af;
-`;
-
-// OrderBookLevel 인터페이스 추가
+// 인터페이스
 interface OrderBookLevel {
   id: number;
   assetType: string;
-  price: string; // Decimal은 string으로 반환됨
+  price: string;
   totalAmount: number;
   requestCount: number;
   updatedAt: string;
@@ -537,13 +841,13 @@ interface OrderBookLevel {
 
 interface SellerRequest {
   id: number;
-  name?: string; // optional로 변경 (카드형에서는 제외)
-  phone?: string; // optional로 변경 (카드형에서는 제외)
+  name?: string;
+  phone?: string;
   amount: number;
-  price: string; // Decimal은 string으로 반환됨
+  price: string;
   allowPartial: boolean;
   branch: string;
-  assetType?: string; // assetType 필드 추가
+  assetType?: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -553,89 +857,33 @@ function OTCContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"orderbook" | "card">("orderbook");
+  const [isAssetDropdownOpen, setIsAssetDropdownOpen] = useState(false);
 
-  // URL 쿼리 파라미터에서 assetType 가져오기 (기본값: "BMB")
   const [assetType, setAssetType] = useState<string>(() => {
     return searchParams.get("asset") || "BMB";
   });
 
-  // 호가창 데이터 (OrderBookLevel 사용)
   const [orderBookLevels, setOrderBookLevels] = useState<OrderBookLevel[]>([]);
   const [listedLoading, setListedLoading] = useState(true);
   const [listedError, setListedError] = useState<string | null>(null);
 
-  // 카드형 데이터
   const [cardRequests, setCardRequests] = useState<SellerRequest[]>([]);
   const [cardLoading, setCardLoading] = useState(true);
   const [cardError, setCardError] = useState<string | null>(null);
 
-  // BMB 가격 정보 state 추가
-  const [bmbPrice, setBmbPrice] = useState<{
-    price: number | null;
-    usdtPrice: number | null;
-    usdtKrwPrice: number | null;
-  }>({
-    price: null,
-    usdtPrice: null,
-    usdtKrwPrice: null,
-  });
-  const [priceLoading, setPriceLoading] = useState(true);
-  const [priceError, setPriceError] = useState<string | null>(null);
-
-  // 동일 가격대 물량 합산 함수 (간소화 - 회관 정보 제거)
-  const aggregateRequestsByPrice = (requests: SellerRequest[]) => {
-    const priceMap = new Map<
-      number,
-      {
-        price: string;
-        totalAmount: number;
-        ids: number[];
-      }
-    >();
-
-    requests.forEach((request) => {
-      const priceNum = parseFloat(request.price);
-
-      if (priceMap.has(priceNum)) {
-        const existing = priceMap.get(priceNum)!;
-        existing.totalAmount += request.amount;
-        existing.ids.push(request.id);
-      } else {
-        priceMap.set(priceNum, {
-          price: request.price,
-          totalAmount: request.amount,
-          ids: [request.id],
-        });
-      }
-    });
-
-    // Map을 배열로 변환하고 가격순 정렬
-    return Array.from(priceMap.entries())
-      .map(([price, data]) => ({
-        price: data.price,
-        priceNum: price,
-        totalAmount: data.totalAmount,
-        ids: data.ids,
-        count: data.ids.length, // 해당 가격대의 신청 건수
-      }))
-      .sort((a, b) => a.priceNum - b.priceNum);
-  };
-
-  // 최대 물량 계산 함수 (OrderBookLevel용)
   const getMaxVolume = (levels: OrderBookLevel[]) => {
     if (levels.length === 0) return 1;
     return Math.max(...levels.map((level) => level.totalAmount));
   };
 
-  // assetType 변경 시 URL 업데이트 및 데이터 재로딩
   const handleAssetTypeChange = (newAssetType: string) => {
     setAssetType(newAssetType);
+    setIsAssetDropdownOpen(false);
     const params = new URLSearchParams(searchParams.toString());
     params.set("asset", newAssetType);
     router.push(`/otc?${params.toString()}`, { scroll: false });
   };
 
-  // URL 쿼리 파라미터 변경 감지
   useEffect(() => {
     const assetFromUrl = searchParams.get("asset") || "BMB";
     if (assetFromUrl !== assetType) {
@@ -643,7 +891,24 @@ function OTCContent() {
     }
   }, [searchParams, assetType]);
 
-  // 호가창 데이터 불러오기 (OrderBookLevel API 사용)
+  // 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-asset-dropdown]")) {
+        setIsAssetDropdownOpen(false);
+      }
+    };
+
+    if (isAssetDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isAssetDropdownOpen]);
+
   useEffect(() => {
     const fetchOrderBookLevels = async () => {
       if (activeTab === "orderbook") {
@@ -680,7 +945,6 @@ function OTCContent() {
     fetchOrderBookLevels();
   }, [activeTab, assetType]);
 
-  // 카드형 데이터 불러오기 (assetType 파라미터 추가)
   useEffect(() => {
     const fetchCardRequests = async () => {
       if (activeTab === "card") {
@@ -715,49 +979,7 @@ function OTCContent() {
     };
 
     fetchCardRequests();
-  }, [activeTab, assetType]); // assetType 의존성 추가
-
-  // BMB 가격 정보 불러오기
-  useEffect(() => {
-    const fetchBmbPrice = async () => {
-      try {
-        setPriceLoading(true);
-        setPriceError(null);
-
-        const response = await fetch("/api/price/bmb", {
-          next: { revalidate: 30 }, // 30초 캐시
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || "가격 정보를 불러오는데 실패했습니다.");
-        }
-
-        const data = await response.json();
-
-        if (data.error) {
-          setPriceError("가격 정보를 불러올 수 없습니다.");
-          return;
-        }
-
-        setBmbPrice({
-          price: data.price,
-          usdtPrice: data.usdtPrice,
-          usdtKrwPrice: data.usdtKrwPrice,
-        });
-      } catch (err) {
-        console.error("Error fetching BMB price:", err);
-        setPriceError("가격 정보를 불러올 수 없습니다.");
-      } finally {
-        setPriceLoading(false);
-      }
-    };
-
-    fetchBmbPrice();
-    // 30초마다 업데이트
-    const interval = setInterval(fetchBmbPrice, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [activeTab, assetType]);
 
   const formatPrice = (price: string) => {
     return parseFloat(price).toLocaleString("ko-KR");
@@ -767,152 +989,186 @@ function OTCContent() {
     return (parseFloat(price) * amount).toLocaleString("ko-KR");
   };
 
+  const assetTypes = ["BMB", "MOVL", "WBMB", "SBMB"];
+
   return (
     <PageContainer>
       <Header />
+      <OTCSection showTradeButton={false} />
+
       <MainContent>
         <ContentWrapper>
-          <Title>OTC 거래</Title>
+          {/* 자산 선택기 - 드롭다운 */}
+          <AssetSelectorWrapper>
+            <AssetDropdown data-asset-dropdown>
+              <AssetDropdownButton
+                $isOpen={isAssetDropdownOpen}
+                onClick={() => setIsAssetDropdownOpen(!isAssetDropdownOpen)}
+              >
+                {assetType}
+              </AssetDropdownButton>
+              <AssetDropdownMenu $isOpen={isAssetDropdownOpen}>
+                {assetTypes.map((type) => (
+                  <AssetDropdownItem
+                    key={type}
+                    onClick={() => handleAssetTypeChange(type)}
+                  >
+                    {type}
+                  </AssetDropdownItem>
+                ))}
+              </AssetDropdownMenu>
+            </AssetDropdown>
+          </AssetSelectorWrapper>
 
-          {/* BMB 가격 정보 섹션 추가 */}
-          {!priceLoading && !priceError && bmbPrice.price !== null && (
-            <PriceInfoSection>
-              <PriceInfoItem>
-                <PriceLabel>BMB/USDT</PriceLabel>
-                <PriceValue>
-                  {bmbPrice.usdtPrice ? bmbPrice.usdtPrice.toFixed(4) : "N/A"}
-                </PriceValue>
-                <PriceUnit>USDT</PriceUnit>
-              </PriceInfoItem>
-              <PriceInfoItem>
-                <PriceLabel>BMB/KRW (LBANK)</PriceLabel>
-                <PriceValue>
-                  {bmbPrice.price
-                    ? Math.round(bmbPrice.price).toLocaleString("ko-KR")
-                    : "N/A"}
-                </PriceValue>
-                <PriceUnit>원</PriceUnit>
-              </PriceInfoItem>
-              <PriceInfoItem>
-                <PriceLabel>USDT/KRW</PriceLabel>
-                <PriceValue>
-                  {bmbPrice.usdtKrwPrice
-                    ? Math.round(bmbPrice.usdtKrwPrice).toLocaleString("ko-KR")
-                    : "N/A"}
-                </PriceValue>
-                <PriceUnit>원</PriceUnit>
-              </PriceInfoItem>
-            </PriceInfoSection>
-          )}
-
-          {/* 자산 종류 선택 컴포넌트 */}
-          <AssetSelectorContainer>
-            <AssetButton
-              $active={assetType === "BMB"}
-              onClick={() => handleAssetTypeChange("BMB")}
-            >
-              BMB
-            </AssetButton>
-            <AssetButton
-              $active={assetType === "MOVL"}
-              onClick={() => handleAssetTypeChange("MOVL")}
-            >
-              MOVL
-            </AssetButton>
-            <AssetButton
-              $active={assetType === "WBMB"}
-              onClick={() => handleAssetTypeChange("WBMB")}
-            >
-              WBMB
-            </AssetButton>
-            <AssetButton
-              $active={assetType === "SBMB"}
-              onClick={() => handleAssetTypeChange("SBMB")}
-            >
-              SBMB
-            </AssetButton>
-          </AssetSelectorContainer>
-
-          {/* 기존 TabContainer */}
+          {/* 탭 네비게이션 */}
           <TabContainer>
             <TabButton
               $active={activeTab === "orderbook"}
               onClick={() => setActiveTab("orderbook")}
             >
-              호가형(소액)
+              호가형(소액 가능)
             </TabButton>
             <TabButton
               $active={activeTab === "card"}
               onClick={() => setActiveTab("card")}
             >
-              카드형(일괄)
+              카드형(맞춤 거래)
             </TabButton>
           </TabContainer>
 
           <TabContent>
             {activeTab === "orderbook" && (
               <>
-                <OrderBookSection>
-                  <OrderBookTitle>호가</OrderBookTitle>
+                <OrderBookCard>
+                  <OrderBookHeader>
+                    <OrderBookTitle>호가형 거래</OrderBookTitle>
+                    <OrderBookDescription>
+                      소액 거래를 위한 호가형 거래입니다. 원하는 가격과 수량을
+                      선택하여 거래를 진행할 수 있습니다.
+                    </OrderBookDescription>
+                  </OrderBookHeader>
+
                   {listedLoading && (
                     <OrderBookPlaceholder>
                       호가 정보를 불러오는 중...
                     </OrderBookPlaceholder>
                   )}
+
                   {listedError && (
                     <OrderBookPlaceholder style={{ color: "#dc2626" }}>
                       {listedError}
                     </OrderBookPlaceholder>
                   )}
+
                   {!listedLoading && !listedError && (
                     <>
                       {orderBookLevels.length > 0 ? (
-                        <OrderBookList>
-                          {(() => {
-                            const maxVolume = getMaxVolume(orderBookLevels);
+                        <>
+                          {/* 모바일용 카드 리스트 */}
+                          <OrderBookList>
+                            {(() => {
+                              const maxVolume = getMaxVolume(orderBookLevels);
 
-                            return orderBookLevels.map((level, index) => {
-                              const barWidth =
-                                (level.totalAmount / maxVolume) * 100;
-                              const priceNum = parseFloat(level.price);
+                              return orderBookLevels.map((level, index) => {
+                                const barWidth =
+                                  (level.totalAmount / maxVolume) * 100;
 
-                              return (
-                                <OrderBookItem
-                                  key={`${level.id}-${index}`}
-                                  onClick={() => {
-                                    router.push(
-                                      `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`
-                                    );
-                                  }}
-                                  style={{ cursor: "pointer" }}
-                                >
-                                  {/* 가격 (막대 그래프 밖, 왼쪽 고정) */}
-                                  <OrderBookItemPrice>
-                                    {formatPrice(level.price)}
-                                  </OrderBookItemPrice>
-
-                                  {/* 막대 그래프와 물량 영역 */}
-                                  <OrderBookItemBarContainer>
-                                    {/* 배경 막대 그래프 */}
-                                    <OrderBookBar $width={barWidth} />
-
-                                    {/* 물량 (막대 그래프 위에 표시) */}
-                                    <OrderBookItemRight>
-                                      <OrderBookItemVolume>
+                                return (
+                                  <OrderBookCardItem
+                                    key={`mobile-${level.id}-${index}`}
+                                    onClick={() => {
+                                      router.push(
+                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`
+                                      );
+                                    }}
+                                  >
+                                    <OrderBookCardHeader>
+                                      <OrderBookCardPrice>
+                                        {formatPrice(level.price)}원
+                                      </OrderBookCardPrice>
+                                      <OrderBookCardVolume>
                                         {level.totalAmount} Mo
                                         {level.requestCount > 1 && (
-                                          <OrderBookItemCount>
+                                          <span
+                                            style={{
+                                              fontSize: "12px",
+                                              color: "#9ca3af",
+                                              marginLeft: "4px",
+                                              fontWeight: "normal",
+                                            }}
+                                          >
                                             ({level.requestCount}건)
-                                          </OrderBookItemCount>
+                                          </span>
                                         )}
-                                      </OrderBookItemVolume>
-                                    </OrderBookItemRight>
-                                  </OrderBookItemBarContainer>
-                                </OrderBookItem>
-                              );
-                            });
-                          })()}
-                        </OrderBookList>
+                                      </OrderBookCardVolume>
+                                    </OrderBookCardHeader>
+                                    <OrderBookCardBarContainer>
+                                      <OrderBookCardBar $width={barWidth} />
+                                    </OrderBookCardBarContainer>
+                                  </OrderBookCardItem>
+                                );
+                              });
+                            })()}
+                          </OrderBookList>
+
+                          {/* 데스크톱용 테이블 */}
+                          <OrderBookTable>
+                            <OrderBookTableHeader>
+                              <OrderBookTableHeaderCell>
+                                가격 (KRW/Mo)
+                              </OrderBookTableHeaderCell>
+                              <OrderBookTableHeaderCell>
+                                총 수량 (Mo)
+                              </OrderBookTableHeaderCell>
+                              <OrderBookTableHeaderCell>
+                                거래량 막대
+                              </OrderBookTableHeaderCell>
+                            </OrderBookTableHeader>
+
+                            {(() => {
+                              const maxVolume = getMaxVolume(orderBookLevels);
+
+                              return orderBookLevels.map((level, index) => {
+                                const barWidth =
+                                  (level.totalAmount / maxVolume) * 100;
+
+                                return (
+                                  <OrderBookTableRow
+                                    key={`desktop-${level.id}-${index}`}
+                                    onClick={() => {
+                                      router.push(
+                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`
+                                      );
+                                    }}
+                                  >
+                                    <OrderBookTableCell>
+                                      {formatPrice(level.price)}원
+                                    </OrderBookTableCell>
+                                    <OrderBookTableCell>
+                                      {level.totalAmount} Mo
+                                      {level.requestCount > 1 && (
+                                        <span
+                                          style={{
+                                            fontSize: "0.75rem",
+                                            color: "#9ca3af",
+                                            marginLeft: "0.5rem",
+                                          }}
+                                        >
+                                          ({level.requestCount}건)
+                                        </span>
+                                      )}
+                                    </OrderBookTableCell>
+                                    <OrderBookTableCell>
+                                      <OrderBookBarContainer>
+                                        <OrderBookBar $width={barWidth} />
+                                      </OrderBookBarContainer>
+                                    </OrderBookTableCell>
+                                  </OrderBookTableRow>
+                                );
+                              });
+                            })()}
+                          </OrderBookTable>
+                        </>
                       ) : (
                         <OrderBookPlaceholder>
                           등록된 호가가 없습니다.
@@ -920,24 +1176,34 @@ function OTCContent() {
                       )}
                     </>
                   )}
-                </OrderBookSection>
-                <ButtonContainer>
-                  <BuyButtonLink
-                    href={`/otc/buy/apply?mode=free&assetType=${assetType}`}
-                  >
-                    <BuyButton>구매하기</BuyButton>
-                  </BuyButtonLink>
-                  <SellButtonLink
-                    href={`/otc/sell/apply?assetType=${assetType}`}
-                  >
-                    <SellButton>판매하기</SellButton>
-                  </SellButtonLink>
-                </ButtonContainer>
+
+                  <CTAButtonContainer>
+                    <CTABuyButton
+                      href={`/otc/buy/apply?mode=free&assetType=${assetType}`}
+                    >
+                      구매 신청하기
+                    </CTABuyButton>
+                    <CTASellButton
+                      href={`/otc/sell/apply?assetType=${assetType}`}
+                    >
+                      판매 신청하기
+                    </CTASellButton>
+                  </CTAButtonContainer>
+                </OrderBookCard>
               </>
             )}
 
             {activeTab === "card" && (
               <>
+                <CardTypeHeader>
+                  <CardTypeTitle>카드형 맞춤 거래</CardTypeTitle>
+                  <CardTypeDescription>
+                    맞춤형 거래 조건을 확인하고 원하는 매물을 선택하여
+                    거래하세요. 각 카드의 구매하기 버튼을 클릭하여 신청할 수
+                    있습니다.
+                  </CardTypeDescription>
+                </CardTypeHeader>
+
                 {cardLoading && (
                   <EmptyState>카드형 정보를 불러오는 중...</EmptyState>
                 )}
@@ -953,40 +1219,56 @@ function OTCContent() {
                         {cardRequests.map((card) => {
                           const priceNum = parseFloat(card.price);
                           const amountNum = card.amount;
+                          const totalPrice = priceNum * amountNum;
+                          const statusLabel =
+                            STATUS_LABELS[
+                              card.status as keyof typeof STATUS_LABELS
+                            ] || card.status;
+
+                          const isCompleted =
+                            card.status === "COMPLETED" ||
+                            card.status === "완료";
 
                           return (
-                            <Card
-                              key={card.id}
-                              href={`/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`}
-                            >
-                              <CardHeader>
-                                <CardPrice>
-                                  {formatPrice(card.price)}원
-                                </CardPrice>
-                                <CardAmount>{card.amount} Mo</CardAmount>
-                              </CardHeader>
-                              <CardInfo>
-                                <CardInfoRow>
-                                  <CardLabel>총 금액</CardLabel>
-                                  <CardValue>
-                                    {formatTotalPrice(card.price, card.amount)}
-                                    원
-                                  </CardValue>
-                                </CardInfoRow>
-                                <CardInfoRow>
-                                  <CardLabel>회관</CardLabel>
-                                  <CardValue>{card.branch}</CardValue>
-                                </CardInfoRow>
-                                <CardInfoRow>
-                                  <CardLabel>상태</CardLabel>
-                                  <CardValue>
-                                    {STATUS_LABELS[
-                                      card.status as keyof typeof STATUS_LABELS
-                                    ] || card.status}
-                                  </CardValue>
-                                </CardInfoRow>
-                              </CardInfo>
-                            </Card>
+                            <TradeCard key={card.id}>
+                              <TradeCardHeader>
+                                <TradeCardAmount>
+                                  {amountNum} Mo
+                                </TradeCardAmount>
+                                <StatusBadge $status={card.status}>
+                                  {statusLabel}
+                                </StatusBadge>
+                              </TradeCardHeader>
+
+                              <TradeCardInfo>
+                                <TradeCardPrice>
+                                  {formatPrice(card.price)} KRW/Mo
+                                </TradeCardPrice>
+                                <TradeCardTotal>
+                                  총 거래금액:{" "}
+                                  {formatTotalPrice(card.price, card.amount)}{" "}
+                                  KRW
+                                </TradeCardTotal>
+                                <TradeCardBranch>{card.branch}</TradeCardBranch>
+                              </TradeCardInfo>
+
+                              {isCompleted ? (
+                                <TradeCardButton $status={card.status} disabled>
+                                  거래 완료됨
+                                </TradeCardButton>
+                              ) : (
+                                <TradeCardButton
+                                  $status={card.status}
+                                  onClick={() => {
+                                    router.push(
+                                      `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`
+                                    );
+                                  }}
+                                >
+                                  구매하기
+                                </TradeCardButton>
+                              )}
+                            </TradeCard>
                           );
                         })}
                       </CardGrid>
@@ -1005,13 +1287,11 @@ function OTCContent() {
   );
 }
 
-// 로딩 컴포넌트
 const LoadingFallback = () => (
   <PageContainer>
     <Header />
     <MainContent>
       <ContentWrapper>
-        <Title>OTC 거래</Title>
         <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
           로딩 중...
         </div>

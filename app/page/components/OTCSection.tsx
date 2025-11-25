@@ -3,7 +3,13 @@
 import { useState, useEffect } from "react";
 import * as S from "../styles";
 
-export default function OTCSection() {
+interface OTCSectionProps {
+  showTradeButton?: boolean;
+}
+
+export default function OTCSection({
+  showTradeButton = true,
+}: OTCSectionProps) {
   const [priceData, setPriceData] = useState<{
     usdtKrwPrice: number | null;
     bmbUsdtPrice: number | null;
@@ -87,7 +93,9 @@ export default function OTCSection() {
           </S.OTCHeroPriceCard>
         </S.OTCHeroPriceGrid>
 
-        <S.OTCHeroButton href="/otc">OTC 거래 페이지로 이동</S.OTCHeroButton>
+        {showTradeButton && (
+          <S.OTCHeroButton href="/otc">OTC 거래 페이지로 이동</S.OTCHeroButton>
+        )}
       </S.OTCHeroContent>
     </S.OTCHeroSection>
   );

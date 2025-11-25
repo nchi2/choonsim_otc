@@ -41,7 +41,9 @@ export default function NewsSection() {
   return (
     <S.Section>
       <S.ContentSectionHeader>
-        <S.ContentSectionTitle>모빅 뉴스 (모빅경제)</S.ContentSectionTitle>
+        <S.ContentSectionTitle>
+          모빅 뉴스 (모빅경제) - 준비중
+        </S.ContentSectionTitle>
         <S.ContentLinkButton
           href={MOBICK_ECONOMY_URL}
           target="_blank"
