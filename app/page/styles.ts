@@ -204,12 +204,12 @@ export const SectionDescription = styled.p`
 export const CardGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1rem;
   margin-bottom: 2rem;
 
   @media (min-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
+    gap: 1rem;
   }
 
   @media (min-width: 1024px) {
@@ -240,11 +240,12 @@ export const NewsCardTitle = styled.h3`
   font-size: 1rem;
   font-weight: 600;
   color: #111827;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
   line-height: 1.4;
 
   @media (min-width: 768px) {
     font-size: 1.125rem;
+    margin-bottom: 0.375rem;
   }
 `;
 
@@ -274,7 +275,7 @@ export const NewsCardThumbnail = styled.div`
   aspect-ratio: 16 / 9;
   background-color: #e5e7eb;
   border-radius: 0.375rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -289,7 +290,7 @@ export const NewsCardThumbnail = styled.div`
   }
 
   @media (min-width: 768px) {
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.5rem;
   }
 `;
 
@@ -306,6 +307,11 @@ export const VideoCard = styled(NewsCard)`
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  padding: 0.5rem;
+
+  @media (min-width: 768px) {
+    padding: 0.75rem;
+  }
 `;
 
 export const VideoMetaRow = styled.div`
@@ -315,7 +321,7 @@ export const VideoMetaRow = styled.div`
   justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 `;
 
 export const VideoCardLink = styled.a`
