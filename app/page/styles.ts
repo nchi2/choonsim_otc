@@ -225,6 +225,10 @@ export const NewsCard = styled.div`
   padding: 1.5rem;
   transition: all 0.2s;
   cursor: pointer;
+  min-height: 240px; // 또는 원하는 고정값
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 
   &:hover {
     border-color: #3b82f6;
@@ -234,6 +238,7 @@ export const NewsCard = styled.div`
 
   @media (min-width: 768px) {
     padding: 2rem;
+    min-height: 260px; // 필요 시 조정
   }
 `;
 
@@ -525,4 +530,169 @@ export const OTCHeroButton = styled(Link)`
   @media (max-width: 768px) {
     width: 100%;
   }
+`;
+
+// 기존 Section 기반 대신 전용 컨테이너 추가
+export const HighValueContainer = styled.section`
+  width: 100%;
+  max-width: 800px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 1.5rem;
+  @media (min-width: 768px) {
+    padding: 3rem;
+    margin-top: 2rem;
+  }
+`;
+
+export const HighValueTitle = styled.h2`
+  font-size: 26px;
+  font-weight: 700;
+  color: #434392;
+  margin: 0;
+`;
+
+export const HighValueContent = styled.div`
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+export const HighValueTextBox = styled.div`
+  flex: 1;
+  border-radius: 12px;
+  color: #4b4b63;
+  line-height: 1.6;
+  font-size: 15px;
+`;
+
+export const HighValueImageBox = styled.div`
+  width: 340px;
+  max-width: 100%;
+  height: 240px;
+  border-radius: 16px;
+  border: 1px solid #e8e2f4;
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    height: 220px;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+export const HighValueActions = styled.div`
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+export const HighValuePrimaryButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 1.75rem;
+  border-radius: 12px;
+  background-color: #434392;
+  color: #ffffff;
+  font-size: 1rem; /* 16px */
+  font-weight: 600; /* semibold */
+  text-decoration: none;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+export const HighValueSecondaryButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 1.75rem;
+  border-radius: 12px;
+  border: 1px solid #434392;
+  color: #434392;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(67, 67, 146, 0.08);
+  }
+`;
+
+export const ContentSectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+export const ContentSectionTitle = styled.h2`
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+`;
+
+export const ContentLinkButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+  }
+`;
+
+export const ContentLoadMore = styled.button`
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-weight: 600;
+  text-decoration: underline;
+
+  &:hover {
+    color: #6b7280;
+  }
+`;
+
+export const NewsCardLink = styled.a`
+  display: block;
+  color: inherit;
+  text-decoration: none;
 `;

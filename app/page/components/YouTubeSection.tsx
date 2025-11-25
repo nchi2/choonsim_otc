@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { YoutubeVideo } from "@/lib/youtube/fetch-latest";
 import * as S from "../styles";
 
-const YOUTUBE_HUB_URL = "https://www.youtube.com/@otaverse/videos";
+const ECOSYSTEM_URL = "https://linktr.ee/btcmobick"; // 필요 시 변경
 const PAGE_SIZE = 6;
 
 type YoutubeLatestResponse = {
@@ -136,11 +136,16 @@ export default function YouTubeSection() {
 
   return (
     <S.Section>
-      <S.SectionTitle>유튜브 최신 영상</S.SectionTitle>
-      <S.SectionDescription>
-        요청 채널의 최신 영상을 5분마다 자동으로 수집합니다. 새로 올라온
-        콘텐츠를 바로 확인해보세요.
-      </S.SectionDescription>
+      <S.ContentSectionHeader>
+        <S.ContentSectionTitle>생태계 최신 YouTube</S.ContentSectionTitle>
+        <S.ContentLinkButton
+          href={ECOSYSTEM_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          생태계 링크 보기 →
+        </S.ContentLinkButton>
+      </S.ContentSectionHeader>
 
       {loading && <S.LoadingText>최신 영상을 불러오는 중...</S.LoadingText>}
 
@@ -189,18 +194,8 @@ export default function YouTubeSection() {
 
       {canLoadMore && !loading && !error && (
         <div style={{ textAlign: "center" }}>
-          <S.ActionButton type="button" onClick={handleLoadMore}>
-            더 보기
-          </S.ActionButton>
+          <S.ContentLoadMore onClick={handleLoadMore}>더보기</S.ContentLoadMore>
         </div>
-      )}
-
-      {data?.meta && videos.length > 0 && (
-        <S.SectionDescription>
-          마지막 동기화: {formatAbsoluteTime(data.meta.fetchedAt)} · 성공{" "}
-          {data.meta.channels.succeeded}개 / 실패 {data.meta.channels.failed}개{" "}
-          {data.meta.cache.hit ? "(캐시 응답)" : ""}
-        </S.SectionDescription>
       )}
 
       {data?.errors && !error && (
@@ -211,16 +206,6 @@ export default function YouTubeSection() {
             .join(", ")}
         </S.ErrorText>
       )}
-
-      <div style={{ textAlign: "center" }}>
-        <S.SectionButton
-          href={YOUTUBE_HUB_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          더 많은 영상 보기
-        </S.SectionButton>
-      </div>
     </S.Section>
   );
 }
