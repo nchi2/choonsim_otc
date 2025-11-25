@@ -510,10 +510,13 @@
 - [x] 6.1.3 "고액권 | SBMB 섹션":
 
   - [x] 텍스트 설명 + 버튼(예: "자세히 보기" / "신청하기" – 실제 페이지는 나중).
-  - 결과: `app/page/components/HighValueSection.tsx` 컴포넌트 생성. "고액권 | SBMB" 제목, 설명 텍스트, "자세히 보기" 및 "신청하기" 버튼 2개 포함. `Section`, `SectionTitle`, `SectionDescription`, `ActionButton` 스타일 컴포넌트 사용. 모바일 반응형 스타일 적용
+
+- 결과: `app/page/components/HighValueSection.tsx` 컴포넌트 생성. "고액권 | SBMB" 제목, 설명 텍스트, CTA 버튼 구성. 2025-11-25 업데이트: `자세히 보기` CTA를 `/high-value` 라우트로 이동하도록 `Link`로 교체하고, 전용 페이지 `app/high-value/page.tsx`를 추가하여 탭형 고액권/ SBMB 안내, 신청 버튼, `/hwallets/*.png` 자산 이미지를 노출함. `Section`, `SectionTitle`, `SectionDescription`, `ActionButton` 스타일 컴포넌트 사용. 모바일 반응형 스타일 적용
+
   - 확인방법:
-    - 코드 확인: `app/page/components/HighValueSection.tsx` 파일 존재 확인
-    - 화면 확인: `npm run dev` 실행 후 `http://localhost:3000` 접속 시 "고액권 | SBMB" 섹션이 표시되고 버튼 2개가 보이는지 확인
+    - 코드 확인: `app/page/components/HighValueSection.tsx` 파일 존재 확인, CTA가 `/high-value` 링크를 사용하도록 수정되었는지 확인
+    - 코드 확인: `app/high-value/page.tsx`에 고액권/ SBMB 탭 페이지가 구현되어 있는지 확인
+    - 화면 확인: `npm run dev` 실행 후 `http://localhost:3000` 및 `/high-value` 접속 시 섹션과 세부 페이지가 정상 표시되는지 확인
 
 - [x] 6.1.4 "모빅 뉴스(모빅경제) 섹션":
 
@@ -931,6 +934,37 @@
 - [ ] 9.2.3 이 스펙을 기반으로 별도 문서 (예: `docs/youtube-api-plan.md`) 작성.
 - [ ] 9.2.4 메인 페이지에 "유튜브 최신 영상" 영역 더미 데이터로 카드 UI 구현.
 - [ ] 9.2.5 실제 API 연동은 **운영자/환경변수/키 수급 이후**에 진행하도록 주석으로 명시.
+- [ ] 9.2.6 YouTube 자동 연동 구현 단계 (요청 채널 기준)
+  - 채널 핸들/URL 목록:
+    - `https://www.youtube.com/@futureman77777` : UC89C4CVYn1W8wzXp5Zvb68w
+    - `https://www.youtube.com/@oceanpage` : UCY4iRMfL6NyekvBS47VYYtA
+    - `https://www.youtube.com/@MobickClipSnack` : UCAh6H2aP9ACLF24_QWD27cw
+    - `https://www.youtube.com/@MobickerGabriel` : UCuslGcmrP0wXKLFJpvkN8Mg
+    - `https://www.youtube.com/@hoguhogu11` : UC8P7tiKm39c66cSU0mqy32Q
+    - `https://www.youtube.com/@vivikim2029` : UC-qJDtz16KSxTTnTrIMk3Dg
+    - `https://www.youtube.com/@otaverse` : UCjAmcKweNBx-Ju2xOPBOkkQ
+  - [ ] 9.2.6.1 각 채널의 `channelId` 확보
+    - 방법: `channels.list` API 또는 DevTools → `ytInitialData`에서 `channelId` 추출, 혹은 서드파티 툴 활용
+    - 확인: `lib/youtube/channels.ts` (가칭)에 `{ handle, channelId, displayName }` 저장
+  - [ ] 9.2.6.2 환경변수 및 API Key 설정
+    - `.env.local`/Vercel에 `YOUTUBE_API_KEY` 추가
+    - `next.config.js` 또는 `lib/env.ts`에서 검증 로직 추가
+  - [ ] 9.2.6.3 서버 API 라우트 작성
+    - 경로: `app/api/youtube/latest/route.ts`
+    - 기능: `search.list` 또는 `playlistItems.list` 호출 → 채널별 최신 N개 수집 → 통합/정렬 → JSON 반환
+    - 캐싱: `revalidate = 300`(5분) 또는 Upstash/Redis 캐시 사용
+    - 예외 처리: API 제한(429) 시 마지막 성공 캐시 반환
+  - [ ] 9.2.6.4 채널 구성/필터 유틸 작성
+    - `lib/youtube/client.ts` 또는 `lib/youtube/fetch-latest.ts`에서 fetch 로직 모듈화
+    - 채널별 태그/분류 필드 추가 (추후 UI 필터에 활용)
+  - [ ] 9.2.6.5 프론트엔드 UI 구현
+    - 메인 페이지(`app/page/components/NewsSection.tsx` 또는 신규 `YouTubeSection.tsx`)에 카드 UI 구성
+    - 데이터 fetch → 로딩/오류 상태 → 카드(썸네일, 제목, 채널명, 업로드 시각, `https://youtube.com/watch?v=...` 링크)
+    - “더 보기” 버튼: 플레이리스트 또는 채널 링크로 이동
+  - [ ] 9.2.6.6 QA 및 문서화
+    - 로컬에서 API 호출 테스트 (`curl /api/youtube/latest`)
+    - README/`docs/youtube-api-plan.md`에 사용 방법과 환경변수 설명 추가
+    - 배포 전 Vercel 환경변수 적용 여부 확인
 
 ---
 
@@ -1244,18 +1278,31 @@
     - 빌드 확인: Vercel 빌드가 성공적으로 완료되는지 확인
     - 빌드 확인: TypeScript 오류가 해결되었는지 확인
 
-- [ ] 12.8 신청자용 매칭 정보 조회 기능 (추후 예정)
+- [ ] 12.8 판매 등록 확인 모달 (우선순위 높음) 🔺
 
-  - [ ] 12.8.1 신청 번호 + 전화번호 인증 API
-    - 신청 번호와 전화번호로 본인 확인
-    - 판매건/구매건 정보 조회
-  - [ ] 12.8.2 신청자용 조회 페이지 생성
-    - `/otc/check-status` 페이지 생성
-    - 신청 번호와 전화번호 입력 폼
-    - 본인 확인 후 신청 정보 및 매칭 정보 표시
-  - [ ] 12.8.3 매칭 정보 표시
-    - 판매건: "구매건 #1과 100개 매칭됨" 형식으로 표시
-    - 구매건: "판매건 #1에서 100개 매칭됨" 형식으로 표시
+  - [ ] 12.8.1 상태 변경 모달 표시
+    - 판매건 상태를 `PENDING` → `LISTED`로 변경하려 할 때 확인 모달 표시
+    - 안내문 텍스트 박스 + “위 내용을 인지시켰습니까?” 체크박스
+  - [ ] 12.8.2 QR/지갑 정보 입력 UI
+    - QR 코드 영역 표시
+    - 공개 지갑 주소 텍스트 노출
+    - `{amount} BMB 전송 안내` 문구 포함
+    - 판매자 공개주소 입력란 + QR 스캔 버튼
+  - [ ] 12.8.3 등록 처리
+    - 필수 체크/입력값 검증 후 “등록하기” 버튼 활성화
+    - `PATCH /api/seller-request/[id]/status` 호출 시 추가 메타데이터 전달 구조 정의
+    - 등록 성공 시 모달 닫기 + 상태 업데이트
+  - 결과: (완료 후 작성)
+  - 확인방법:
+    - 화면 확인: `PENDING → LISTED` 변경 시 모달이 표시되는지 확인
+    - 화면 확인: 안내문/체크박스/QR/주소 UI가 올바르게 표시되는지 확인
+    - 화면 확인: 필수 입력 후 “등록하기” 버튼이 활성화되는지 확인
+    - 코드 확인: 상태 변경 API에 추가 데이터가 전달되는지 확인
+
+- [ ] BACKLOG-신청자용 매칭 정보 조회 기능
+  - [ ] BACKLOG-신청 번호 + 전화번호 인증 API
+  - [ ] BACKLOG-신청자용 조회 페이지 생성
+  - [ ] BACKLOG-매칭 정보 표시
   - 결과: (완료 후 작성)
   - 확인방법:
     - 코드 확인: 신청자용 조회 API 및 페이지 확인

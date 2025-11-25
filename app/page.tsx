@@ -5,6 +5,7 @@ import OTCSection from "./page/components/OTCSection";
 import HighValueSection from "./page/components/HighValueSection";
 import NewsSection from "./page/components/NewsSection";
 import BlogSection from "./page/components/BlogSection";
+import YouTubeSection from "./page/components/YouTubeSection";
 import * as S from "./page/styles";
 
 export default function Home() {
@@ -14,7 +15,8 @@ export default function Home() {
       <OTCSection />
       <HighValueSection />
       <NewsSection />
-      <BlogSection />
+      <YouTubeSection />
+      {/* <BlogSection /> */}
     </PageLayout>
   );
 }

@@ -302,6 +302,29 @@ export const NewsCardMeta = styled.div`
   gap: 0.5rem;
 `;
 
+export const VideoCard = styled(NewsCard)`
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+`;
+
+export const VideoMetaRow = styled.div`
+  font-size: 0.8125rem;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+`;
+
+export const VideoCardLink = styled.a`
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  height: 100%;
+`;
+
 export const SectionButton = styled(Link)`
   display: inline-block;
   padding: 0.75rem 1.5rem;
