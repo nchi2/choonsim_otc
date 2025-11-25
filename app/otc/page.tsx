@@ -1043,7 +1043,7 @@ function OTCContent() {
                   <OrderBookHeader>
                     <OrderBookTitle>호가형 거래</OrderBookTitle>
                     <OrderBookDescription>
-                      소액 거래를 위한 호가형 거래입니다. 원하는 가격과 수량을
+                      소액 거래도 가능한 호가형 거래입니다. 원하는 가격과 수량을
                       선택하여 거래를 진행할 수 있습니다.
                     </OrderBookDescription>
                   </OrderBookHeader>
