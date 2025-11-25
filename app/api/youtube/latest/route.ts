@@ -10,7 +10,8 @@ import {
 
 const CACHE_TTL_MS = CACHE_TTL_SECONDS * 1000;
 
-export const revalidate = CACHE_TTL_SECONDS;
+// Next.js 16 requires literal values for route segment config
+export const revalidate = 300;
 
 type YoutubeLatestResponse = {
   items: YoutubeVideo[];
