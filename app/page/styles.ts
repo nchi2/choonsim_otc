@@ -63,6 +63,7 @@ export const PriceCard = styled.div`
   border-radius: 0.5rem;
   text-align: center;
   transition: all 0.2s;
+  box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
 
   &:hover {
     border-color: #3b82f6;
@@ -390,5 +391,138 @@ export const ActionButton = styled.button`
   @media (min-width: 768px) {
     font-size: 1rem;
     padding: 1rem 2rem;
+  }
+`;
+
+export const OTCHeroSection = styled.section`
+  width: 100%;
+  min-height: 500px;
+  background: linear-gradient(90deg, #e8e2f4 0%, #434392 100%);
+  padding: 6rem 1rem 3rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  @media (max-width: 768px) {
+    padding: 5rem 1rem 2.5rem;
+    background: linear-gradient(90deg, #c3bede 0%, #6261a5 100%);
+  }
+`;
+
+export const OTCHeroContent = styled.div`
+  width: 100%;
+  max-width: 800px;
+  color: #fff;
+  text-align: left;
+`;
+
+export const OTCHeroTitle = styled.h2`
+  font-size: 2.75rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+`;
+
+export const OTCHeroDescription = styled.p`
+  font-size: 1rem;
+  margin-bottom: 32px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+
+  @media (max-width: 768px) {
+    font-size: 0.95rem;
+  }
+`;
+
+export const OTCHeroPriceGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 32px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const OTCHeroPriceCard = styled.div<{ $highlight?: boolean }>`
+  background: #ffffff;
+  border: ${({ $highlight }) =>
+    $highlight
+      ? "1px solid rgba(67, 67, 146, 0.4)"
+      : "1px solid rgba(231, 231, 231, 0.6)"};
+  border-radius: 16px;
+  padding: 12px;
+  backdrop-filter: blur(6px);
+  text-align: left;
+  transition: transform 0.2s ease;
+  box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &:hover {
+    transform: translateY(-4px);
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+`;
+
+export const OTCHeroPriceLabel = styled.div`
+  font-size: 1rem; /* 16px */
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+  }
+`;
+
+export const OTCHeroPriceValue = styled.div`
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700;
+  color: #434392;
+  white-space: nowrap;
+
+  @media (max-width: 768px) {
+    font-size: 1.375rem;
+  }
+`;
+
+export const OTCHeroSubLabel = styled.span`
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-left: 0.25rem;
+`;
+
+export const OTCHeroButton = styled(Link)`
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #434392;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
   }
 `;

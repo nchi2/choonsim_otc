@@ -4,14 +4,19 @@ import styled from "styled-components";
 import Link from "next/link";
 
 const HeaderContainer = styled.header`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  background-color: #ffffff;
-  border-bottom: 2px solid #e5e7eb;
-  padding: 0.75rem 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1rem 1.5rem;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  z-index: 10;
 
   @media (min-width: 768px) {
-    padding: 1rem 2rem;
+    padding: 1.25rem 2.5rem;
   }
 `;
 
@@ -21,13 +26,17 @@ const HeaderContent = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #ffffff;
+  background-color: transparent;
+`;
+
+const LogoLink = styled(Link)`
+  text-decoration: none; /* 밑줄 제거 */
 `;
 
 const Logo = styled.div`
   font-size: 1.25rem;
   font-weight: bold;
-  color: #111827;
+  color: #ffffff; /* white로 변경 */
   cursor: pointer;
 
   @media (min-width: 768px) {
@@ -46,13 +55,15 @@ const Nav = styled.nav`
 `;
 
 const NavLink = styled(Link)`
-  color: #374151;
+  color: #ffffff; /* white로 변경 */
   text-decoration: none;
   font-size: 0.875rem;
+  font-weight: bold; /* bold 추가 */
   transition: color 0.2s;
 
   &:hover {
-    color: #111827;
+    color: #ffffff; /* hover 시에도 white 유지 */
+    opacity: 0.8; /* hover 효과를 위해 opacity 사용 */
   }
 
   @media (min-width: 768px) {
@@ -64,9 +75,9 @@ export default function Header() {
   return (
     <HeaderContainer>
       <HeaderContent>
-        <Link href="/">
+        <LogoLink href="/">
           <Logo>Choonsim</Logo>
-        </Link>
+        </LogoLink>
         <Nav>
           <NavLink href="/">메인</NavLink>
           <NavLink href="/otc">OTC</NavLink>

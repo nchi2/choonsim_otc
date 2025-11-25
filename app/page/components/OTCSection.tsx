@@ -49,50 +49,46 @@ export default function OTCSection() {
   }, []);
 
   return (
-    <S.OTCSection>
-      <S.OTCTitle>모빅 거래 정보</S.OTCTitle>
+    <S.OTCHeroSection>
+      <S.OTCHeroContent>
+        <S.OTCHeroTitle>춘심 오프라인 OTC – 안전한 BMB 거래</S.OTCHeroTitle>
+        <S.OTCHeroDescription>
+          회관을 통한 오프라인 OTC 서비스를 통해 안전하고 쉽게 비트모빅 거래를
+          경험하세요.
+        </S.OTCHeroDescription>
 
-      {isLoading && <S.LoadingText>가격 정보를 불러오는 중...</S.LoadingText>}
+        <S.OTCHeroPriceGrid>
+          <S.OTCHeroPriceCard>
+            <S.OTCHeroPriceLabel>BMB/USDT</S.OTCHeroPriceLabel>
+            <S.OTCHeroPriceValue>
+              {priceData.bmbUsdtPrice ? priceData.bmbUsdtPrice.toFixed(3) : "—"}
+              <S.OTCHeroSubLabel>USDT</S.OTCHeroSubLabel>
+            </S.OTCHeroPriceValue>
+          </S.OTCHeroPriceCard>
 
-      {error && <S.ErrorText>{error}</S.ErrorText>}
+          <S.OTCHeroPriceCard>
+            <S.OTCHeroPriceLabel>USDT/KRW</S.OTCHeroPriceLabel>
+            <S.OTCHeroPriceValue>
+              {priceData.usdtKrwPrice
+                ? priceData.usdtKrwPrice.toLocaleString()
+                : "—"}
+              <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
+            </S.OTCHeroPriceValue>
+          </S.OTCHeroPriceCard>
 
-      {!isLoading && !error && priceData.lbankKrwPrice !== null && (
-        <>
-          <S.PriceInfoContainer>
-            <S.PriceCard>
-              <S.PriceLabel>USDT/KRW</S.PriceLabel>
-              <S.PriceValue>
-                {priceData.usdtKrwPrice
-                  ? priceData.usdtKrwPrice.toLocaleString()
-                  : "N/A"}
-              </S.PriceValue>
-              <S.PriceSubValue>원</S.PriceSubValue>
-            </S.PriceCard>
+          <S.OTCHeroPriceCard $highlight>
+            <S.OTCHeroPriceLabel>BMB/KRW (LBANK)</S.OTCHeroPriceLabel>
+            <S.OTCHeroPriceValue>
+              {priceData.lbankKrwPrice
+                ? Math.round(priceData.lbankKrwPrice).toLocaleString()
+                : "—"}
+              <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
+            </S.OTCHeroPriceValue>
+          </S.OTCHeroPriceCard>
+        </S.OTCHeroPriceGrid>
 
-            <S.PriceCard>
-              <S.PriceLabel>BMB/USDT</S.PriceLabel>
-              <S.PriceValue>
-                {priceData.bmbUsdtPrice
-                  ? priceData.bmbUsdtPrice.toFixed(1)
-                  : "N/A"}
-              </S.PriceValue>
-              <S.PriceSubValue>USDT</S.PriceSubValue>
-            </S.PriceCard>
-
-            <S.PriceCard>
-              <S.PriceLabel>BMB/KRW (LBANK)</S.PriceLabel>
-              <S.PriceValue>
-                {priceData.lbankKrwPrice
-                  ? Math.round(priceData.lbankKrwPrice).toLocaleString()
-                  : "N/A"}
-              </S.PriceValue>
-              <S.PriceSubValue>원</S.PriceSubValue>
-            </S.PriceCard>
-          </S.PriceInfoContainer>
-
-          <S.OTCButton href="/otc">OTC 거래하기</S.OTCButton>
-        </>
-      )}
-    </S.OTCSection>
+        <S.OTCHeroButton href="/otc">OTC 거래 페이지로 이동</S.OTCHeroButton>
+      </S.OTCHeroContent>
+    </S.OTCHeroSection>
   );
 }

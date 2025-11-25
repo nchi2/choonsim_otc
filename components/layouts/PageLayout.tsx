@@ -17,15 +17,11 @@ const MainContent = styled.main`
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 2rem 1rem;
-  background-color: #ffffff;
-  margin: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  padding: 0;
 
   @media (min-width: 768px) {
-    margin: 2rem;
-    padding: 4rem 2rem;
+    padding: 0;
   }
 `;
 
