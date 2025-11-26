@@ -36,9 +36,11 @@ const PageContainer = styled.div`
   min-height: 100vh;
   background-color: ${COLORS.lightPurple};
   padding: 1rem;
+  margin-top: 60px;
 
   @media (min-width: 768px) {
     padding: 2rem;
+    margin-top: 60px;
   }
 `;
 
@@ -1174,7 +1176,9 @@ function SellApplyContent() {
                   >
                     <option value="">회관을 선택하세요</option>
                     {BRANCH_NAMES.map((branchName) => {
-                      const isAvailable = branchName === "서초 모빅회관" || branchName === "수원 모빅회관";
+                      const isAvailable =
+                        branchName === "서초 모빅회관" ||
+                        branchName === "수원 모빅회관";
                       return (
                         <option
                           key={branchName}
