@@ -66,12 +66,12 @@ const Tab = styled.button<{ $active: boolean }>`
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  background-color: ${(props) => (props.$active ? "#3b82f6" : "#f3f4f6")};
+  background-color: ${(props) => (props.$active ? "#6570C5" : "#f3f4f6")};
   color: ${(props) => (props.$active ? "white" : "#6b7280")};
   transition: all 0.2s;
 
   &:hover {
-    background-color: ${(props) => (props.$active ? "#2563eb" : "#e5e7eb")};
+    background-color: ${(props) => (props.$active ? "#6570C5" : "#e5e7eb")};
   }
 
   @media (min-width: 768px) {
@@ -181,7 +181,7 @@ const WalletType = styled.h3`
 
 const WalletPrice = styled.p`
   font-size: 1.1rem;
-  color: #3b82f6;
+  color: #6570c5;
   font-weight: 600;
   margin: 0;
 
@@ -196,7 +196,7 @@ const Button = styled.a`
   font-size: 0.875rem;
   font-weight: 600;
   color: #ffffff;
-  background-color: #3b82f6;
+  background-color: #6570c5;
   border: none;
   border-radius: 0.375rem;
   text-align: center;
@@ -225,7 +225,7 @@ const InfoBox = styled.div`
   border-radius: 0.5rem;
   padding: 1.5rem;
   margin: 1.5rem 0;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #6570c5;
 
   @media (max-width: 768px) {
     padding: 1rem;
@@ -236,7 +236,7 @@ const InfoBox = styled.div`
 const InfoBoxTitle = styled.h3`
   font-size: 1.125rem;
   font-weight: 600;
-  color: #3b82f6;
+  color: #6570c5;
   margin-bottom: 0.75rem;
 
   @media (max-width: 768px) {
@@ -274,7 +274,7 @@ const InfoListItem = styled.li`
     content: "•";
     position: absolute;
     left: 0;
-    color: #3b82f6;
+    color: #6570c5;
     font-weight: bold;
   }
 
@@ -306,14 +306,14 @@ const InquiryTitle = styled.h3`
 `;
 
 const InquiryLink = styled.a`
-  color: #3b82f6;
+  color: #6570c5;
   font-size: 1rem;
   font-weight: 600;
   text-decoration: underline;
   transition: all 0.2s;
 
   &:hover {
-    color: #2563eb;
+    color: #6570c5;
   }
 
   @media (max-width: 768px) {
@@ -741,7 +741,7 @@ export default function HighValuePage() {
                   </WalletCard>
                 ))}
               </WalletGrid>
-              <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <Button
                   href="https://forms.gle/6UcxKVfc2SkdKpzr6"
                   target="_blank"
@@ -779,6 +779,9 @@ export default function HighValuePage() {
                   <br />
                   <br />* 본 신청은 시장가보다 높은 가격에 판매되므로 신중히
                   고민 후 선택하시길 바랍니다.
+                  <span style={{ color: "#ef4444", fontWeight: 600 }}>
+                    (수령 이후 반환 불가)
+                  </span>
                   <br />* 고액권 판매 수익금은 SBMB 생태계 DEX 유동성 풀을
                   제공하는데에 사용될 예정입니다.
                   <br />* 자세한 내용은 신청서의 안내를 참고해주세요.

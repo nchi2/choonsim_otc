@@ -6,196 +6,300 @@ import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
 import { getBranchInfo, getBranchAddressText } from "@/lib/branch-info";
 
-const Container = styled.div`
+// 컬러 팔레트
+const COLORS = {
+  successGreen: "#10b981",
+  primaryBlue: "#6570c5",
+  warningYellow: "#fbbf24",
+  warningBg: "#fef3c7",
+  background: "#f4f1fa",
+  textPrimary: "#111827",
+  textSecondary: "#6b7280",
+  warningText: "#92400e",
+  white: "#ffffff",
+  gray300: "#d1d5db",
+  gray400: "#9ca3af",
+  gray600: "#6b7280",
+};
+
+// 메인 컨테이너
+const PageContainer = styled.div`
+  min-height: 100vh;
+  background-color: ${COLORS.background};
+  padding: 16px;
+  margin-top: 60px;
+
+  @media (min-width: 768px) {
+    padding: 40px;
+    margin-top: 60px;
+  }
+`;
+
+const MainContent = styled.main`
+  max-width: 343px;
+  margin: 0 auto;
   width: 100%;
-  max-width: 800px;
+
+  @media (min-width: 768px) {
+    max-width: 800px;
+  }
+`;
+
+// 성공 헤더
+const SuccessHeaderCard = styled.div`
+  background-color: ${COLORS.white};
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 24px;
+
+  @media (min-width: 768px) {
+    padding: 48px;
+    margin-bottom: 32px;
+  }
+`;
+
+const SuccessIconWrapper = styled.div`
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  background-color: ${COLORS.successGreen};
+  border-radius: 50%;
+
+  @media (min-width: 768px) {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 24px;
+  }
+
+  svg {
+    width: 28px;
+    height: 28px;
+    color: white;
+
+    @media (min-width: 768px) {
+      width: 36px;
+      height: 36px;
+    }
+  }
 `;
 
 const SuccessTitle = styled.h1`
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #10b981;
-  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: ${COLORS.textPrimary};
+  margin-bottom: 8px;
 
   @media (min-width: 768px) {
-    font-size: 2.5rem;
+    font-size: 28px;
+    margin-bottom: 12px;
   }
 `;
 
 const SuccessMessage = styled.p`
-  font-size: 1rem;
-  text-align: center;
-  color: #6b7280;
-`;
-
-const Section = styled.div`
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e5e7eb;
-`;
-
-const InfoRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const InfoLabel = styled.span`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280;
-`;
-
-const InfoValue = styled.span`
-  font-size: 1rem;
-  color: #111827;
-`;
-
-const BranchSection = styled(Section)`
-  background-color: #eff6ff;
-  border-color: #3b82f6;
-`;
-
-const AddressText = styled.p`
-  font-size: 1rem;
-  color: #1e40af;
-  margin-bottom: 1rem;
+  font-size: 14px;
+  color: ${COLORS.textSecondary};
+  margin-bottom: 16px;
   line-height: 1.6;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  flex-direction: column;
 
   @media (min-width: 768px) {
-    flex-direction: row;
+    font-size: 18px;
+    margin-bottom: 24px;
   }
 `;
 
-const Button = styled.button`
-  flex: 1;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
+const BranchInfoButton = styled.button`
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
   font-weight: 600;
-  border-radius: 0.375rem;
-  border: none;
+  color: ${COLORS.primaryBlue};
+  background-color: ${COLORS.white};
+  border: 2px solid ${COLORS.primaryBlue};
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
+    background-color: ${COLORS.primaryBlue};
+    color: ${COLORS.white};
+  }
+
+  @media (min-width: 768px) {
+    padding: 14px 20px;
+    font-size: 16px;
+    border-radius: 12px;
   }
 `;
 
-const PrimaryButton = styled(Button)`
-  background-color: #3b82f6;
-  color: white;
+// 신청 정보 요약 카드
+const SummaryCard = styled.div`
+  background-color: ${COLORS.white};
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+  padding: 24px;
+  margin-bottom: 24px;
 
-  &:hover {
-    background-color: #2563eb;
+  @media (min-width: 768px) {
+    padding: 48px;
+    margin-bottom: 32px;
   }
 `;
 
-const SecondaryButton = styled(Button)`
-  background-color: #6b7280;
-  color: white;
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 700;
+  color: ${COLORS.textPrimary};
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid ${COLORS.gray300};
+
+  @media (min-width: 768px) {
+    font-size: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+`;
+
+const InfoField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (min-width: 768px) {
+    margin-bottom: 24px;
+  }
+`;
+
+const InfoLabel = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${COLORS.textSecondary};
+  line-height: 1.4;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+  }
+`;
+
+const InfoValue = styled.span<{ $isTotal?: boolean }>`
+  font-size: ${(props) => (props.$isTotal ? "20px" : "16px")};
+  font-weight: ${(props) => (props.$isTotal ? "700" : "500")};
+  color: ${COLORS.textPrimary};
+  line-height: 1.4;
+
+  @media (min-width: 768px) {
+    font-size: ${(props) => (props.$isTotal ? "28px" : "18px")};
+  }
+`;
+
+// 중요 안내사항 박스
+const ImportantNoticeCard = styled.div`
+  background-color: ${COLORS.warningBg};
+  border: 1px solid ${COLORS.warningYellow};
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+
+  @media (min-width: 768px) {
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+`;
+
+const NoticeTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${COLORS.warningText};
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  @media (min-width: 768px) {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+`;
+
+const NoticeList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const NoticeItem = styled.li`
+  font-size: 14px;
+  color: ${COLORS.textSecondary};
+  line-height: 1.6;
+  padding-left: 20px;
+  position: relative;
+
+  &::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: ${COLORS.warningText};
+    font-weight: bold;
+    font-size: 18px;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+  }
+`;
+
+// 액션 버튼
+const ActionButtonsCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const BackButton = styled.button`
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: ${COLORS.white};
+  background-color: ${COLORS.gray600};
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
 
   &:hover {
     background-color: #4b5563;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
   }
-`;
 
-const CopyButton = styled(Button)`
-  background-color: #10b981;
-  color: white;
-  flex: none;
-  width: 100%;
+  &:active {
+    transform: translateY(0);
+  }
 
   @media (min-width: 768px) {
-    width: auto;
-  }
-
-  &:hover {
-    background-color: #059669;
-  }
-`;
-
-const MapButton = styled(Button)`
-  background-color: #f59e0b;
-  color: white;
-  flex: none;
-  width: 100%;
-
-  @media (min-width: 768px) {
-    width: auto;
-  }
-
-  &:hover {
-    background-color: #d97706;
+    padding: 14px 20px;
+    font-size: 18px;
+    min-height: 48px;
+    border-radius: 12px;
   }
 `;
 
-const ProcessList = styled.ol`
-  list-style: decimal;
-  padding-left: 1.5rem;
-  margin: 1rem 0;
-  color: #374151;
-  line-height: 1.8;
-`;
-
-const ProcessItem = styled.li`
-  margin-bottom: 0.75rem;
-`;
-
-const WarningBox = styled.div`
-  background-color: #fef3c7;
-  border: 1px solid #fbbf24;
-  border-radius: 0.375rem;
-  padding: 1rem;
-  margin-top: 1rem;
-  color: #92400e;
-`;
-
-const WarningTitle = styled.div`
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-`;
-
-const DetailButton = styled(Button)`
-  background-color: #8b5cf6;
-  color: white;
-  width: 100%;
-
-  &:hover {
-    background-color: #7c3aed;
-  }
-`;
-
-// 모달 관련 스타일 추가
+// 모달 관련 스타일
 const ModalOverlay = styled.div<{ $isOpen: boolean }>`
   display: ${(props) => (props.$isOpen ? "flex" : "none")};
   position: fixed;
@@ -207,13 +311,17 @@ const ModalOverlay = styled.div<{ $isOpen: boolean }>`
   z-index: 1000;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 16px;
+
+  @media (min-width: 768px) {
+    padding: 40px;
+  }
 `;
 
 const ModalContent = styled.div`
-  background-color: white;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
+  background-color: ${COLORS.white};
+  border-radius: 12px;
+  padding: 24px;
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
@@ -221,31 +329,149 @@ const ModalContent = styled.div`
   position: relative;
 
   @media (min-width: 768px) {
-    padding: 2rem;
+    padding: 32px;
   }
 `;
 
 const ModalCloseButton = styled.button`
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 16px;
+  right: 16px;
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 24px;
   cursor: pointer;
-  color: #6b7280;
-  width: 2rem;
-  height: 2rem;
+  color: ${COLORS.gray600};
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.25rem;
+  border-radius: 8px;
+  transition: all 0.2s;
 
   &:hover {
-    background-color: #f3f4f6;
-    color: #111827;
+    background-color: ${COLORS.gray300};
+    color: ${COLORS.textPrimary};
   }
 `;
+
+const BranchSection = styled.div`
+  background-color: #eff6ff;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+
+  @media (min-width: 768px) {
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+`;
+
+const AddressText = styled.p`
+  font-size: 14px;
+  color: #1e40af;
+  margin-bottom: 16px;
+  line-height: 1.6;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
+`;
+
+const CopyButton = styled.button`
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${COLORS.white};
+  background-color: ${COLORS.successGreen};
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+
+  &:hover {
+    background-color: #059669;
+  }
+
+  @media (min-width: 768px) {
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+`;
+
+const MapButton = styled.button`
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${COLORS.white};
+  background-color: #f59e0b;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+
+  &:hover {
+    background-color: #d97706;
+  }
+
+  @media (min-width: 768px) {
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+`;
+
+const ProcessList = styled.ol`
+  list-style: decimal;
+  padding-left: 24px;
+  margin: 16px 0;
+  color: ${COLORS.textPrimary};
+  line-height: 1.8;
+`;
+
+const ProcessItem = styled.li`
+  margin-bottom: 16px;
+  font-size: 14px;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+
+  strong {
+    font-weight: 600;
+    color: ${COLORS.textPrimary};
+  }
+`;
+
+// Check 아이콘 SVG 컴포넌트
+const CheckIconSVG = () => (
+  <svg viewBox="0 0 20 20" fill="currentColor">
+    <path
+      fillRule="evenodd"
+      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
 
 function SellApplySuccessContent() {
   const searchParams = useSearchParams();
@@ -254,7 +480,6 @@ function SellApplySuccessContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    // 쿼리 파라미터에서 신청 정보 가져오기
     const id = searchParams.get("id");
     const name = searchParams.get("name");
     const phone = searchParams.get("phone");
@@ -262,6 +487,7 @@ function SellApplySuccessContent() {
     const price = searchParams.get("price");
     const branch = searchParams.get("branch");
     const assetType = searchParams.get("assetType");
+    const allowPartial = searchParams.get("allowPartial");
 
     if (id && name && phone && amount && price && branch) {
       setRequestData({
@@ -272,9 +498,9 @@ function SellApplySuccessContent() {
         price: parseFloat(price),
         branch,
         assetType: assetType || "BMB",
+        allowPartial: allowPartial === "true",
       });
     } else {
-      // 정보가 없으면 판매 신청 페이지로 리다이렉트
       router.push("/otc/sell/apply");
     }
   }, [searchParams, router]);
@@ -307,9 +533,13 @@ function SellApplySuccessContent() {
   if (!requestData) {
     return (
       <PageLayout>
-        <Container>
-          <SuccessMessage>정보를 불러오는 중...</SuccessMessage>
-        </Container>
+        <PageContainer>
+          <MainContent>
+            <SuccessHeaderCard>
+              <SuccessMessage>정보를 불러오는 중...</SuccessMessage>
+            </SuccessHeaderCard>
+          </MainContent>
+        </PageContainer>
       </PageLayout>
     );
   }
@@ -319,75 +549,103 @@ function SellApplySuccessContent() {
 
   return (
     <PageLayout>
-      <Container>
-        <SuccessTitle>✅ 판매 신청이 완료되었습니다</SuccessTitle>
-        <SuccessMessage>관리자의 연락을 기다려주세요.</SuccessMessage>
-        <DetailButton onClick={() => setIsModalOpen(true)}>
-          📍 회관 정보 및 절차 안내 보기
-        </DetailButton>
+      <PageContainer>
+        <MainContent>
+          {/* 성공 헤더 */}
+          <SuccessHeaderCard>
+            <SuccessIconWrapper>
+              <CheckIconSVG />
+            </SuccessIconWrapper>
+            <SuccessTitle>판매 신청이 완료되었습니다</SuccessTitle>
+            <SuccessMessage>
+              신청이 정상적으로 접수되었습니다.
+              <br />
+              관리자의 연락을 기다려주세요.
+            </SuccessMessage>
+            <BranchInfoButton onClick={() => setIsModalOpen(true)}>
+              📍 회관 정보 및 절차 안내 보기
+            </BranchInfoButton>
+          </SuccessHeaderCard>
 
-        <Section>
-          <InfoRow>
-            <InfoLabel>신청 번호</InfoLabel>
-            <InfoValue>#{requestData?.id}</InfoValue>
-          </InfoRow>
-          <InfoRow>
-            <InfoLabel>성함</InfoLabel>
-            <InfoValue>{requestData?.name}</InfoValue>
-          </InfoRow>
-          <InfoRow>
-            <InfoLabel>연락처</InfoLabel>
-            <InfoValue>{requestData?.phone}</InfoValue>
-          </InfoRow>
-        </Section>
+          {/* 신청 정보 요약 */}
+          <SummaryCard>
+            <SectionTitle>신청자 정보</SectionTitle>
+            <InfoField>
+              <InfoLabel>신청 번호</InfoLabel>
+              <InfoValue>#{requestData?.id}</InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>성함</InfoLabel>
+              <InfoValue>{requestData?.name}</InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>연락처</InfoLabel>
+              <InfoValue>{requestData?.phone}</InfoValue>
+            </InfoField>
+          </SummaryCard>
 
-        <Section>
-          <SectionTitle>신청 내용</SectionTitle>
-          <InfoRow>
-            <InfoLabel>수량</InfoLabel>
-            <InfoValue>{requestData?.amount.toLocaleString()} BMB</InfoValue>
-          </InfoRow>
-          <InfoRow>
-            <InfoLabel>단가</InfoLabel>
-            <InfoValue>
-              {Math.floor(requestData?.price || 0).toLocaleString()}원
-            </InfoValue>
-          </InfoRow>
-          <InfoRow>
-            <InfoLabel>총 금액</InfoLabel>
-            <InfoValue style={{ fontSize: "1.25rem", fontWeight: "bold" }}>
-              {Math.floor(totalAmount).toLocaleString()}원
-            </InfoValue>
-          </InfoRow>
-          <InfoRow>
-            <InfoLabel>회관</InfoLabel>
-            <InfoValue>{requestData?.branch}</InfoValue>
-          </InfoRow>
-          <InfoRow>
-            <InfoLabel>소량 판매</InfoLabel>
-            <InfoValue>
-              {requestData?.allowPartial ? "허용" : "비허용"}
-            </InfoValue>
-          </InfoRow>
-        </Section>
-        <WarningBox>
-          <WarningTitle>⚠️ 주의사항</WarningTitle>
-          <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
-            <li>
-              매주 일요일 오전 9시에 매칭이 중지되고 판매의사를 다시 확인합니다.
-            </li>
-            <li>관리자의 연락을 받지 않으면 호가에 반영되지 않습니다.</li>
-            <li>관리자 미팅 시 위 내용을 입증해야 합니다.</li>
-          </ul>
-        </WarningBox>
-        <ButtonGroup>
-          <SecondaryButton onClick={() => router.push("/otc")}>
-            돌아가기
-          </SecondaryButton>
-        </ButtonGroup>
-      </Container>
+          <SummaryCard>
+            <SectionTitle>신청 내용</SectionTitle>
+            <InfoField>
+              <InfoLabel>자산 종류</InfoLabel>
+              <InfoValue>{requestData?.assetType || "BMB"}</InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>판매 수량</InfoLabel>
+              <InfoValue>
+                {requestData?.amount.toLocaleString()}{" "}
+                {requestData?.assetType || "BMB"}
+              </InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>단가</InfoLabel>
+              <InfoValue>
+                {Math.floor(requestData?.price || 0).toLocaleString()}원
+              </InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>총 금액</InfoLabel>
+              <InfoValue $isTotal>
+                {Math.floor(totalAmount).toLocaleString()}원
+              </InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>방문 회관</InfoLabel>
+              <InfoValue>{requestData?.branch}</InfoValue>
+            </InfoField>
+            <InfoField>
+              <InfoLabel>소량 판매 허용</InfoLabel>
+              <InfoValue>
+                {requestData?.allowPartial ? "허용" : "비허용"}
+              </InfoValue>
+            </InfoField>
+          </SummaryCard>
 
-      {/* 모달 */}
+          {/* 중요 안내사항 */}
+          <ImportantNoticeCard>
+            <NoticeTitle>⚠️ 중요 안내사항</NoticeTitle>
+            <NoticeList>
+              <NoticeItem>매주 일요일 오전 9시에 매칭이 중지됩니다.</NoticeItem>
+              <NoticeItem>운영자가 판매 의사를 재확인합니다.</NoticeItem>
+              <NoticeItem>
+                연락이 닿지 않으면 호가 반영이 지연되거나 제외될 수 있습니다.
+              </NoticeItem>
+              <NoticeItem>
+                회관 방문 시 신청 정보를 입증할 수 있어야 합니다.
+              </NoticeItem>
+            </NoticeList>
+          </ImportantNoticeCard>
+
+          {/* 액션 버튼 */}
+          <ActionButtonsCard>
+            <BackButton onClick={() => router.push("/otc")}>
+              돌아가기
+            </BackButton>
+          </ActionButtonsCard>
+        </MainContent>
+      </PageContainer>
+
+      {/* 회관 정보 모달 */}
       <ModalOverlay $isOpen={isModalOpen} onClick={() => setIsModalOpen(false)}>
         <ModalContent onClick={(e) => e.stopPropagation()}>
           <ModalCloseButton onClick={() => setIsModalOpen(false)}>
@@ -395,7 +653,7 @@ function SellApplySuccessContent() {
           </ModalCloseButton>
 
           {branchInfo && (
-            <BranchSection style={{ marginBottom: "2rem" }}>
+            <BranchSection>
               <SectionTitle>📍 방문 회관 정보</SectionTitle>
               <AddressText>
                 <strong>{branchInfo.name}</strong>
@@ -409,7 +667,7 @@ function SellApplySuccessContent() {
             </BranchSection>
           )}
 
-          <Section>
+          <SummaryCard style={{ marginBottom: 0 }}>
             <SectionTitle>이후 절차</SectionTitle>
             <ProcessList>
               <ProcessItem>
@@ -440,7 +698,7 @@ function SellApplySuccessContent() {
                 상태: PENDING → LISTED
               </ProcessItem>
             </ProcessList>
-          </Section>
+          </SummaryCard>
         </ModalContent>
       </ModalOverlay>
     </PageLayout>
@@ -452,9 +710,13 @@ export default function SellApplySuccessPage() {
     <Suspense
       fallback={
         <PageLayout>
-          <Container>
-            <SuccessMessage>로딩 중...</SuccessMessage>
-          </Container>
+          <PageContainer>
+            <MainContent>
+              <SuccessHeaderCard>
+                <SuccessMessage>로딩 중...</SuccessMessage>
+              </SuccessHeaderCard>
+            </MainContent>
+          </PageContainer>
         </PageLayout>
       }
     >
