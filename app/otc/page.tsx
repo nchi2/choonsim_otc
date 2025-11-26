@@ -905,6 +905,33 @@ const EmptyState = styled.div`
   }
 `;
 
+// 안내 박스 스타일 추가 (OrderBookPlaceholder 아래에 추가)
+const NoticeBox = styled.div`
+  background-color: #fef3c7;
+  border: 2px solid #fbbf24;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+
+  @media (min-width: 768px) {
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+`;
+
+const NoticeText = styled.p`
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  margin: 0;
+  line-height: 1.6;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+  }
+`;
+
 // 인터페이스
 interface OrderBookLevel {
   id: number;
@@ -1124,6 +1151,16 @@ function OTCContent() {
                     </OrderBookDescription>
                   </OrderBookHeader>
 
+                  {/* 안내 박스 추가 */}
+                  <NoticeBox>
+                    <NoticeText>
+                      ⚠️ 현재 데이터는 예시입니다.
+                      <br />
+                      아직 공식 오픈하지 않은 상태이므로 신청하셔도 반영되지
+                      않습니다.
+                    </NoticeText>
+                  </NoticeBox>
+
                   {listedLoading && (
                     <OrderBookPlaceholder>
                       호가 정보를 불러오는 중...
@@ -1279,6 +1316,17 @@ function OTCContent() {
                     있습니다.
                   </CardTypeDescription>
                 </CardTypeHeader>
+
+                {/* 안내 박스 추가 */}
+                <NoticeBox>
+                  <NoticeText>
+                    ⚠️ 현재 데이터는 예시입니다.
+                    <br />
+                    아직 공식 오픈하지 않은 상태이므로 신청하셔도 반영되지
+                    않습니다.
+                  </NoticeText>
+                </NoticeBox>
+
                 <CardCTAButtonContainer>
                   <CTASellButton
                     href={`/otc/sell/apply?assetType=${assetType}`}

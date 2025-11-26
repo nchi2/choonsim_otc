@@ -636,7 +636,8 @@ function BuyApplySuccessContent() {
                 직접 방문이 어려울 경우 먼저 입금한 구매자에게 우선 매칭됩니다.
               </NoticeItem>
               <NoticeItem>
-                기존 P2P 판매 이력이 있는 경우 관리자 검증 후 일정 기간 이용 제한이 있을 수 있습니다.
+                기존 P2P 판매 이력이 있는 경우 관리자 검증 후 일정 기간 이용
+                제한이 있을 수 있습니다.
               </NoticeItem>
               <NoticeItem>
                 회관 방문 시 위 내용을 입증할 수 있어야 합니다.
