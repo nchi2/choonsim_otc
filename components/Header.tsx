@@ -2,17 +2,20 @@
 
 import styled from "styled-components";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-const HeaderContainer = styled.header`
+const HeaderContainer = styled.header<{ $hasBackground: boolean }>`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   width: 100%;
   padding: 1rem 1.5rem;
-  background-color: transparent;
+  background-color: ${(props) =>
+    props.$hasBackground ? "transparent" : "#ffffff"};
   border: none;
-  box-shadow: none;
+  box-shadow: ${(props) =>
+    props.$hasBackground ? "none" : "0 1px 3px rgba(0, 0, 0, 0.1)"};
   z-index: 10;
 
   @media (min-width: 768px) {
@@ -30,13 +33,13 @@ const HeaderContent = styled.div`
 `;
 
 const LogoLink = styled(Link)`
-  text-decoration: none; /* 밑줄 제거 */
+  text-decoration: none;
 `;
 
-const Logo = styled.div`
+const Logo = styled.div<{ $isWhite: boolean }>`
   font-size: 1.25rem;
   font-weight: bold;
-  color: #ffffff; /* white로 변경 */
+  color: ${(props) => (props.$isWhite ? "#ffffff" : "#111827")};
   cursor: pointer;
 
   @media (min-width: 768px) {
@@ -54,16 +57,16 @@ const Nav = styled.nav`
   }
 `;
 
-const NavLink = styled(Link)`
-  color: #ffffff; /* white로 변경 */
+const NavLink = styled(Link)<{ $isWhite: boolean }>`
+  color: ${(props) => (props.$isWhite ? "#ffffff" : "#111827")};
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: bold; /* bold 추가 */
+  font-weight: bold;
   transition: color 0.2s;
 
   &:hover {
-    color: #ffffff; /* hover 시에도 white 유지 */
-    opacity: 0.8; /* hover 효과를 위해 opacity 사용 */
+    color: ${(props) => (props.$isWhite ? "#ffffff" : "#111827")};
+    opacity: ${(props) => (props.$isWhite ? 0.8 : 0.6)};
   }
 
   @media (min-width: 768px) {
@@ -72,15 +75,27 @@ const NavLink = styled(Link)`
 `;
 
 export default function Header() {
+  const pathname = usePathname();
+  // 메인 페이지와 /otc 페이지는 투명 배경 + 흰색 폰트
+  const isTransparentHeader = pathname === "/" || pathname === "/otc";
+  const isWhiteText = isTransparentHeader;
+
   return (
-    <HeaderContainer>
+    <HeaderContainer $hasBackground={isTransparentHeader}>
       <HeaderContent>
         <LogoLink href="/">
-          <Logo>Choonsim</Logo>
+          <Logo $isWhite={isWhiteText}>Choonsim</Logo>
         </LogoLink>
         <Nav>
-          <NavLink href="/">메인</NavLink>
-          <NavLink href="/otc">OTC</NavLink>
+          <NavLink href="/" $isWhite={isWhiteText}>
+            메인
+          </NavLink>
+          <NavLink href="/otc" $isWhite={isWhiteText}>
+            OTC
+          </NavLink>
+          <NavLink href="/hwallets" $isWhite={isWhiteText}>
+            고액권|SBMB
+          </NavLink>
         </Nav>
       </HeaderContent>
     </HeaderContainer>

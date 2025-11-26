@@ -1,30 +1,115 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import PageLayout from "@/components/layouts/PageLayout";
-import * as FormStyles from "@/components/forms/styles";
 import { BRANCH_NAMES } from "@/lib/branch-info";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-const Title = styled.h1`
-  font-size: 1.875rem;
-  font-weight: bold;
-  color: #111827;
-  text-align: center;
-  margin-bottom: 2rem;
+// 컬러 팔레트 (구매 신청서와 동일)
+const COLORS = {
+  primaryBlue: "#E0E7FF",
+  secondaryBlue: "#C7D2FE",
+  tertiaryBlue: "#A5B4FC",
+  quaternaryBlue: "#818CF8",
+  quinaryBlue: "#6366F1", // 메인 색상 (primaryPurple 대체)
+  senaryBlue: "#4F46E5",
+  septenaryBlue: "#4338CA", // 강조 색상 (accentPurple 대체)
+  octonaryBlue: "#3730A3",
+  nonaryBlue: "#312E81",
+  lightPurple: "#f3f1fa",
+  borderPurple: "#e8d5f0",
+  errorRed: "#ef4444",
+  successGreen: "#10b981",
+  gray50: "#f9fafb",
+  gray100: "#f3f4f6",
+  gray300: "#d1d5db",
+  gray400: "#9ca3af",
+  gray600: "#4b5563",
+  gray700: "#374151",
+  gray900: "#111827",
+};
+
+// 메인 컨테이너
+const PageContainer = styled.div`
+  min-height: 100vh;
+  background-color: ${COLORS.lightPurple};
+  padding: 1rem;
 
   @media (min-width: 768px) {
-    font-size: 2.5rem;
-    margin-bottom: 3rem;
+    padding: 2rem;
   }
 `;
 
+const MainContent = styled.main`
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+`;
+
+// 폼 카드
+const FormCard = styled.div`
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+
+  @media (min-width: 768px) {
+    padding: 2.5rem;
+    border-radius: 1.25rem;
+  }
+`;
+
+// 헤더 섹션
+const FormHeader = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const ModeBadge = styled.div`
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: ${COLORS.quinaryBlue};
+  color: white;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    padding: 0.625rem 1.25rem;
+  }
+`;
+
+const FormTitle = styled.h1`
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: ${COLORS.gray900};
+  margin-bottom: 0.75rem;
+
+  @media (min-width: 768px) {
+    font-size: 2.25rem;
+    margin-bottom: 1rem;
+  }
+`;
+
+const FormDescription = styled.p`
+  font-size: 0.875rem;
+  color: ${COLORS.gray600};
+  line-height: 1.6;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+// 가격 정보 박스
 const PriceInfo = styled.div`
   padding: 1rem;
   background-color: #eff6ff;
   border: 1px solid #3b82f6;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   color: #1e40af;
   font-size: 0.875rem;
   font-weight: 600;
@@ -34,98 +119,471 @@ const PriceInfo = styled.div`
   @media (min-width: 768px) {
     font-size: 1rem;
     padding: 1.25rem;
+    margin-bottom: 2rem;
   }
 `;
 
-// 공통 컴포넌트 사용
-const Form = FormStyles.Form;
-const FormGroup = FormStyles.FormGroup;
-const Label = FormStyles.Label;
-const Input = FormStyles.Input;
-const Select = FormStyles.Select;
-const RadioGroup = FormStyles.RadioGroup;
-const RadioLabel = FormStyles.RadioLabel;
-const RadioInput = FormStyles.RadioInput;
-const ErrorMessage = FormStyles.ErrorMessage;
-const SubmitButton = styled(FormStyles.PrimaryButton)``;
+// 입력 필드 섹션
+const FormFields = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+`;
 
-const FormContainer = styled.div`
-  width: 100%;
-  max-width: 600px;
+const FormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const FieldLabel = styled.label`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${COLORS.gray700};
 
   @media (min-width: 768px) {
-    max-width: 800px;
+    font-size: 1rem;
   }
 `;
 
-// 운영 정책 안내문 스타일 추가
+const FieldInput = styled.input<{ $hasError?: boolean }>`
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  border: 1.5px solid
+    ${(props) => (props.$hasError ? COLORS.errorRed : COLORS.gray300)};
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  transition: all 0.2s;
+  min-height: 48px;
+
+  &:focus {
+    outline: none;
+    border-color: ${(props) =>
+      props.$hasError ? COLORS.errorRed : COLORS.quinaryBlue};
+    box-shadow: 0 0 0 3px
+      ${(props) =>
+        props.$hasError ? "rgba(239, 68, 68, 0.1)" : "rgba(99, 102, 241, 0.1)"};
+  }
+
+  &:disabled {
+    background-color: ${COLORS.gray100};
+    cursor: not-allowed;
+    color: ${COLORS.gray600};
+  }
+
+  @media (min-width: 768px) {
+    padding: 1rem 1.25rem;
+    font-size: 1.125rem;
+  }
+`;
+
+const FieldSelect = styled.select<{ $hasError?: boolean }>`
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  border: 1.5px solid
+    ${(props) => (props.$hasError ? COLORS.errorRed : COLORS.gray300)};
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  transition: all 0.2s;
+  min-height: 48px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234b5563' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+
+  &:focus {
+    outline: none;
+    border-color: ${(props) =>
+      props.$hasError ? COLORS.errorRed : COLORS.quinaryBlue};
+    box-shadow: 0 0 0 3px
+      ${(props) =>
+        props.$hasError ? "rgba(239, 68, 68, 0.1)" : "rgba(99, 102, 241, 0.1)"};
+  }
+
+  @media (min-width: 768px) {
+    padding: 1rem 1.25rem;
+    padding-right: 2.5rem;
+    font-size: 1.125rem;
+  }
+`;
+
+const ErrorMessage = styled.div`
+  font-size: 0.875rem;
+  color: ${COLORS.errorRed};
+  margin-top: 0.25rem;
+`;
+
+const SuccessMessage = styled.div`
+  font-size: 0.875rem;
+  color: ${COLORS.successGreen};
+  margin-top: 0.25rem;
+`;
+
+// 라디오 버튼 그룹
+const RadioGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+`;
+
+const RadioLabel = styled.label<{ $selected?: boolean }>`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1.5px solid
+    ${(props) => (props.$selected ? COLORS.quinaryBlue : COLORS.gray300)};
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: ${COLORS.quinaryBlue};
+    background-color: ${(props) =>
+      props.$selected ? "#ffffff" : COLORS.lightPurple};
+  }
+`;
+
+const RadioInput = styled.input`
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  appearance: none;
+  border: 2px solid ${COLORS.gray300};
+  border-radius: 50%;
+  background-color: #ffffff;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s;
+
+  &:checked {
+    border-color: ${COLORS.quinaryBlue};
+    background-color: ${COLORS.quinaryBlue};
+  }
+
+  &:checked::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: white;
+  }
+
+  @media (min-width: 768px) {
+    width: 24px;
+    height: 24px;
+    margin-top: 0;
+
+    &:checked::after {
+      width: 10px;
+      height: 10px;
+    }
+  }
+`;
+
+const RadioContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+`;
+
+const RadioTitle = styled.div<{ $selected?: boolean }>`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${(props) => (props.$selected ? COLORS.quinaryBlue : COLORS.gray900)};
+  line-height: 1.4;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+const RadioDescription = styled.div`
+  font-size: 0.75rem;
+  color: ${COLORS.gray600};
+  line-height: 1.4;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+  }
+`;
+
+// 가격 직접 입력 래퍼
+const PriceInputWrapper = styled.div`
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const PriceInputLabel = styled.label`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${COLORS.gray600};
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+// 운영 정책 안내문
 const PolicyNotice = styled.div`
   background-color: #fef3c7;
-  border: 1px solid #fbbf24;
+  border-left: 4px solid #fbbf24;
   border-radius: 0.5rem;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
   font-size: 0.875rem;
   color: #92400e;
   line-height: 1.6;
 
   @media (min-width: 768px) {
-    padding: 1.25rem;
     font-size: 1rem;
   }
 `;
 
 const PolicyTitle = styled.h3`
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 700;
   margin-bottom: 0.75rem;
   color: #78350f;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
 
   @media (min-width: 768px) {
-    font-size: 1.125rem;
+    font-size: 1rem;
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
   }
 `;
 
 const PolicyList = styled.ul`
+  list-style: none;
+  padding: 0;
   margin: 0;
-  padding-left: 1.25rem;
-  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 `;
 
 const PolicyItem = styled.li`
-  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: #92400e;
+  line-height: 1.6;
+  padding-left: 1.25rem;
+  position: relative;
+
+  &::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #fbbf24;
+    font-weight: bold;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 0.9375rem;
+  }
 `;
 
-// 강조 텍스트 스타일 추가
 const PolicyHighlight = styled.span`
-  color: #dc2626;
+  color: ${COLORS.errorRed};
   font-weight: 600;
 `;
 
-const CheckboxContainer = styled.div`
+// 약관 동의 섹션
+const AgreementSection = styled.div`
   display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
 `;
 
-const CheckboxInput = styled.input`
-  margin-top: 0.25rem;
-  cursor: pointer;
-`;
-
-const CheckboxLabel = styled.label`
+const AgreementTitle = styled.div`
   font-size: 0.875rem;
-  color: #111827;
-  cursor: pointer;
-  line-height: 1.5;
+  font-weight: 600;
+  color: ${COLORS.gray700};
+  margin-bottom: 0.5rem;
 
   @media (min-width: 768px) {
     font-size: 1rem;
   }
 `;
 
+const AgreementItem = styled.label<{ $hasError?: boolean }>`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1.5px solid
+    ${(props) => (props.$hasError ? COLORS.errorRed : COLORS.gray300)};
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: ${(props) =>
+      props.$hasError ? COLORS.errorRed : COLORS.quinaryBlue};
+  }
+`;
+
+const CustomCheckbox = styled.div<{ $checked: boolean }>`
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid
+    ${(props) => (props.$checked ? COLORS.quinaryBlue : COLORS.gray300)};
+  border-radius: 0.25rem;
+  background-color: ${(props) =>
+    props.$checked ? COLORS.quinaryBlue : "#ffffff"};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-top: 2px;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    color: white;
+    opacity: ${(props) => (props.$checked ? 1 : 0)};
+    transition: opacity 0.2s;
+  }
+`;
+
+const AgreementText = styled.span`
+  font-size: 0.875rem;
+  color: ${COLORS.gray700};
+  line-height: 1.6;
+  flex: 1;
+
+  @media (min-width: 768px) {
+    font-size: 0.9375rem;
+  }
+`;
+
+const HiddenCheckbox = styled.input`
+  position: absolute;
+  opacity: 0;
+  pointer-events: auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  left: 1rem;
+  top: 1rem;
+  z-index: 1;
+`;
+
+// 제출 버튼
+const SubmitButton = styled.button<{ $disabled: boolean }>`
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: ${(props) =>
+    props.$disabled ? COLORS.gray400 : COLORS.septenaryBlue};
+  border: none;
+  border-radius: 0.5rem;
+  cursor: ${(props) => (props.$disabled ? "not-allowed" : "pointer")};
+  transition: all 0.2s;
+  min-height: 52px;
+
+  &:hover:not(:disabled) {
+    background-color: ${COLORS.quinaryBlue};
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1.125rem;
+    padding: 1.25rem;
+  }
+`;
+
+// AlertTriangle 아이콘 SVG 컴포넌트
+const AlertTriangleIconSVG = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+// Check 아이콘 SVG 컴포넌트
+const CheckIconSVG = () => (
+  <svg viewBox="0 0 20 20" fill="currentColor">
+    <path
+      fillRule="evenodd"
+      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+export default function SellApplyPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageLayout>
+          <PageContainer>
+            <MainContent>
+              <FormCard>
+                <FormTitle>모빅 판매 신청</FormTitle>
+                <PriceInfo>로딩 중...</PriceInfo>
+              </FormCard>
+            </MainContent>
+          </PageContainer>
+        </PageLayout>
+      }
+    >
+      <SellApplyContent />
+    </Suspense>
+  );
+}
+
 function SellApplyContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const assetType = searchParams.get("assetType") || "BMB";
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -139,31 +597,24 @@ function SellApplyContent() {
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [priceError, setPriceError] = useState("");
   const [useCustomPrice, setUseCustomPrice] = useState(false);
-  const [priceWarning, setPriceWarning] = useState(""); // 추가: 가격 경고 메시지
-  const [agreedPolicy, setAgreedPolicy] = useState(false); // 운영 정책 동의 state 추가
-
+  const [priceWarning, setPriceWarning] = useState("");
+  const [agreedPolicy, setAgreedPolicy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const assetType = searchParams.get("assetType") || "BMB";
+  const [validation, setValidation] = useState<Record<string, boolean>>({});
 
   // LBANK 가격 불러오기
   useEffect(() => {
     const fetchPrices = async () => {
       try {
         setIsLoadingPrice(true);
-        setPriceWarning(""); // 경고 초기화
+        setPriceWarning("");
         const response = await fetch("/api/market-prices");
         const data = await response.json();
 
         if (data.lbankKrwPrice) {
           setLbankKrwPrice(data.lbankKrwPrice);
         } else {
-          // 가격을 가져올 수 없어도 직접 입력은 가능하도록 null로 설정
           setLbankKrwPrice(null);
-
-          // 경고 메시지 설정
           if (data.errors?.bithumb) {
             setPriceWarning(
               "현재 가격 정보를 불러올 수 없습니다. 직접 가격을 입력해주세요."
@@ -171,7 +622,6 @@ function SellApplyContent() {
           }
         }
 
-        // 에러가 있으면 콘솔에 로그
         if (data.errors) {
           console.warn("가격 정보 가져오기 경고:", data.errors);
         }
@@ -187,20 +637,15 @@ function SellApplyContent() {
     };
 
     fetchPrices();
-    // 30초마다 업데이트
     const interval = setInterval(fetchPrices, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // 연락처 포맷팅 함수 (000-0000-0000)
+  // 연락처 포맷팅 함수
   const formatPhoneNumber = (value: string) => {
-    // 숫자만 추출
     const numbers = value.replace(/[^\d]/g, "");
-
-    // 11자리까지만 허용
     const limitedNumbers = numbers.slice(0, 11);
 
-    // 포맷팅
     if (limitedNumbers.length <= 3) {
       return limitedNumbers;
     } else if (limitedNumbers.length <= 7) {
@@ -213,77 +658,90 @@ function SellApplyContent() {
     }
   };
 
-  // 수량 소수점 제한 함수 (소수점 두 자리까지만)
+  // 수량 소수점 제한 함수
   const formatAmount = (value: string) => {
-    // 숫자와 소수점만 허용
     const cleaned = value.replace(/[^\d.]/g, "");
-
-    // 소수점이 여러 개인 경우 첫 번째만 허용
     const parts = cleaned.split(".");
     if (parts.length > 2) {
       return parts[0] + "." + parts.slice(1).join("");
     }
-
-    // 소수점 두 자리까지만
     if (parts[1] && parts[1].length > 2) {
       return parts[0] + "." + parts[1].slice(0, 2);
     }
-
     return cleaned;
   };
+
+  // 실시간 유효성 검사
+  useEffect(() => {
+    const newValidation: Record<string, boolean> = {};
+
+    // 이름 검증
+    if (formData.name.trim()) {
+      const namePattern = /^[가-힣]{2,10}$/;
+      newValidation.name = namePattern.test(formData.name.trim());
+    }
+
+    // 연락처 검증
+    if (formData.phone.trim()) {
+      const phonePattern = /^\d{3}-\d{4}-\d{4}$/;
+      newValidation.phone = phonePattern.test(formData.phone);
+    }
+
+    // 수량 검증
+    if (formData.amount.trim()) {
+      const amountNum = parseFloat(formData.amount);
+      newValidation.amount = !isNaN(amountNum) && amountNum > 0;
+    }
+
+    // 가격 검증
+    if (formData.price.trim()) {
+      const priceNum = parseInt(formData.price);
+      newValidation.price =
+        !isNaN(priceNum) && priceNum > 0 && priceNum % 10000 === 0;
+    }
+
+    setValidation(newValidation);
+  }, [formData]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    // 성함 검증
     if (!formData.name.trim()) {
       newErrors.name = "성함을 입력해주세요.";
+    } else if (!validation.name) {
+      newErrors.name = "2-10자의 한글만 입력 가능합니다.";
     }
 
-    // 연락처 검증
     if (!formData.phone.trim()) {
       newErrors.phone = "연락처를 입력해주세요.";
-    } else {
-      // 연락처 형식 검증 (000-0000-0000)
-      const phonePattern = /^\d{3}-\d{4}-\d{4}$/;
-      if (!phonePattern.test(formData.phone)) {
-        newErrors.phone = "올바른 연락처 형식이 아닙니다. (예: 010-1234-5678)";
-      }
+    } else if (!validation.phone) {
+      newErrors.phone = "올바른 연락처 형식이 아닙니다. (예: 010-1234-5678)";
     }
 
-    // 수량 검증
     if (!formData.amount.trim()) {
       newErrors.amount = "판매 희망 수량을 입력해주세요.";
-    } else {
-      const amountNum = parseFloat(formData.amount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        newErrors.amount = "수량은 0보다 큰 숫자를 입력해주세요.";
-      }
+    } else if (!validation.amount) {
+      newErrors.amount = "수량은 0보다 큰 숫자를 입력해주세요.";
     }
 
-    // 가격 검증
     if (!formData.price.trim()) {
       newErrors.price = "희망 가격을 입력하거나 선택해주세요.";
-    } else {
-      const priceNum = parseInt(formData.price);
-      if (isNaN(priceNum) || priceNum <= 0) {
-        newErrors.price = "가격은 0보다 큰 숫자를 입력해주세요.";
-      } else if (priceNum % 10000 !== 0) {
+    } else if (!validation.price) {
+      if (parseInt(formData.price) % 10000 !== 0) {
         newErrors.price = "가격은 10,000원 단위로 입력해주세요.";
+      } else {
+        newErrors.price = "가격은 0보다 큰 숫자를 입력해주세요.";
       }
     }
 
-    // 소량 판매 허용 여부 검증
     if (!formData.allowPartial) {
       newErrors.allowPartial = "소량 판매 허용 여부를 선택해주세요.";
     }
 
-    // 회관 선택 검증
     if (!formData.branch) {
       newErrors.branch = "방문할 회관을 선택해주세요.";
     }
 
-    // 운영 정책 동의 검증 추가
     if (!agreedPolicy) {
       newErrors.agreedPolicy = "운영 정책에 동의해주세요.";
     }
@@ -296,7 +754,6 @@ function SellApplyContent() {
     e.preventDefault();
 
     if (!validateForm()) {
-      // 유효성 검사 실패 시 첫 번째 에러 필드로 스크롤
       const firstErrorField = Object.keys(errors)[0];
       if (firstErrorField) {
         const element = document.getElementById(firstErrorField);
@@ -322,18 +779,16 @@ function SellApplyContent() {
           allowPartial: formData.allowPartial,
           branch: formData.branch,
           assetType: assetType,
-          agreedPolicy: agreedPolicy, // agreedPolicy 추가
+          agreedPolicy: agreedPolicy,
         }),
       });
 
-      // Content-Type 확인
       const contentType = response.headers.get("content-type");
       let data;
 
       if (contentType && contentType.includes("application/json")) {
         data = await response.json();
       } else {
-        // HTML 응답인 경우 (에러 페이지)
         const text = await response.text();
         console.error("Server returned HTML instead of JSON:", text);
         alert(
@@ -343,14 +798,12 @@ function SellApplyContent() {
       }
 
       if (!response.ok) {
-        // 에러 응답 처리
         const errorMsg = data.error || "알 수 없는 오류가 발생했습니다.";
         const details = data.details ? `\n\n상세: ${data.details}` : "";
         alert(`신청 실패: ${errorMsg}${details}`);
         return;
       }
 
-      // 성공 처리 - 확인 페이지로 리다이렉트
       const params = new URLSearchParams({
         id: data.id.toString(),
         name: data.name,
@@ -377,27 +830,48 @@ function SellApplyContent() {
       ...prev,
       [name]: value,
     }));
+
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  // 연락처 전용 핸들러
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneNumber(e.target.value);
     setFormData((prev) => ({
       ...prev,
       phone: formatted,
     }));
+
+    if (errors.phone) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.phone;
+        return newErrors;
+      });
+    }
   };
 
-  // 수량 전용 핸들러
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatAmount(e.target.value);
     setFormData((prev) => ({
       ...prev,
       amount: formatted,
     }));
+
+    if (errors.amount) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.amount;
+        return newErrors;
+      });
+    }
   };
 
-  // 가격 전용 핸들러 (Select)
   const handlePriceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setFormData((prev) => ({
@@ -406,37 +880,49 @@ function SellApplyContent() {
     }));
     setUseCustomPrice(false);
     setPriceError("");
+
+    if (errors.price) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.price;
+        return newErrors;
+      });
+    }
   };
 
-  // 직접 입력 가격 핸들러
   const handleCustomPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^\d]/g, ""); // 숫자만
+    const value = e.target.value.replace(/[^\d]/g, "");
     setFormData((prev) => ({
       ...prev,
       price: value,
     }));
     setUseCustomPrice(true);
 
-    // 만원 단위 검증
     if (value && parseInt(value) % 10000 !== 0) {
       setPriceError("가격은 10,000원 단위로 입력해주세요.");
     } else {
       setPriceError("");
     }
+
+    if (errors.price) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.price;
+        return newErrors;
+      });
+    }
   };
 
-  // 가격 옵션 생성 (LBANK BMB 가격 기준, 위아래 10개씩)
   const generatePriceOptions = () => {
     if (lbankKrwPrice === null) {
       return <option value="">가격 정보를 불러오는 중...</option>;
     }
 
-    const basePrice = Math.round(lbankKrwPrice / 10000) * 10000; // 만원 단위로 반올림
+    const basePrice = Math.round(lbankKrwPrice / 10000) * 10000;
     const options = [];
     const step = 10000;
-    const range = 10; // 위아래 10개씩
+    const range = 10;
 
-    // 낮은 가격부터 높은 가격 순서로 (Select에서 아래로 갈수록 낮은 가격)
     for (let i = range; i >= -range; i--) {
       const price = basePrice + i * step;
       if (price > 0) {
@@ -451,226 +937,339 @@ function SellApplyContent() {
     return options;
   };
 
+  const isFormValid = () => {
+    return (
+      formData.name.trim() &&
+      formData.phone.trim() &&
+      formData.amount.trim() &&
+      formData.price.trim() &&
+      formData.allowPartial &&
+      formData.branch &&
+      agreedPolicy &&
+      Object.keys(errors).length === 0 &&
+      Object.values(validation).every((v) => v !== false)
+    );
+  };
+
   return (
     <PageLayout>
-      <Title>모빅 판매 신청</Title>
-      <PriceInfo>
-        {isLoadingPrice &&
-          lbankKrwPrice === null &&
-          "LBANK 현재가를 불러오는 중..."}
-        {lbankKrwPrice !== null &&
-          `LBANK 현재가: ${Math.floor(lbankKrwPrice).toLocaleString()}원`}
-        {!isLoadingPrice && lbankKrwPrice === null && priceWarning && (
-          <div style={{ color: "#f59e0b", marginTop: "0.5rem" }}>
-            {priceWarning}
-          </div>
-        )}
-      </PriceInfo>
-      <FormContainer>
-        <Form onSubmit={handleSubmit}>
-          <FormGroup>
-            <Label htmlFor="name">성함 *</Label>
-            <Input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="예: 홍길동"
-              style={{ borderColor: errors.name ? "#ef4444" : "#d1d5db" }}
-            />
-            {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
-          </FormGroup>
+      <PageContainer>
+        <MainContent>
+          <FormCard>
+            <FormHeader>
+              <ModeBadge>판매 신청서 작성</ModeBadge>
+              <FormTitle>모빅 판매 신청</FormTitle>
+              <FormDescription>
+                판매 신청서를 작성해주세요. 모든 항목은 필수 입력 사항입니다.
+              </FormDescription>
+            </FormHeader>
 
-          <FormGroup>
-            <Label htmlFor="phone">연락처 *</Label>
-            <Input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handlePhoneChange}
-              placeholder="예: 010-1234-5678"
-              maxLength={13}
-              style={{ borderColor: errors.phone ? "#ef4444" : "#d1d5db" }}
-            />
-            {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="amount">판매 희망 수량 *</Label>
-            <Input
-              type="text"
-              id="amount"
-              name="amount"
-              value={formData.amount}
-              onChange={handleAmountChange}
-              placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
-              inputMode="decimal"
-              style={{ borderColor: errors.amount ? "#ef4444" : "#d1d5db" }}
-            />
-            {errors.amount && <ErrorMessage>{errors.amount}</ErrorMessage>}
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="price">희망 가격 *</Label>
-            <Select
-              id="price"
-              name="price"
-              value={useCustomPrice ? "" : formData.price}
-              onChange={handlePriceChange}
-              disabled={
-                isLoadingPrice || lbankKrwPrice === null || useCustomPrice
-              }
-              style={{ borderColor: errors.price ? "#ef4444" : "#d1d5db" }}
-            >
-              <option value="">
-                {isLoadingPrice
-                  ? "가격 정보를 불러오는 중..."
-                  : lbankKrwPrice === null
-                  ? "가격 정보를 불러올 수 없습니다. 직접 입력을 사용해주세요."
-                  : "가격을 선택하세요 (10,000원 단위)"}
-              </option>
-              {generatePriceOptions()}
-            </Select>
-
-            <FormStyles.PriceInputWrapper>
-              <FormStyles.PriceInputLabel htmlFor="customPrice">
-                또는 직접 입력 (10,000원 단위)
-              </FormStyles.PriceInputLabel>
-              <Input
-                type="text"
-                id="customPrice"
-                name="customPrice"
-                value={
-                  useCustomPrice
-                    ? parseInt(formData.price || "0").toLocaleString()
-                    : ""
-                }
-                onChange={handleCustomPriceChange}
-                placeholder="예: 100000"
-                // 빗썸이 실패해도 직접 입력은 가능하도록 disabled 조건 수정
-                disabled={isLoadingPrice}
-                style={{
-                  borderColor:
-                    errors.price || priceError ? "#ef4444" : "#d1d5db",
-                }}
-              />
-              {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
-              {errors.price && !priceError && (
-                <ErrorMessage>{errors.price}</ErrorMessage>
+            <PriceInfo>
+              {isLoadingPrice && lbankKrwPrice === null && (
+                <div>LBANK 현재가를 불러오는 중...</div>
               )}
-            </FormStyles.PriceInputWrapper>
-          </FormGroup>
+              {lbankKrwPrice !== null && (
+                <div>
+                  LBANK 현재가: {Math.floor(lbankKrwPrice).toLocaleString()}원
+                </div>
+              )}
+              {!isLoadingPrice && lbankKrwPrice === null && priceWarning && (
+                <div style={{ color: "#f59e0b", marginTop: "0.5rem" }}>
+                  {priceWarning}
+                </div>
+              )}
+            </PriceInfo>
 
-          <FormGroup>
-            <Label>소량 판매 허용 여부 *</Label>
-            <RadioGroup>
-              <RadioLabel>
-                <RadioInput
-                  type="radio"
-                  name="allowPartial"
-                  value="true"
-                  checked={formData.allowPartial === "true"}
-                  onChange={handleChange}
-                />
-                허용
-              </RadioLabel>
-              <RadioLabel>
-                <RadioInput
-                  type="radio"
-                  name="allowPartial"
-                  value="false"
-                  checked={formData.allowPartial === "false"}
-                  onChange={handleChange}
-                />
-                비허용
-              </RadioLabel>
-            </RadioGroup>
-            {errors.allowPartial && (
-              <ErrorMessage>{errors.allowPartial}</ErrorMessage>
-            )}
-          </FormGroup>
+            <form onSubmit={handleSubmit}>
+              <FormFields>
+                <FormField>
+                  <FieldLabel htmlFor="name">성함 *</FieldLabel>
+                  <FieldInput
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="예: 홍길동"
+                    $hasError={!!errors.name}
+                  />
+                  {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
+                  {validation.name && !errors.name && formData.name && (
+                    <SuccessMessage>✓ 올바른 성함 형식입니다.</SuccessMessage>
+                  )}
+                </FormField>
 
-          <FormGroup>
-            <Label htmlFor="branch">방문할 회관 선택 *</Label>
-            <Select
-              id="branch"
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              style={{ borderColor: errors.branch ? "#ef4444" : "#d1d5db" }}
-            >
-              <option value="">회관을 선택하세요</option>
-              {BRANCH_NAMES.map((branchName) => (
-                <option key={branchName} value={branchName}>
-                  {branchName}
-                </option>
-              ))}
-            </Select>
-            {errors.branch && <ErrorMessage>{errors.branch}</ErrorMessage>}
-          </FormGroup>
+                <FormField>
+                  <FieldLabel htmlFor="phone">연락처 *</FieldLabel>
+                  <FieldInput
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    placeholder="예: 010-1234-5678"
+                    maxLength={13}
+                    $hasError={!!errors.phone}
+                  />
+                  {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
+                  {validation.phone && !errors.phone && formData.phone && (
+                    <SuccessMessage>✓ 올바른 연락처 형식입니다.</SuccessMessage>
+                  )}
+                </FormField>
 
-          {/* 운영 정책 안내문 추가 */}
-          <PolicyNotice>
-            <PolicyTitle>📋 운영 정책 안내</PolicyTitle>
-            <PolicyList>
-              <PolicyItem>
-                판매 신청 이후 가격/수량은 그 주 일요일 오전 09:00까지 고정되며,{" "}
-                <PolicyHighlight>
-                  취소/변경은 일요일까지 불가능합니다.
-                </PolicyHighlight>
-              </PolicyItem>
-              <PolicyItem>
-                일요일 09:00 이후 운영자가 연락을 드리며 판매의사(유지/변경/취소
-                여부)를 확인합니다.
-              </PolicyItem>
-              <PolicyItem>
-                연락이 닿지 않을 경우, 호가에서 제외되어 대기됩니다.
-              </PolicyItem>
-            </PolicyList>
-          </PolicyNotice>
+                <FormField>
+                  <FieldLabel htmlFor="amount">판매 희망 수량 *</FieldLabel>
+                  <FieldInput
+                    type="text"
+                    id="amount"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleAmountChange}
+                    placeholder="예: 100.50 (숫자만 입력, 소수점 두 자리까지)"
+                    inputMode="decimal"
+                    $hasError={!!errors.amount}
+                  />
+                  {errors.amount && (
+                    <ErrorMessage>{errors.amount}</ErrorMessage>
+                  )}
+                  {validation.amount && !errors.amount && formData.amount && (
+                    <SuccessMessage>✓ 올바른 수량 형식입니다.</SuccessMessage>
+                  )}
+                </FormField>
 
-          {/* 운영 정책 동의 체크박스 추가 */}
-          <CheckboxContainer>
-            <CheckboxInput
-              type="checkbox"
-              id="agreedPolicy"
-              checked={agreedPolicy}
-              onChange={(e) => setAgreedPolicy(e.target.checked)}
-              style={{
-                borderColor: errors.agreedPolicy ? "#ef4444" : "#d1d5db",
-              }}
-            />
-            <CheckboxLabel htmlFor="agreedPolicy">
-              해당 운영 정책을 이해했습니다 *
-            </CheckboxLabel>
-          </CheckboxContainer>
-          {errors.agreedPolicy && (
-            <ErrorMessage style={{ marginTop: "-1rem", marginBottom: "1rem" }}>
-              {errors.agreedPolicy}
-            </ErrorMessage>
-          )}
+                <FormField>
+                  <FieldLabel htmlFor="price">희망 가격 *</FieldLabel>
+                  <FieldSelect
+                    id="price"
+                    name="price"
+                    value={useCustomPrice ? "" : formData.price}
+                    onChange={handlePriceChange}
+                    disabled={
+                      isLoadingPrice || lbankKrwPrice === null || useCustomPrice
+                    }
+                    $hasError={!!errors.price || !!priceError}
+                  >
+                    <option value="">
+                      {isLoadingPrice
+                        ? "가격 정보를 불러오는 중..."
+                        : lbankKrwPrice === null
+                        ? "가격 정보를 불러올 수 없습니다. 직접 입력을 사용해주세요."
+                        : "가격을 선택하세요 (10,000원 단위)"}
+                    </option>
+                    {generatePriceOptions()}
+                  </FieldSelect>
 
-          <SubmitButton type="submit">신청하기</SubmitButton>
-        </Form>
-      </FormContainer>
+                  <PriceInputWrapper>
+                    <PriceInputLabel htmlFor="customPrice">
+                      또는 직접 입력 (10,000원 단위)
+                    </PriceInputLabel>
+                    <FieldInput
+                      type="text"
+                      id="customPrice"
+                      name="customPrice"
+                      value={
+                        useCustomPrice
+                          ? parseInt(formData.price || "0").toLocaleString()
+                          : ""
+                      }
+                      onChange={handleCustomPriceChange}
+                      placeholder="예: 100000"
+                      disabled={isLoadingPrice}
+                      $hasError={!!errors.price || !!priceError}
+                    />
+                    {priceError && <ErrorMessage>{priceError}</ErrorMessage>}
+                    {errors.price && !priceError && (
+                      <ErrorMessage>{errors.price}</ErrorMessage>
+                    )}
+                  </PriceInputWrapper>
+                </FormField>
+
+                <FormField>
+                  <FieldLabel>소량 판매 허용 여부 *</FieldLabel>
+                  <RadioGroup>
+                    <RadioLabel
+                      $selected={formData.allowPartial === "true"}
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          allowPartial: "true",
+                        }));
+                        if (errors.allowPartial) {
+                          setErrors((prev) => {
+                            const newErrors = { ...prev };
+                            delete newErrors.allowPartial;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                    >
+                      <RadioInput
+                        type="radio"
+                        name="allowPartial"
+                        value="true"
+                        checked={formData.allowPartial === "true"}
+                        onChange={handleChange}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <RadioContent>
+                        <RadioTitle
+                          $selected={formData.allowPartial === "true"}
+                        >
+                          허용 (호가형 등록)
+                        </RadioTitle>
+                        <RadioDescription>
+                          호가형(소액 거래 허용)에 등록됩니다.
+                        </RadioDescription>
+                      </RadioContent>
+                    </RadioLabel>
+                    <RadioLabel
+                      $selected={formData.allowPartial === "false"}
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          allowPartial: "false",
+                        }));
+                        if (errors.allowPartial) {
+                          setErrors((prev) => {
+                            const newErrors = { ...prev };
+                            delete newErrors.allowPartial;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                    >
+                      <RadioInput
+                        type="radio"
+                        name="allowPartial"
+                        value="false"
+                        checked={formData.allowPartial === "false"}
+                        onChange={handleChange}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <RadioContent>
+                        <RadioTitle
+                          $selected={formData.allowPartial === "false"}
+                        >
+                          비허용 (카드형 매물 등록)
+                        </RadioTitle>
+                        <RadioDescription>
+                          전체 수량 일괄 판매만 가능합니다.
+                        </RadioDescription>
+                      </RadioContent>
+                    </RadioLabel>
+                  </RadioGroup>
+                  {errors.allowPartial && (
+                    <ErrorMessage>{errors.allowPartial}</ErrorMessage>
+                  )}
+                </FormField>
+
+                <FormField>
+                  <FieldLabel htmlFor="branch">방문할 회관 선택 *</FieldLabel>
+                  <FieldSelect
+                    id="branch"
+                    name="branch"
+                    value={formData.branch}
+                    onChange={handleChange}
+                    $hasError={!!errors.branch}
+                  >
+                    <option value="">회관을 선택하세요</option>
+                    {BRANCH_NAMES.map((branchName) => {
+                      const isAvailable = branchName === "서초 모빅회관" || branchName === "수원 모빅회관";
+                      return (
+                        <option
+                          key={branchName}
+                          value={branchName}
+                          disabled={!isAvailable}
+                        >
+                          {branchName}
+                        </option>
+                      );
+                    })}
+                  </FieldSelect>
+                  {errors.branch && (
+                    <ErrorMessage>{errors.branch}</ErrorMessage>
+                  )}
+                </FormField>
+              </FormFields>
+
+              <AgreementSection>
+                <AgreementTitle>아래 내용을 확인해주세요. *</AgreementTitle>
+                <PolicyNotice>
+                  <PolicyTitle>
+                    <AlertTriangleIconSVG />
+                    운영 정책 안내
+                  </PolicyTitle>
+                  <PolicyList>
+                    <PolicyItem>
+                      판매 신청 이후 가격/수량은 그 주 일요일 오전 09:00까지
+                      고정되며,{" "}
+                      <PolicyHighlight>
+                        취소/변경은 일요일까지 불가능합니다.
+                      </PolicyHighlight>
+                    </PolicyItem>
+                    <PolicyItem>
+                      일요일 09:00 이후 운영자가 연락을 드리며
+                      판매의사(유지/변경/취소 여부)를 확인합니다.
+                    </PolicyItem>
+                    <PolicyItem>
+                      연락이 닿지 않을 경우, 호가에서 제외되어 대기됩니다.
+                    </PolicyItem>
+                  </PolicyList>
+                </PolicyNotice>
+                <AgreementItem
+                  $hasError={!!errors.agreedPolicy}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const target = e.target as HTMLElement;
+                    if (target.tagName !== "INPUT") {
+                      setAgreedPolicy(!agreedPolicy);
+                      if (!agreedPolicy) {
+                        setErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.agreedPolicy;
+                          return newErrors;
+                        });
+                      }
+                    }
+                  }}
+                >
+                  <HiddenCheckbox
+                    type="checkbox"
+                    checked={agreedPolicy}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setAgreedPolicy(e.target.checked);
+                      if (e.target.checked) {
+                        setErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.agreedPolicy;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <CustomCheckbox $checked={agreedPolicy}>
+                    <CheckIconSVG />
+                  </CustomCheckbox>
+                  <AgreementText>해당 운영 정책을 이해했습니다.</AgreementText>
+                </AgreementItem>
+                {errors.agreedPolicy && (
+                  <ErrorMessage>{errors.agreedPolicy}</ErrorMessage>
+                )}
+              </AgreementSection>
+
+              <SubmitButton type="submit" $disabled={!isFormValid()}>
+                신청하기
+              </SubmitButton>
+            </form>
+          </FormCard>
+        </MainContent>
+      </PageContainer>
     </PageLayout>
-  );
-}
-
-// 로딩 컴포넌트
-const LoadingFallback = () => (
-  <PageLayout>
-    <Title>모빅 판매 신청</Title>
-    <PriceInfo>로딩 중...</PriceInfo>
-  </PageLayout>
-);
-
-export default function SellApplyPage() {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <SellApplyContent />
-    </Suspense>
   );
 }

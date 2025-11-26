@@ -16,6 +16,8 @@ const COLORS = {
   lightPurple: "#AFA5DD",
   bgGray: "#F5F5F7",
   borderLightPurple: "#E8E2F4",
+  gray600: "#4B5563",
+  gray700: "#374151",
 };
 
 const PageContainer = styled.div`
@@ -539,6 +541,14 @@ const CTAButtonContainer = styled.div`
   }
 `;
 
+// 카드형 탭 전용 버튼 컨테이너
+const CardCTAButtonContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 20px;
+`;
+
 const CTAButton = styled(Link)`
   width: 100%;
   height: 44px;
@@ -600,13 +610,13 @@ const CTASellButton = styled(CTAButton)`
 
 // 카드형 콘텐츠 헤더
 const CardTypeHeader = styled.div`
-  margin-bottom: 2rem;
+  margin-bottom: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 
   @media (min-width: 768px) {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1rem;
   }
 `;
 
@@ -665,6 +675,7 @@ const TradeCard = styled.div`
   gap: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   transition: all 0.2s;
+  cursor: pointer;
 
   &:hover {
     box-shadow: 0 6px 24px rgba(149, 128, 180, 0.1);
@@ -678,11 +689,11 @@ const TradeCard = styled.div`
   }
 `;
 
-// 카드 헤더 (수량 + 상태 배지)
+// 카드 헤더 (신청번호 + 상태 배지)
 const TradeCardHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 0;
 `;
 
@@ -697,6 +708,80 @@ const TradeCardAmount = styled.div`
   }
 `;
 
+// 신청 번호 스타일 추가
+const TradeCardId = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${COLORS.gray600};
+  margin-bottom: 0.5rem;
+
+  @media (min-width: 768px) {
+    font-size: 13px;
+  }
+`;
+
+// 원화 가격 스타일
+const TradeCardPriceKRW = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  color: ${COLORS.primaryPurple};
+  line-height: 1.4;
+  margin-bottom: 0.25rem;
+
+  @media (min-width: 768px) {
+    font-size: 20px;
+    margin-bottom: 0.25rem;
+  }
+`;
+
+// 판매 수량 스타일
+const TradeCardAmountLabel = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  color: ${COLORS.gray700};
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+
+  @media (min-width: 768px) {
+    font-size: 18px;
+    margin-bottom: 0.5rem;
+  }
+`;
+
+// 가격과 수량을 감싸는 컨테이너 (모바일에서 row 형태)
+const PriceAmountRow = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+
+  ${TradeCardPriceKRW} {
+    margin-bottom: 0;
+  }
+
+  ${TradeCardAmountLabel} {
+    margin-bottom: 0;
+    text-align: right;
+  }
+
+  @media (min-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+
+    ${TradeCardPriceKRW} {
+      margin-bottom: 0.25rem;
+    }
+
+    ${TradeCardAmountLabel} {
+      margin-bottom: 0.5rem;
+      text-align: left;
+    }
+  }
+`;
+
+// 상태 배지 스타일 추가
 const StatusBadge = styled.div<{ $status: string }>`
   padding: 4px 12px;
   border-radius: 12px;
@@ -742,28 +827,19 @@ const StatusBadge = styled.div<{ $status: string }>`
 const TradeCardInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
   flex: 1;
-`;
-
-const TradeCardPrice = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  line-height: 1.4;
-
-  @media (min-width: 768px) {
-    font-size: 18px;
-  }
+  margin-bottom: 1rem;
 `;
 
 const TradeCardTotal = styled.div`
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 700;
   color: #6b7280;
   line-height: 1.4;
 
   @media (min-width: 768px) {
-    font-size: 15px;
+    font-size: 18px;
   }
 `;
 
@@ -1203,6 +1279,13 @@ function OTCContent() {
                     있습니다.
                   </CardTypeDescription>
                 </CardTypeHeader>
+                <CardCTAButtonContainer>
+                  <CTASellButton
+                    href={`/otc/sell/apply?assetType=${assetType}`}
+                  >
+                    판매 신청하기
+                  </CTASellButton>
+                </CardCTAButtonContainer>
 
                 {cardLoading && (
                   <EmptyState>카드형 정보를 불러오는 중...</EmptyState>
@@ -1230,36 +1313,62 @@ function OTCContent() {
                             card.status === "완료";
 
                           return (
-                            <TradeCard key={card.id}>
+                            <TradeCard
+                              key={card.id}
+                              onClick={() => {
+                                if (!isCompleted) {
+                                  router.push(
+                                    `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`
+                                  );
+                                }
+                              }}
+                            >
+                              {/* 상단: 좌측 신청번호, 우측 현재 상태 */}
                               <TradeCardHeader>
-                                <TradeCardAmount>
-                                  {amountNum} Mo
-                                </TradeCardAmount>
+                                <TradeCardId>신청 번호 #{card.id}</TradeCardId>
                                 <StatusBadge $status={card.status}>
                                   {statusLabel}
                                 </StatusBadge>
                               </TradeCardHeader>
 
                               <TradeCardInfo>
-                                <TradeCardPrice>
-                                  {formatPrice(card.price)} KRW/Mo
-                                </TradeCardPrice>
+                                {/* 가격과 수량 */}
+                                <PriceAmountRow>
+                                  <TradeCardPriceKRW>
+                                    {formatPrice(card.price)}원
+                                  </TradeCardPriceKRW>
+                                  <TradeCardAmountLabel>
+                                    <span
+                                      style={{ display: "none" }}
+                                      className="mobile-hide"
+                                    >
+                                      판매 수량 :{" "}
+                                    </span>
+                                    {card.amount} Mo
+                                  </TradeCardAmountLabel>
+                                </PriceAmountRow>
+
+                                {/* 총 거래금액 */}
                                 <TradeCardTotal>
-                                  총 거래금액:{" "}
-                                  {formatTotalPrice(card.price, card.amount)}{" "}
-                                  KRW
+                                  총 금액:{" "}
+                                  {formatTotalPrice(card.price, card.amount)}원
                                 </TradeCardTotal>
-                                <TradeCardBranch>{card.branch}</TradeCardBranch>
                               </TradeCardInfo>
 
+                              {/* 구매하기 버튼 */}
                               {isCompleted ? (
-                                <TradeCardButton $status={card.status} disabled>
+                                <TradeCardButton
+                                  $status={card.status}
+                                  disabled
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   거래 완료됨
                                 </TradeCardButton>
                               ) : (
                                 <TradeCardButton
                                   $status={card.status}
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     router.push(
                                       `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`
                                     );

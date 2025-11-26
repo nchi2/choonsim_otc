@@ -9,10 +9,10 @@ const Container = styled.div`
   max-width: 800px;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 0.5rem;
 
   @media (min-width: 768px) {
-    gap: 3rem;
+    gap: 1rem;
   }
 `;
 
@@ -33,12 +33,12 @@ const Description = styled.p`
   font-size: 0.875rem;
   color: #6b7280;
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.5rem;
   line-height: 1.6;
 
   @media (min-width: 768px) {
     font-size: 1rem;
-    margin-bottom: 3rem;
+    margin-bottom: 1rem;
   }
 `;
 
@@ -46,22 +46,15 @@ const Divider = styled.hr`
   width: 60%;
   border: none;
   border-top: 2px solid #e5e7eb;
-  margin: 2rem 0;
-
-  @media (min-width: 768px) {
-    margin: 3rem 0;
-  }
 `;
 
 const TabContainer = styled.div`
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 2rem;
   width: 100%;
 
   @media (min-width: 768px) {
     gap: 1rem;
-    margin-bottom: 3rem;
   }
 `;
 
@@ -668,7 +661,7 @@ export default function HighValuePage() {
                 </SbmbHeroLeft>
                 <SbmbHeroRight>
                   <SbmbWalletImage
-                    src="/hwallets/img_hwallets_sbmb.png"
+                    src="/hwallets/hwallets_sbmb.png"
                     alt="SBMB 지갑 이미지"
                   />
                 </SbmbHeroRight>
@@ -684,8 +677,8 @@ export default function HighValuePage() {
                   락업을 통해 <SbmbHighlight>콘솔로 전환</SbmbHighlight>받을 수
                   있게 설계되었으며, 비트모빅과 1:1 가치 유지를 시도하는 ERC20
                   토큰입니다. <br />
-                  EVM 종이지갑을 신청하시면 SBMB 토큰이 해당 지갑으로
-                  에어드랍이 되는 방식으로 진행됩니다.
+                  EVM 종이지갑을 신청하시면 SBMB 토큰이 해당 지갑으로 에어드랍이
+                  되는 방식으로 진행됩니다.
                 </SbmbInfoText>
                 <SbmbInfoText>
                   이 프로젝트는 오태버스가 아닌, <strong>춘심 팀</strong>이
@@ -817,4 +810,3 @@ export default function HighValuePage() {
     </PageLayout>
   );
 }
-
