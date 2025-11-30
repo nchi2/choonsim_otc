@@ -118,8 +118,8 @@ const WalletGrid = styled.div`
   }
 `;
 
-const WalletCard = styled.div`
-  background-color: #ffffff;
+const WalletCard = styled.div<{ $soldOut?: boolean }>`
+  background-color: ${(props) => (props.$soldOut ? "#f3f4f6" : "#ffffff")};
   border-radius: 0.5rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -128,7 +128,9 @@ const WalletCard = styled.div`
   align-items: center;
   gap: 1rem;
   transition: all 0.2s;
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${(props) => (props.$soldOut ? "#d1d5db" : "#e5e7eb")};
+  opacity: ${(props) => (props.$soldOut ? 0.6 : 1)};
+  position: relative;
 
   @media (max-width: 768px) {
     flex-direction: row;
@@ -137,18 +139,44 @@ const WalletCard = styled.div`
   }
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-    border-color: #3b82f6;
+    ${(props) =>
+      !props.$soldOut &&
+      `
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      border-color: #3b82f6;
+    `}
   }
+
+  ${(props) =>
+    props.$soldOut &&
+    `
+    cursor: not-allowed;
+    
+    &::after {
+      content: "소진";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      font-size: 1rem;
+      z-index: 1;
+    }
+  `}
 `;
 
-const WalletImage = styled.img`
+const WalletImage = styled.img<{ $soldOut?: boolean }>`
   width: 100%;
   max-width: 200px;
   height: auto;
   display: block;
   border-radius: 0.375rem;
+  filter: ${(props) => (props.$soldOut ? "grayscale(100%)" : "none")};
 
   @media (max-width: 768px) {
     max-width: 120px;
@@ -168,10 +196,10 @@ const WalletInfo = styled.div`
   }
 `;
 
-const WalletType = styled.h3`
+const WalletType = styled.h3<{ $soldOut?: boolean }>`
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: ${(props) => (props.$soldOut ? "#9ca3af" : "#111827")};
   margin: 0;
 
   @media (max-width: 768px) {
@@ -179,9 +207,9 @@ const WalletType = styled.h3`
   }
 `;
 
-const WalletPrice = styled.p`
+const WalletPrice = styled.p<{ $soldOut?: boolean }>`
   font-size: 1.1rem;
-  color: #6570c5;
+  color: ${(props) => (props.$soldOut ? "#9ca3af" : "#6570c5")};
   font-weight: 600;
   margin: 0;
 
@@ -593,16 +621,19 @@ export default function HighValuePage() {
       type: "200모",
       image: "/hwallets/img_hwallets_200mo.png",
       price: "1.6모",
+      soldOut: true, // 소진됨
     },
     {
       type: "100모",
       image: "/hwallets/img_hwallets_100mo.png",
       price: "0.6모",
+      soldOut: false,
     },
     {
       type: "50모",
       image: "/hwallets/img_hwallets_50mo.png",
       price: "0.4모",
+      soldOut: false,
     },
   ];
 
@@ -729,14 +760,19 @@ export default function HighValuePage() {
               <SectionTitle>춘심 고액권 판매</SectionTitle>
               <WalletGrid>
                 {walletData.map((wallet) => (
-                  <WalletCard key={wallet.type}>
+                  <WalletCard key={wallet.type} $soldOut={wallet.soldOut}>
                     <WalletImage
                       src={wallet.image}
                       alt={`${wallet.type} 지갑`}
+                      $soldOut={wallet.soldOut}
                     />
                     <WalletInfo>
-                      <WalletType>{wallet.type}</WalletType>
-                      <WalletPrice>판매가: {wallet.price}</WalletPrice>
+                      <WalletType $soldOut={wallet.soldOut}>
+                        {wallet.type}
+                      </WalletType>
+                      <WalletPrice $soldOut={wallet.soldOut}>
+                        판매가: {wallet.price}
+                      </WalletPrice>
                     </WalletInfo>
                   </WalletCard>
                 ))}
