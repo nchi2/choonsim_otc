@@ -4,8 +4,11 @@ import styled from "styled-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const HeaderContainer = styled.header<{ $hasBackground: boolean }>`
-  position: absolute;
+const HeaderContainer = styled.header<{
+  $hasBackground: boolean;
+  $isAbsolute: boolean;
+}>`
+  position: ${(props) => (props.$isAbsolute ? "absolute" : "relative")};
   top: 0;
   left: 0;
   right: 0;
@@ -76,12 +79,16 @@ const NavLink = styled(Link)<{ $isWhite: boolean }>`
 
 export default function Header() {
   const pathname = usePathname();
-  // 메인 페이지와 /otc 페이지는 투명 배경 + 흰색 폰트
+  // 메인 페이지와 /otc 페이지는 투명 배경 + 흰색 폰트 + absolute 위치
   const isTransparentHeader = pathname === "/" || pathname === "/otc";
   const isWhiteText = isTransparentHeader;
+  const isAbsolute = isTransparentHeader; // 메인과 /otc만 absolute
 
   return (
-    <HeaderContainer $hasBackground={isTransparentHeader}>
+    <HeaderContainer
+      $hasBackground={isTransparentHeader}
+      $isAbsolute={isAbsolute}
+    >
       <HeaderContent>
         <LogoLink href="/">
           <Logo $isWhite={isWhiteText}>Choonsim</Logo>

@@ -10,9 +10,11 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-top: 1rem; /* 헤더와의 간격 */
 
   @media (min-width: 768px) {
     gap: 1rem;
+    padding-top: 1.5rem;
   }
 `;
 
