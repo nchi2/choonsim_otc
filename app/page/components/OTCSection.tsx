@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import * as S from "../styles";
 
 interface OTCSectionProps {
@@ -54,6 +55,11 @@ export default function OTCSection({
     return () => clearInterval(interval);
   }, []);
 
+  // 2모의 기적 가격 계산 (현재가 * 2.05, 만원 단위 올림)
+  const miraclePrice = priceData.lbankKrwPrice
+    ? Math.ceil((priceData.lbankKrwPrice * 2.05) / 10000) * 10000
+    : null;
+
   return (
     <S.OTCHeroSection>
       <S.OTCHeroContent>
@@ -93,8 +99,30 @@ export default function OTCSection({
           </S.OTCHeroPriceCard>
         </S.OTCHeroPriceGrid>
 
+        <S.OTCHeroMiracleCardWrapper>
+          <S.OTCHeroMiracleCard>
+            <S.OTCHeroMiracleLabelWrapper>
+              <S.OTCHeroPriceLabel>2모의 기적 참여</S.OTCHeroPriceLabel>
+              <S.OTCHeroMiracleSubLabel>
+                (2.05모 바로 구매)
+              </S.OTCHeroMiracleSubLabel>
+            </S.OTCHeroMiracleLabelWrapper>
+            <S.OTCHeroPriceValue>
+              {miraclePrice ? miraclePrice.toLocaleString() : "—"}
+              <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
+            </S.OTCHeroPriceValue>
+          </S.OTCHeroMiracleCard>
+          <S.OTCHeroMiracleNote>
+            * 참여 방법 : 서초회관 춘심팀 오프라인 참여 가능
+          </S.OTCHeroMiracleNote>
+        </S.OTCHeroMiracleCardWrapper>
+
         {showTradeButton && (
-          <S.OTCHeroButton href="/otc">OTC 거래 페이지로 이동</S.OTCHeroButton>
+          <S.OTCHeroButtonContainer>
+            <S.OTCHeroButton href="/otc">
+              OTC 거래 페이지로 이동
+            </S.OTCHeroButton>
+          </S.OTCHeroButtonContainer>
         )}
       </S.OTCHeroContent>
     </S.OTCHeroSection>

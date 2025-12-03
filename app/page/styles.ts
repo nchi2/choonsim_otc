@@ -479,6 +479,71 @@ export const OTCHeroPriceCard = styled.div<{ $highlight?: boolean }>`
   }
 `;
 
+export const OTCHeroMiracleCardWrapper = styled.div`
+  margin-bottom: 32px;
+  position: relative;
+`;
+
+export const OTCHeroMiracleCard = styled.div`
+  background: #ffffff;
+  border: 1px solid rgba(67, 67, 146, 0.4);
+  border-radius: 16px;
+  padding: 12px;
+  backdrop-filter: blur(6px);
+  text-align: left;
+  transition: transform 0.2s ease;
+  box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  &:hover {
+    transform: translateY(-4px);
+  }
+`;
+
+export const OTCHeroMiracleLabelWrapper = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+`;
+
+export const OTCHeroMiracleSubLabel = styled.span`
+  font-size: 1rem;
+  color: #6b7280;
+  white-space: nowrap;
+
+  @media (max-width: 768px) {
+    font-size: 0.875rem;
+  }
+`;
+
+export const OTCHeroMiracleNote = styled.div`
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: right;
+  margin-top: 0.5rem;
+  position: absolute;
+  right: 0;
+  bottom: -1.5rem;
+
+  @media (max-width: 768px) {
+    position: static;
+    text-align: left;
+    font-size: 0.7rem;
+    margin-top: 0.75rem;
+  }
+`;
+
 export const OTCHeroPriceLabel = styled.div`
   font-size: 1rem; /* 16px */
   color: #6b7280;
@@ -528,6 +593,105 @@ export const OTCHeroButton = styled(Link)`
   @media (max-width: 768px) {
     width: 100%;
   }
+`;
+
+export const OTCHeroButtonContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+  }
+`;
+
+export const MarketPriceButtonGroup = styled.div`
+  display: flex;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`;
+
+export const MarketPriceBuyButton = styled(Link)`
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #10b981;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+    background-color: #059669;
+  }
+
+  @media (max-width: 768px) {
+    flex: 1;
+  }
+`;
+
+export const MarketPriceSellButton = styled(Link)`
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #ef4444;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.3);
+    background-color: #dc2626;
+  }
+
+  @media (max-width: 768px) {
+    flex: 1;
+  }
+`;
+
+export const MiraclePriceInfo = styled.div`
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+  color: #ffffff;
+  font-weight: 500;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.95rem;
+  }
+`;
+
+export const MiraclePriceValue = styled.span`
+  font-weight: 700;
+  color: #ffffff;
+  margin-left: 0.25rem;
+`;
+
+export const MiraclePriceNote = styled.span`
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 0.25rem;
 `;
 
 // 기존 Section 기반 대신 전용 컨테이너 추가
