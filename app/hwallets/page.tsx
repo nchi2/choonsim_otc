@@ -622,8 +622,8 @@ export default function HighValuePage() {
     {
       type: "200모",
       image: "/hwallets/img_hwallets_200mo.png",
-      price: "1.6모",
-      soldOut: true, // 소진됨
+      price: "4모",
+      soldOut: false,
     },
     {
       type: "100모",
