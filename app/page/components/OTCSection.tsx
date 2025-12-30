@@ -57,7 +57,7 @@ export default function OTCSection({
 
   // 2모의 기적 가격 계산 (현재가 * 2.05, 만원 단위 올림)
   const miraclePrice = priceData.lbankKrwPrice
-    ? Math.ceil((priceData.lbankKrwPrice * 2.05) / 10000) * 10000
+    ? Math.ceil((priceData.lbankKrwPrice * 2.05 * 1.015) / 10000) * 10000
     : null;
 
   return (
