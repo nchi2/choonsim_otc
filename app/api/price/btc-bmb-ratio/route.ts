@@ -259,6 +259,7 @@ export async function GET(request: Request) {
               bmbUsdtPrice: bmbPrice,
               ratio,
               date: new Date(timestampMs).toISOString(),
+              source: "LBANK" as const,
             });
           }
         } catch (error) {
@@ -270,15 +271,9 @@ export async function GET(request: Request) {
     // 시간순 정렬 (오래된 것부터)
     ratioData.sort((a, b) => a.time - b.time);
 
-    // LBANK 데이터에 source 추가 및 타임스탬프 맵 생성 (중복 체크용)
-    const lbankRatioData: RatioDataPoint[] = ratioData.map((item) => ({
-      ...item,
-      source: "LBANK" as const,
-    }));
-
     // LBANK 데이터의 타임스탬프를 Set으로 저장 (하루 단위로 정규화)
     const lbankTimestamps = new Set<number>();
-    lbankRatioData.forEach((item) => {
+    ratioData.forEach((item) => {
       const date = new Date(item.time);
       date.setHours(0, 0, 0, 0);
       lbankTimestamps.add(date.getTime());
@@ -325,7 +320,7 @@ export async function GET(request: Request) {
     }
 
     // 두 데이터 합치기 및 정렬 (LBANK 데이터 우선, 춘심 데이터로 보완)
-    const allRatioData = [...lbankRatioData, ...chunsimRatioData].sort(
+    const allRatioData = [...ratioData, ...chunsimRatioData].sort(
       (a, b) => a.time - b.time
     );
 
@@ -334,7 +329,7 @@ export async function GET(request: Request) {
     }
 
     console.log(
-      `Successfully processed ${allRatioData.length} data points (춘심: ${chunsimRatioData.length}, LBANK: ${lbankRatioData.length})`
+      `Successfully processed ${allRatioData.length} data points (춘심: ${chunsimRatioData.length}, LBANK: ${ratioData.length})`
     );
 
     return NextResponse.json({
