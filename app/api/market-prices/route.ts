@@ -11,7 +11,7 @@ export async function GET() {
         "https://api.bithumb.com/public/ticker/USDT_KRW",
         {
           next: { revalidate: 30 }, // 30초 캐시
-        }
+        },
       );
 
       if (!bithumbResponse.ok) {
@@ -23,7 +23,7 @@ export async function GET() {
       // 응답 데이터 검증
       if (bithumbData && bithumbData.data && bithumbData.data.closing_price) {
         usdtKrwPrice = parseFloat(
-          bithumbData.data.closing_price.replace(/,/g, "")
+          bithumbData.data.closing_price.replace(/,/g, ""),
         );
       } else if (bithumbData.status === 999) {
         // 빗썸 점검 중
@@ -44,7 +44,7 @@ export async function GET() {
           "https://api.upbit.com/v1/ticker?markets=KRW-USDT",
           {
             next: { revalidate: 30 },
-          }
+          },
         );
 
         if (upbitResponse.ok) {
@@ -59,7 +59,7 @@ export async function GET() {
       }
     }
 
-    // 3. LBANK에서 BMB/USDT 가격 가져오기
+    // 3. LBANK에서 BMB/USDT 가격 가져오기 (1차 시도)
     let bmbUsdtPrice: number | null = null;
     let lbankError: string | null = null;
 
@@ -68,7 +68,7 @@ export async function GET() {
         "https://api.lbkex.com/v2/supplement/ticker/price.do?symbol=bmb_usdt",
         {
           next: { revalidate: 30 }, // 30초 캐시
-        }
+        },
       );
 
       if (!lbankResponse.ok) {
@@ -91,6 +91,35 @@ export async function GET() {
     } catch (error) {
       console.error("LBANK API 오류:", error);
       lbankError = error instanceof Error ? error.message : "LBANK API 오류";
+    }
+
+    // 3-2. LBANK 실패 시 ccapi.rerrkvifj.com에서 BMB/USDT 가격 가져오기 (2차 시도)
+    if (bmbUsdtPrice === null) {
+      try {
+        const to = Date.now();
+        const ccapiResponse = await fetch(
+          `https://ccapi.rerrkvifj.com/spot-market-center/klines?symbol=bmb_usdt&interval=1d&to=${to}&size=1`,
+          {
+            next: { revalidate: 30 },
+          },
+        );
+
+        if (ccapiResponse.ok) {
+          const ccapiData = await ccapiResponse.json();
+          if (
+            ccapiData &&
+            ccapiData.data &&
+            ccapiData.data.klines &&
+            ccapiData.data.klines[0] &&
+            ccapiData.data.klines[0].c
+          ) {
+            bmbUsdtPrice = parseFloat(String(ccapiData.data.klines[0].c));
+            console.log("ccapi에서 BMB/USDT 가격 가져옴:", bmbUsdtPrice);
+          }
+        }
+      } catch (error) {
+        console.error("ccapi API 오류:", error);
+      }
     }
 
     // 4. LBANK KRW 가격 계산 (USDT/KRW 가격이 있으면 계산, 없으면 null)
@@ -123,7 +152,7 @@ export async function GET() {
         lbankKrwPrice: null,
         hasUsdtKrwPrice: false,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

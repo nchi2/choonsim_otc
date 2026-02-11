@@ -1190,7 +1190,7 @@ function OTCContent() {
   const [latestRatio, setLatestRatio] = useState<number | null>(null);
   const [latestBtcPrice, setLatestBtcPrice] = useState<number | null>(null);
   const [latestBmbPrice, setLatestBmbPrice] = useState<number | null>(null);
-  
+
   // 차트 확대/축소 상태 (1: 30일, 2: 90일, 3: 180일, 4: 365일, 5: 전체)
   const [zoomLevel, setZoomLevel] = useState<number>(2); // 기본값: 90일
 
@@ -1240,13 +1240,13 @@ function OTCContent() {
           setListedError(null);
 
           const response = await fetch(
-            `/api/otc/orderbook-levels?assetType=${assetType}`
+            `/api/otc/orderbook-levels?assetType=${assetType}`,
           );
 
           if (!response.ok) {
             const data = await response.json();
             throw new Error(
-              data.error || "호가 정보를 불러오는데 실패했습니다."
+              data.error || "호가 정보를 불러오는데 실패했습니다.",
             );
           }
 
@@ -1257,7 +1257,7 @@ function OTCContent() {
           setListedError(
             err instanceof Error
               ? err.message
-              : "호가 정보를 불러오는데 실패했습니다."
+              : "호가 정보를 불러오는데 실패했습니다.",
           );
         } finally {
           setListedLoading(false);
@@ -1276,13 +1276,13 @@ function OTCContent() {
           setCardError(null);
 
           const response = await fetch(
-            `/api/otc/card-requests?assetType=${assetType}&status=LISTED`
+            `/api/otc/card-requests?assetType=${assetType}&status=LISTED`,
           );
 
           if (!response.ok) {
             const data = await response.json();
             throw new Error(
-              data.error || "카드형 정보를 불러오는데 실패했습니다."
+              data.error || "카드형 정보를 불러오는데 실패했습니다.",
             );
           }
 
@@ -1293,7 +1293,7 @@ function OTCContent() {
           setCardError(
             err instanceof Error
               ? err.message
-              : "카드형 정보를 불러오는데 실패했습니다."
+              : "카드형 정보를 불러오는데 실패했습니다.",
           );
         } finally {
           setCardLoading(false);
@@ -1312,18 +1312,17 @@ function OTCContent() {
         setRatioError(null);
 
         // 기본값 사용 (500개, 1일 단위) - 너무 크면 API가 실패할 수 있음
-        const response = await fetch(
-          `/api/price/btc-bmb-ratio?period=1day`
-        );
+        const response = await fetch(`/api/price/btc-bmb-ratio?period=1day`);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.details || errorData.error || `HTTP ${response.status}`;
+          const errorMessage =
+            errorData.details || errorData.error || `HTTP ${response.status}`;
           throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        
+
         if (data.error) {
           throw new Error(data.details || data.error);
         }
@@ -1338,9 +1337,10 @@ function OTCContent() {
         setLatestBmbPrice(data.latestBmbPrice);
       } catch (err) {
         console.error("Error fetching ratio data:", err);
-        const errorMessage = err instanceof Error 
-          ? err.message 
-          : "BTC/BMB 비율 데이터를 불러오는데 실패했습니다.";
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "BTC/BMB 비율 데이터를 불러오는데 실패했습니다.";
         setRatioError(errorMessage);
       } finally {
         setRatioLoading(false);
@@ -1382,7 +1382,7 @@ function OTCContent() {
   // 차트 데이터 포맷팅
   const formatChartData = (data: RatioDataPoint[]) => {
     const days = getDaysForZoomLevel(zoomLevel);
-    
+
     // 확대/축소 적용
     let displayData = data;
     if (days !== null && days > 0) {
@@ -1391,7 +1391,7 @@ function OTCContent() {
       cutoffDate.setDate(cutoffDate.getDate() - days);
       cutoffDate.setHours(0, 0, 0, 0);
       const cutoffTimestamp = cutoffDate.getTime();
-      
+
       displayData = data.filter((item) => item.time >= cutoffTimestamp);
     }
 
@@ -1440,18 +1440,27 @@ function OTCContent() {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>
-              <span style={{ fontWeight: 600, color: "#1f2937" }}>BTC/BMB 비율:</span>{" "}
-              {data.ratio.toFixed(2)} ({data.source === "CHUNSIM" ? "춘심 기준" : "LBANK"})
+              <span style={{ fontWeight: 600, color: "#1f2937" }}>
+                BTC/BMB 비율:
+              </span>{" "}
+              {data.ratio.toFixed(2)} (
+              {data.source === "CHUNSIM" ? "춘심 기준" : "LBANK"})
             </p>
             <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>
-              <span style={{ fontWeight: 600, color: "#1f2937" }}>모빅 가격:</span>{" "}
-              ${data.bmbUsdtPrice.toLocaleString("ko-KR", {
+              <span style={{ fontWeight: 600, color: "#1f2937" }}>
+                모빅 가격:
+              </span>{" "}
+              $
+              {data.bmbUsdtPrice.toLocaleString("ko-KR", {
                 maximumFractionDigits: 6,
               })}
             </p>
             <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>
-              <span style={{ fontWeight: 600, color: "#1f2937" }}>BTC 가격:</span>{" "}
-              ${data.btcUsdtPrice.toLocaleString("ko-KR", {
+              <span style={{ fontWeight: 600, color: "#1f2937" }}>
+                BTC 가격:
+              </span>{" "}
+              $
+              {data.btcUsdtPrice.toLocaleString("ko-KR", {
                 maximumFractionDigits: 2,
               })}
             </p>
@@ -1561,7 +1570,7 @@ function OTCContent() {
                                     key={`mobile-${level.id}-${index}`}
                                     onClick={() => {
                                       router.push(
-                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`
+                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`,
                                       );
                                     }}
                                   >
@@ -1620,7 +1629,7 @@ function OTCContent() {
                                     key={`desktop-${level.id}-${index}`}
                                     onClick={() => {
                                       router.push(
-                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`
+                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`,
                                       );
                                     }}
                                   >
@@ -1736,7 +1745,7 @@ function OTCContent() {
                               onClick={() => {
                                 if (!isCompleted) {
                                   router.push(
-                                    `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`
+                                    `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`,
                                   );
                                 }
                               }}
@@ -1788,7 +1797,7 @@ function OTCContent() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     router.push(
-                                      `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`
+                                      `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`,
                                     );
                                   }}
                                 >
@@ -1826,7 +1835,8 @@ function OTCContent() {
                     <StatItem>
                       <StatLabel>BTC/USDT</StatLabel>
                       <StatValue>
-                        ${latestBtcPrice.toLocaleString("ko-KR", {
+                        $
+                        {latestBtcPrice.toLocaleString("ko-KR", {
                           maximumFractionDigits: 2,
                         })}
                       </StatValue>
@@ -1836,7 +1846,8 @@ function OTCContent() {
                     <StatItem>
                       <StatLabel>BMB/USDT</StatLabel>
                       <StatValue>
-                        ${latestBmbPrice.toLocaleString("ko-KR", {
+                        $
+                        {latestBmbPrice.toLocaleString("ko-KR", {
                           maximumFractionDigits: 6,
                         })}
                       </StatValue>
@@ -1850,9 +1861,7 @@ function OTCContent() {
               <ChartLoading>차트 데이터를 불러오는 중...</ChartLoading>
             )}
 
-            {ratioError && (
-              <ChartError>{ratioError}</ChartError>
-            )}
+            {ratioError && <ChartError>{ratioError}</ChartError>}
 
             {!ratioLoading && !ratioError && ratioData.length > 0 && (
               <ChartContainerWrapper>
