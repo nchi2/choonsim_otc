@@ -1422,7 +1422,15 @@ function OTCContent() {
   };
 
   // 커스텀 Tooltip 컴포넌트
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Array<{ payload: RatioDataPoint }>;
+    label?: string;
+  }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
