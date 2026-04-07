@@ -11,6 +11,8 @@
     "Csvg",
     "Cpath",
     "Cusl",
+    "ccapi",
+    "Ccapi",
     "Choonsim",
     "choonsim",
     // D
@@ -27,6 +29,8 @@
     // J
     "Jpvk",
     // K
+    "Klines",
+    "klines",
     // L
     "lbank",
     "LBANK",

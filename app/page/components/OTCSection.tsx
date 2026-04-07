@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import * as S from "../styles";
+
+const LBANK_BMB_USDT_URL = "https://www.lbank.com/trade/bmb_usdt";
 
 interface OTCSectionProps {
   showTradeButton?: boolean;
@@ -98,6 +99,16 @@ export default function OTCSection({
             </S.OTCHeroPriceValue>
           </S.OTCHeroPriceCard>
         </S.OTCHeroPriceGrid>
+
+        <S.OTCHeroLbankLinkBelowPrices>
+          <S.OTCHeroLbankLink
+            href={LBANK_BMB_USDT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            LBANK에서 실시간 시세 확인 (BMB/USDT)
+          </S.OTCHeroLbankLink>
+        </S.OTCHeroLbankLinkBelowPrices>
 
         <S.OTCHeroMiracleCardWrapper>
           <S.OTCHeroMiracleCard>

@@ -444,10 +444,41 @@ export const OTCHeroPriceGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
-  margin-bottom: 32px;
+  margin-bottom: 12px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+  }
+`;
+
+export const OTCHeroLbankLinkBelowPrices = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 28px;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+`;
+
+export const OTCHeroLbankLink = styled.a`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+
+  &:hover {
+    color: #ffffff;
+    text-decoration-color: #ffffff;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.8125rem;
   }
 `;
 
