@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { YoutubeVideo } from "@/lib/youtube/fetch-latest";
 import { COMMUNITY_ECOSYSTEM_LINKTREE } from "@/lib/community-linktree";
@@ -96,10 +97,27 @@ export default function YouTubeSection() {
         const res = await fetch("/api/youtube/latest", {
           signal: controller.signal,
         });
+        const json: YoutubeLatestResponse & {
+          error?: string;
+          details?: Record<string, string>;
+        } = await res.json();
+
         if (!res.ok) {
-          throw new Error(`API 응답이 올바르지 않습니다. (${res.status})`);
+          const detailParts: string[] = [];
+          if (json.error) {
+            detailParts.push(json.error);
+          }
+          if (json.details && typeof json.details === "object") {
+            detailParts.push(
+              Object.entries(json.details)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(", ")
+            );
+          }
+          const suffix =
+            detailParts.length > 0 ? ` — ${detailParts.join(" · ")}` : "";
+          throw new Error(`YouTube를 불러오지 못했습니다. (${res.status})${suffix}`);
         }
-        const json: YoutubeLatestResponse = await res.json();
         if (!cancelled) {
           setData(json);
           setVisibleCount(PAGE_SIZE);
@@ -188,7 +206,12 @@ export default function YouTubeSection() {
               <S.VideoCard>
                 <S.NewsCardThumbnail>
                   {video.thumbnail ? (
-                    <img src={video.thumbnail} alt={video.title} />
+                    <Image
+                      src={video.thumbnail}
+                      alt={video.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+                    />
                   ) : (
                     "썸네일 준비중"
                   )}

@@ -1,6 +1,5 @@
 // app/api/youtube/latest/route.ts
 import { NextResponse } from "next/server";
-import { env } from "@/lib/env";
 import { YOUTUBE_CHANNELS } from "@/lib/youtube/channels";
 import {
   CACHE_TTL_SECONDS,
@@ -39,15 +38,6 @@ type CachedResponse = {
 let lastSuccessfulResponse: CachedResponse | null = null;
 
 export async function GET() {
-  const youtubeApiKey = env.youtubeApiKey;
-
-  if (!youtubeApiKey) {
-    return NextResponse.json(
-      { error: "YOUTUBE_API_KEY missing" },
-      { status: 500 }
-    );
-  }
-
   const cached = getFreshCache();
   if (cached) {
     return NextResponse.json(
@@ -62,7 +52,7 @@ export async function GET() {
 
   try {
     const { videos, errors, succeededCount, failedCount, sawRateLimit } =
-      await fetchYoutubeLatest(youtubeApiKey);
+      await fetchYoutubeLatest();
 
     if (!videos.length && lastSuccessfulResponse && sawRateLimit) {
       const cachedPayload = withCacheMeta(lastSuccessfulResponse.payload, {

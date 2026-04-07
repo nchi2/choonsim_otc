@@ -1,10 +1,14 @@
 import { YOUTUBE_CHANNELS, YoutubeChannel } from "./channels";
 
-/** 채널 메타 1회 + 채널당 업로드 목록 1회 — search.list(100유닛×N) 대비 할당량 대폭 절감 */
-const YOUTUBE_CHANNELS_LIST_URL = "https://www.googleapis.com/youtube/v3/channels";
-const YOUTUBE_PLAYLIST_ITEMS_URL =
-  "https://www.googleapis.com/youtube/v3/playlistItems";
+/**
+ * 공개 채널 최신 영상은 Atom 피드로 가져옴 (Data API 키·일일 할당 불필요).
+ * https://www.youtube.com/feeds/videos.xml?channel_id=…
+ */
 const MAX_RESULTS_PER_CHANNEL = 3;
+
+function channelFeedUrl(channelId: string) {
+  return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`;
+}
 
 export const CACHE_TTL_SECONDS = 300;
 
@@ -25,104 +29,27 @@ export type YoutubeFetchResult = {
   errors?: Record<string, string>;
   succeededCount: number;
   failedCount: number;
+  /** Data API 미사용 — 항상 false (라우트 캐시 fallback 호환용) */
   sawRateLimit: boolean;
 };
 
-type PlaylistItem = {
-  snippet?: {
-    title?: string;
-    publishedAt?: string;
-    channelTitle?: string;
-    thumbnails?: {
-      default?: { url?: string };
-      medium?: { url?: string };
-    };
-    resourceId?: {
-      kind?: string;
-      videoId?: string;
-    };
-  };
+const rssFetchInit: RequestInit = {
+  cache: "no-store",
+  headers: {
+    Accept: "application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  },
 };
 
-export class YoutubeRateLimitError extends Error {
-  public readonly code = "RATE_LIMIT";
-
-  constructor(message: string) {
-    super(message);
-    this.name = "YoutubeRateLimitError";
-  }
-}
-
-function handleYoutubeErrorResponse(res: Response, body: unknown): never {
-  const apiReason =
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    body.error &&
-    typeof body.error === "object" &&
-    "errors" in body.error &&
-    Array.isArray((body.error as { errors?: unknown }).errors)
-      ? (body.error as { errors: { reason?: string }[] }).errors[0]?.reason
-      : undefined;
-
-  if (res.status === 429 || apiReason === "quotaExceeded") {
-    throw new YoutubeRateLimitError(apiReason ?? `HTTP ${res.status}`);
-  }
-
-  throw new Error(apiReason ?? `YouTube API error: ${res.status}`);
-}
-
-export async function fetchYoutubeLatest(
-  apiKey: string
-): Promise<YoutubeFetchResult> {
+export async function fetchYoutubeLatest(): Promise<YoutubeFetchResult> {
   const errors: Record<string, string> = {};
-  let sawRateLimit = false;
-
-  let playlistIdByChannelId: Map<string, string>;
-  try {
-    playlistIdByChannelId = await fetchUploadsPlaylistIds(
-      YOUTUBE_CHANNELS,
-      apiKey
-    );
-  } catch (e) {
-    if (e instanceof YoutubeRateLimitError) {
-      sawRateLimit = true;
-    }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    for (const ch of YOUTUBE_CHANNELS) {
-      errors[ch.handle] = message;
-    }
-    return {
-      videos: [],
-      errors,
-      succeededCount: 0,
-      failedCount: YOUTUBE_CHANNELS.length,
-      sawRateLimit,
-    };
-  }
-
-  for (const ch of YOUTUBE_CHANNELS) {
-    if (!playlistIdByChannelId.has(ch.channelId)) {
-      errors[ch.handle] = "uploadsPlaylistMissing";
-    }
-  }
-
-  const channelsWithPlaylist = YOUTUBE_CHANNELS.filter((ch) =>
-    playlistIdByChannelId.has(ch.channelId)
+  const settled = await Promise.allSettled(
+    YOUTUBE_CHANNELS.map((ch) => fetchChannelLatestFromRss(ch))
   );
-
-  const fetchPromises = channelsWithPlaylist.map((ch) =>
-    fetchPlaylistLatestVideos(
-      ch,
-      playlistIdByChannelId.get(ch.channelId)!,
-      apiKey
-    )
-  );
-
-  const settled = await Promise.allSettled(fetchPromises);
 
   const videos = settled.flatMap((result, index) => {
-    const channel = channelsWithPlaylist[index];
+    const channel = YOUTUBE_CHANNELS[index];
 
     if (result.status === "fulfilled") {
       return result.value;
@@ -131,10 +58,6 @@ export async function fetchYoutubeLatest(
     const reason =
       result.reason instanceof Error ? result.reason.message : "Unknown error";
     errors[channel.handle] = reason;
-
-    if (result.reason instanceof YoutubeRateLimitError) {
-      sawRateLimit = true;
-    }
 
     return [];
   });
@@ -148,104 +71,90 @@ export async function fetchYoutubeLatest(
     errors: Object.keys(errors).length ? errors : undefined,
     succeededCount,
     failedCount: YOUTUBE_CHANNELS.length - succeededCount,
-    sawRateLimit,
+    sawRateLimit: false,
   };
 }
 
-async function fetchUploadsPlaylistIds(
-  channels: YoutubeChannel[],
-  apiKey: string
-): Promise<Map<string, string>> {
-  const url = new URL(YOUTUBE_CHANNELS_LIST_URL);
-  url.searchParams.set("part", "contentDetails");
-  url.searchParams.set("id", channels.map((c) => c.channelId).join(","));
-  url.searchParams.set("key", apiKey);
-
-  const res = await fetch(url.toString(), {
-    next: { revalidate: CACHE_TTL_SECONDS },
-  });
-
-  let body: unknown = null;
-  try {
-    body = await res.json();
-  } catch {
-    // ignore
-  }
+async function fetchChannelLatestFromRss(
+  channel: YoutubeChannel
+): Promise<YoutubeVideo[]> {
+  const res = await fetch(channelFeedUrl(channel.channelId), rssFetchInit);
 
   if (!res.ok) {
-    handleYoutubeErrorResponse(res, body);
+    throw new Error(`feed HTTP ${res.status}`);
   }
 
-  const map = new Map<string, string>();
-  const items = Array.isArray((body as { items?: unknown })?.items)
-    ? (body as { items: { id?: string; contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] }).items
-    : [];
-
-  for (const item of items) {
-    const id = item.id;
-    const uploads = item.contentDetails?.relatedPlaylists?.uploads;
-    if (typeof id === "string" && typeof uploads === "string") {
-      map.set(id, uploads);
-    }
-  }
-
-  return map;
+  const xml = await res.text();
+  return parseAtomFeed(xml, channel);
 }
 
-async function fetchPlaylistLatestVideos(
-  channel: YoutubeChannel,
-  playlistId: string,
-  apiKey: string
-): Promise<YoutubeVideo[]> {
-  const url = new URL(YOUTUBE_PLAYLIST_ITEMS_URL);
-  url.searchParams.set("part", "snippet");
-  url.searchParams.set("playlistId", playlistId);
-  url.searchParams.set("maxResults", String(MAX_RESULTS_PER_CHANNEL));
-  url.searchParams.set("key", apiKey);
+function parseAtomFeed(xml: string, channel: YoutubeChannel): YoutubeVideo[] {
+  const chunks = xml.split("<entry>").slice(1);
+  const videos: YoutubeVideo[] = [];
 
-  const res = await fetch(url.toString(), {
-    next: { revalidate: CACHE_TTL_SECONDS },
-  });
+  for (const chunk of chunks) {
+    if (videos.length >= MAX_RESULTS_PER_CHANNEL) {
+      break;
+    }
 
-  let body: unknown = null;
-  try {
-    body = await res.json();
-  } catch {
-    // ignore
-  }
+    const block = (chunk.split("</entry>")[0] ?? chunk).trim();
 
-  if (!res.ok) {
-    handleYoutubeErrorResponse(res, body);
-  }
+    const videoId =
+      block.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1]?.trim() ??
+      block.match(/<id>yt:video:([^<]+)<\/id>/)?.[1]?.trim();
 
-  const items: PlaylistItem[] = Array.isArray((body as { items?: unknown })?.items)
-    ? ((body as { items: PlaylistItem[] }).items ?? [])
-    : [];
+    if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      continue;
+    }
 
-  return items
-    .filter((item) => {
-      const id = item.snippet?.resourceId?.videoId;
-      const at = item.snippet?.publishedAt;
-      return Boolean(id && at);
-    })
-    .map((item) => {
-      const videoId = item.snippet!.resourceId!.videoId!;
-      return {
-        videoId,
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        title: item.snippet!.title ?? "",
-        thumbnail:
-          item.snippet!.thumbnails?.medium?.url ??
-          item.snippet!.thumbnails?.default?.url ??
-          "",
-        channelTitle:
-          item.snippet!.channelTitle ?? channel.displayName,
-        channelId: channel.channelId,
-        displayName: channel.displayName,
-        handle: channel.handle,
-        publishedAt: item.snippet!.publishedAt!,
-      };
+    const published =
+      block.match(/<published>([^<]+)<\/published>/)?.[1]?.trim() ??
+      block.match(/<updated>([^<]+)<\/updated>/)?.[1]?.trim();
+
+    if (!published) {
+      continue;
+    }
+
+    const title = extractEntryTitle(block);
+    const thumbMatch = block.match(/<media:thumbnail[^>]*\burl="([^"]+)"/);
+    const thumbnail =
+      thumbMatch?.[1] ?? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+
+    videos.push({
+      videoId,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      title,
+      thumbnail,
+      channelTitle: channel.displayName,
+      channelId: channel.channelId,
+      displayName: channel.displayName,
+      handle: channel.handle,
+      publishedAt: published,
     });
+  }
+
+  return videos;
+}
+
+function extractEntryTitle(block: string): string {
+  const cdata = block.match(
+    /<title>\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*<\/title>/
+  );
+  if (cdata) {
+    return decodeXmlEntities(cdata[1].trim());
+  }
+  const plain = block.match(/<title>([^<]*)<\/title>/)?.[1];
+  return decodeXmlEntities((plain ?? "").trim());
+}
+
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 
 function deduplicateAndSort(videos: YoutubeVideo[]) {
