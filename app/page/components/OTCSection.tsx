@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import {
+  COMMUNITY_SECTION_ANCHOR_ID,
+  ECOSYSTEM_NEWS_ANCHOR_ID,
+  SBMB_SECTION_ANCHOR_ID,
+} from "@/lib/community-linktree";
 import * as S from "../styles";
 
 const LBANK_BMB_USDT_URL = "https://www.lbank.com/trade/bmb_usdt";
@@ -56,25 +61,43 @@ export default function OTCSection({
     return () => clearInterval(interval);
   }, []);
 
-  // 2모의 기적 가격 계산 (현재가 * 2.05, 만원 단위 올림)
+  /* 2모의 기적 — 이벤트 종료로 비활성화 (복구 시 아래 주석 해제)
   const miraclePrice = priceData.lbankKrwPrice
     ? Math.ceil((priceData.lbankKrwPrice * 2.05 * 1.015) / 10000) * 10000
     : null;
+  */
 
   return (
     <S.OTCHeroSection>
       <S.OTCHeroContent>
-        <S.OTCHeroTitle>춘심 오프라인 OTC – 안전한 BMB 거래</S.OTCHeroTitle>
+        <S.OTCHeroTitle>Choonsim Hub</S.OTCHeroTitle>
+
         <S.OTCHeroDescription>
-          회관을 통한 오프라인 OTC 서비스를 통해 안전하고 쉽게 비트모빅 거래를
-          경험하세요.
+          오프라인 OTC, SBMB, 모빅 생태계 소식을 한번에 확인하세요.
         </S.OTCHeroDescription>
+
+        <S.OTCHeroHubRow>
+          <S.OTCHeroHubLink href="/otc">OTC 거래</S.OTCHeroHubLink>
+          <S.OTCHeroHubLink href={`/#${SBMB_SECTION_ANCHOR_ID}`} scroll>
+            SBMB
+          </S.OTCHeroHubLink>
+          <S.OTCHeroHubLink href={`/#${ECOSYSTEM_NEWS_ANCHOR_ID}`} scroll>
+            생태계 뉴스
+          </S.OTCHeroHubLink>
+          <S.OTCHeroHubLink href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`} scroll>
+            커뮤니티
+          </S.OTCHeroHubLink>
+        </S.OTCHeroHubRow>
 
         <S.OTCHeroPriceGrid>
           <S.OTCHeroPriceCard>
             <S.OTCHeroPriceLabel>BMB/USDT</S.OTCHeroPriceLabel>
             <S.OTCHeroPriceValue>
-              {priceData.bmbUsdtPrice ? priceData.bmbUsdtPrice.toFixed(3) : "—"}
+              {priceData.bmbUsdtPrice != null
+                ? priceData.bmbUsdtPrice.toFixed(3)
+                : isLoading
+                  ? "…"
+                  : "—"}
               <S.OTCHeroSubLabel>USDT</S.OTCHeroSubLabel>
             </S.OTCHeroPriceValue>
           </S.OTCHeroPriceCard>
@@ -82,9 +105,11 @@ export default function OTCSection({
           <S.OTCHeroPriceCard>
             <S.OTCHeroPriceLabel>USDT/KRW</S.OTCHeroPriceLabel>
             <S.OTCHeroPriceValue>
-              {priceData.usdtKrwPrice
+              {priceData.usdtKrwPrice != null
                 ? priceData.usdtKrwPrice.toLocaleString()
-                : "—"}
+                : isLoading
+                  ? "…"
+                  : "—"}
               <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
             </S.OTCHeroPriceValue>
           </S.OTCHeroPriceCard>
@@ -92,13 +117,17 @@ export default function OTCSection({
           <S.OTCHeroPriceCard $highlight>
             <S.OTCHeroPriceLabel>BMB/KRW (LBANK)</S.OTCHeroPriceLabel>
             <S.OTCHeroPriceValue>
-              {priceData.lbankKrwPrice
+              {priceData.lbankKrwPrice != null
                 ? Math.round(priceData.lbankKrwPrice).toLocaleString()
-                : "—"}
+                : isLoading
+                  ? "…"
+                  : "—"}
               <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
             </S.OTCHeroPriceValue>
           </S.OTCHeroPriceCard>
         </S.OTCHeroPriceGrid>
+
+        {error ? <S.OTCHeroPriceError>{error}</S.OTCHeroPriceError> : null}
 
         <S.OTCHeroLbankLinkBelowPrices>
           <S.OTCHeroLbankLink
@@ -110,6 +139,7 @@ export default function OTCSection({
           </S.OTCHeroLbankLink>
         </S.OTCHeroLbankLinkBelowPrices>
 
+        {/* 2모의 기적 — 종료된 이벤트
         <S.OTCHeroMiracleCardWrapper>
           <S.OTCHeroMiracleCard>
             <S.OTCHeroMiracleLabelWrapper>
@@ -127,6 +157,7 @@ export default function OTCSection({
             * 참여 방법 : 서초회관 춘심팀 오프라인 참여 가능
           </S.OTCHeroMiracleNote>
         </S.OTCHeroMiracleCardWrapper>
+        */}
 
         {showTradeButton && (
           <S.OTCHeroButtonContainer>

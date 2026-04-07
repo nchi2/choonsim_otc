@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { YoutubeVideo } from "@/lib/youtube/fetch-latest";
+import { COMMUNITY_ECOSYSTEM_LINKTREE } from "@/lib/community-linktree";
 import * as S from "../styles";
 
-const ECOSYSTEM_URL = "https://linktr.ee/btcmobick"; // 필요 시 변경
+const ECOSYSTEM_URL = COMMUNITY_ECOSYSTEM_LINKTREE.href;
 const PAGE_SIZE = 6;
 
 type YoutubeLatestResponse = {

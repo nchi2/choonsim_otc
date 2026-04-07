@@ -3,6 +3,10 @@
 import styled from "styled-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  COMMUNITY_SECTION_ANCHOR_ID,
+  SBMB_SECTION_ANCHOR_ID,
+} from "@/lib/community-linktree";
 
 const HeaderContainer = styled.header<{
   $hasBackground: boolean;
@@ -52,11 +56,15 @@ const Logo = styled.div<{ $isWhite: boolean }>`
 
 const Nav = styled.nav`
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
   align-items: center;
+  justify-content: flex-end;
+  max-width: calc(100% - 7rem);
 
   @media (min-width: 768px) {
-    gap: 2rem;
+    gap: 1rem 1.25rem;
+    max-width: none;
   }
 `;
 
@@ -91,7 +99,7 @@ export default function Header() {
     >
       <HeaderContent>
         <LogoLink href="/">
-          <Logo $isWhite={isWhiteText}>Choonsim</Logo>
+          <Logo $isWhite={isWhiteText}>Choonsim Hub</Logo>
         </LogoLink>
         <Nav>
           <NavLink href="/" $isWhite={isWhiteText}>
@@ -100,8 +108,19 @@ export default function Header() {
           <NavLink href="/otc" $isWhite={isWhiteText}>
             OTC
           </NavLink>
-          <NavLink href="/hwallets" $isWhite={isWhiteText}>
-            고액권|SBMB
+          <NavLink
+            href={`/#${SBMB_SECTION_ANCHOR_ID}`}
+            $isWhite={isWhiteText}
+            scroll
+          >
+            SBMB
+          </NavLink>
+          <NavLink
+            href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`}
+            $isWhite={isWhiteText}
+            scroll
+          >
+            커뮤니티
           </NavLink>
         </Nav>
       </HeaderContent>

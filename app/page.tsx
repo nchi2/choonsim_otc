@@ -6,6 +6,7 @@ import HighValueSection from "./page/components/HighValueSection";
 import NewsSection from "./page/components/NewsSection";
 // import BlogSection from "./page/components/BlogSection";
 import YouTubeSection from "./page/components/YouTubeSection";
+import CommunityLinktreeSection from "./page/components/CommunityLinktreeSection";
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <HighValueSection />
       <NewsSection />
       <YouTubeSection />
+      <CommunityLinktreeSection />
       {/* <BlogSection /> */}
     </PageLayout>
   );

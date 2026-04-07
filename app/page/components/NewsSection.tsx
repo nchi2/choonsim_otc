@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ECOSYSTEM_NEWS_ANCHOR_ID } from "@/lib/community-linktree";
 import * as S from "../styles";
 
 const MOBICK_ECONOMY_URL = "https://www.mobickeconomy.com/";
@@ -39,6 +40,18 @@ export default function NewsSection() {
     setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, dummyNews.length));
 
   return (
+    <section
+      id={ECOSYSTEM_NEWS_ANCHOR_ID}
+      style={{
+        scrollMarginTop: "5.5rem",
+        width: "100%",
+        maxWidth: 800,
+        margin: 0,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+      }}
+    >
     <S.Section>
       <S.ContentSectionHeader>
         <S.ContentSectionTitle>
@@ -78,5 +91,6 @@ export default function NewsSection() {
         </div>
       )}
     </S.Section>
+    </section>
   );
 }

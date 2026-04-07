@@ -31,9 +31,12 @@
     // K
     "Klines",
     "klines",
+    "linktr",
     // L
     "lbank",
     "LBANK",
+    "linktree",
+    "Linktree",
     // M
     "MOVL",
     "movl",
@@ -56,6 +59,7 @@
     // S
     "SBMB",
     "sbmb",
+    "stablebmb",
 
     // T
     // U

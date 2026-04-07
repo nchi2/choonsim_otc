@@ -431,12 +431,48 @@ export const OTCHeroTitle = styled.h2`
 
 export const OTCHeroDescription = styled.p`
   font-size: 1rem;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
   color: rgba(255, 255, 255, 0.85);
   line-height: 1.6;
 
   @media (max-width: 768px) {
     font-size: 0.95rem;
+  }
+`;
+
+export const OTCHeroHubRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 28px;
+
+  @media (max-width: 768px) {
+    margin-bottom: 24px;
+  }
+`;
+
+export const OTCHeroHubLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #434392;
+  background: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+    padding: 0.5rem 1.05rem;
   }
 `;
 
@@ -449,6 +485,13 @@ export const OTCHeroPriceGrid = styled.div`
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
+`;
+
+export const OTCHeroPriceError = styled.p`
+  font-size: 0.8125rem;
+  margin: 0 0 10px 0;
+  color: rgba(254, 202, 202, 0.98);
+  line-height: 1.4;
 `;
 
 export const OTCHeroLbankLinkBelowPrices = styled.div`
@@ -801,6 +844,7 @@ export const HighValuePrimaryButton = styled.a`
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   padding: 0.9rem 1.75rem;
   border-radius: 12px;
   background-color: #434392;
