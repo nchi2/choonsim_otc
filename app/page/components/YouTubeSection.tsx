@@ -46,6 +46,20 @@ function formatAbsoluteTime(isoDate: string) {
   return dateFormatter.format(date);
 }
 
+function formatPartialErrors(errors: Record<string, string>) {
+  const entries = Object.entries(errors);
+  if (entries.length === 0) {
+    return "";
+  }
+  const quotaOnly = entries.every(([, reason]) => reason === "quotaExceeded");
+  if (quotaOnly) {
+    return "일부 채널은 YouTube API 일일 할당 한도로 이번에 가져오지 못했습니다. 다른 시간에 다시 시도해 주세요.";
+  }
+  return `일부 채널에서 오류가 발생했습니다: ${entries
+    .map(([handle, reason]) => `${handle} (${reason})`)
+    .join(", ")}`;
+}
+
 function formatRelativeTime(isoDate: string) {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) {
@@ -200,12 +214,7 @@ export default function YouTubeSection() {
       )}
 
       {data?.errors && !error && (
-        <S.ErrorText>
-          일부 채널에서 오류가 발생했습니다:{" "}
-          {Object.entries(data.errors)
-            .map(([handle, reason]) => `${handle} (${reason})`)
-            .join(", ")}
-        </S.ErrorText>
+        <S.ErrorText>{formatPartialErrors(data.errors)}</S.ErrorText>
       )}
     </S.Section>
   );
