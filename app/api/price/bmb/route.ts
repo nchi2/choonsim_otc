@@ -1,30 +1,56 @@
 import { NextResponse } from "next/server";
+import { fetchCcapi, getCcapiKlinesUrl } from "@/lib/ccapi-fetch";
 
-export async function GET() {
+async function resolveBmbUsdtPrice(): Promise<number | null> {
   try {
-    // LBANK에서 BMB/USDT 가격 가져오기
     const lbankResponse = await fetch(
       "https://api.lbkex.com/v2/supplement/ticker/price.do?symbol=bmb_usdt",
       {
-        next: { revalidate: 30 }, // 30초 캐시
+        next: { revalidate: 30 },
       }
     );
 
-    if (!lbankResponse.ok) {
-      throw new Error(`LBANK API error: ${lbankResponse.status}`);
+    if (lbankResponse.ok) {
+      const lbankData = await lbankResponse.json();
+      const lbankUnsupported =
+        lbankData?.result === "false" ||
+        lbankData?.result === false ||
+        (lbankData?.error_code != null && lbankData.error_code !== 0);
+
+      if (
+        !lbankUnsupported &&
+        lbankData?.data?.[0]?.price != null
+      ) {
+        return parseFloat(lbankData.data[0].price);
+      }
     }
+  } catch (e) {
+    console.error("LBANK BMB 가격 오류:", e);
+  }
 
-    const lbankData = await lbankResponse.json();
+  try {
+    const to = Date.now();
+    const ccapiUrl = getCcapiKlinesUrl("bmb_usdt", "1d", to, 1);
+    const ccapiResponse = await fetchCcapi(ccapiUrl, {
+      next: { revalidate: 30 },
+    });
+    if (ccapiResponse.ok) {
+      const ccapiData = await ccapiResponse.json();
+      const c = ccapiData?.data?.klines?.[0]?.c;
+      if (c != null) return parseFloat(String(c));
+    }
+  } catch (e) {
+    console.error("ccapi BMB 가격 오류:", e);
+  }
 
-    // 응답 데이터 검증
-    if (
-      lbankData &&
-      lbankData.data &&
-      lbankData.data[0] &&
-      lbankData.data[0].price
-    ) {
-      const bmbUsdtPrice = parseFloat(lbankData.data[0].price);
+  return null;
+}
 
+export async function GET() {
+  try {
+    const bmbUsdtPrice = await resolveBmbUsdtPrice();
+
+    if (bmbUsdtPrice != null) {
       // USDT/KRW 가격 가져오기 (BMB/KRW 계산용)
       let usdtKrwPrice: number | null = null;
       
@@ -82,9 +108,9 @@ export async function GET() {
         },
         { status: 200 }
       );
-    } else {
-      throw new Error("LBANK API 응답 구조가 예상과 다릅니다.");
     }
+
+    throw new Error("BMB/USDT 가격을 가져올 수 없습니다.");
   } catch (error) {
     console.error("Error fetching BMB price:", error);
 

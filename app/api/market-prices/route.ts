@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchCcapi, getCcapiKlinesUrl } from "@/lib/ccapi-fetch";
 
 export async function GET() {
   try {
@@ -77,8 +78,15 @@ export async function GET() {
 
       const lbankData = await lbankResponse.json();
 
-      // 응답 데이터 검증
       if (
+        lbankData?.result === "false" ||
+        lbankData?.result === false ||
+        (lbankData?.error_code != null && lbankData.error_code !== 0)
+      ) {
+        lbankError = String(
+          lbankData?.msg ?? "LBANK에서 해당 쌍을 지원하지 않습니다.",
+        );
+      } else if (
         lbankData &&
         lbankData.data &&
         lbankData.data[0] &&
@@ -93,16 +101,14 @@ export async function GET() {
       lbankError = error instanceof Error ? error.message : "LBANK API 오류";
     }
 
-    // 3-2. LBANK 실패 시 ccapi.rerrkvifj.com에서 BMB/USDT 가격 가져오기 (2차 시도)
+    // 3-2. LBANK 실패 시 ccapi에서 BMB/USDT 종가 가져오기 (2차 시도, TLS는 lib/ccapi-fetch 참고)
     if (bmbUsdtPrice === null) {
       try {
         const to = Date.now();
-        const ccapiResponse = await fetch(
-          `https://ccapi.rerrkvifj.com/spot-market-center/klines?symbol=bmb_usdt&interval=1d&to=${to}&size=1`,
-          {
-            next: { revalidate: 30 },
-          },
-        );
+        const ccapiUrl = getCcapiKlinesUrl("bmb_usdt", "1d", to, 1);
+        const ccapiResponse = await fetchCcapi(ccapiUrl, {
+          next: { revalidate: 30 },
+        });
 
         if (ccapiResponse.ok) {
           const ccapiData = await ccapiResponse.json();

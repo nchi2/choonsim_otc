@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { chunsimPriceData } from "@/lib/chunsim-price-data";
+import { fetchCcapi, getCcapiKlinesUrl } from "@/lib/ccapi-fetch";
 
 interface RatioDataPoint {
   time: number; // timestamp
@@ -120,20 +121,12 @@ export async function GET(request: Request) {
     // 현재 시간을 밀리초로 (to 파라미터용)
     const to = Date.now();
 
-    // BMB/USDT와 BTC/USDT 데이터를 동시에 가져오기
+    const bmbUrl = getCcapiKlinesUrl("bmb_usdt", interval, to, Number(size));
+    const btcUrl = getCcapiKlinesUrl("btc_usdt", interval, to, Number(size));
+
     const [bmbResponse, btcResponse] = await Promise.all([
-      fetch(
-        `https://ccapi.rerrkvifj.com/spot-market-center/klines?symbol=bmb_usdt&interval=${interval}&to=${to}&size=${size}`,
-        {
-          next: { revalidate: 60 }, // 1분 캐시
-        }
-      ),
-      fetch(
-        `https://ccapi.rerrkvifj.com/spot-market-center/klines?symbol=btc_usdt&interval=${interval}&to=${to}&size=${size}`,
-        {
-          next: { revalidate: 60 },
-        }
-      ),
+      fetchCcapi(bmbUrl, { next: { revalidate: 60 } }),
+      fetchCcapi(btcUrl, { next: { revalidate: 60 } }),
     ]);
 
     // 응답 상태 확인

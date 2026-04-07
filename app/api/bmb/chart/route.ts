@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { fetchCcapi, getCcapiKlinesUrl } from "@/lib/ccapi-fetch";
 
 interface ChartDataPoint {
-  time: number; // timestamp
+  time: number;
   open: number;
   high: number;
   low: number;
@@ -9,83 +10,97 @@ interface ChartDataPoint {
   volume: number;
 }
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get("period") || "1day"; // 1min, 5min, 15min, 30min, 1hour, 1day, 1week
-    const size = searchParams.get("size") || "100"; // 데이터 개수
+const LBANK_PERIOD_TO_CCAPI: Record<string, string> = {
+  "1min": "1m",
+  "5min": "5m",
+  "15min": "15m",
+  "30min": "30m",
+  "1hour": "1h",
+  "1day": "1d",
+  "1week": "1w",
+};
 
-    // LBank Kline API 호출
-    const lbankResponse = await fetch(
-      `https://api.lbkex.com/v2/supplement/kline.do?symbol=bmb_usdt&type=${period}&size=${size}`,
+async function fetchUsdtKrwPrice(): Promise<number | null> {
+  try {
+    const bithumbResponse = await fetch(
+      "https://api.bithumb.com/public/ticker/USDT_KRW",
       {
-        next: { revalidate: 60 }, // 1분 캐시
+        next: { revalidate: 60 },
       }
     );
 
-    if (!lbankResponse.ok) {
-      throw new Error(`LBANK API error: ${lbankResponse.status}`);
+    if (bithumbResponse.ok) {
+      const bithumbData = await bithumbResponse.json();
+      if (bithumbData?.data?.closing_price) {
+        return parseFloat(bithumbData.data.closing_price.replace(/,/g, ""));
+      }
     }
+  } catch (error) {
+    console.error("Bithumb API 오류:", error);
+  }
 
-    const lbankData = await lbankResponse.json();
-
-    // 응답 데이터 검증 및 변환
-    if (lbankData && lbankData.data && Array.isArray(lbankData.data)) {
-      // USDT/KRW 가격 가져오기 (BMB/KRW 계산용)
-      let usdtKrwPrice: number | null = null;
-
-      try {
-        const bithumbResponse = await fetch(
-          "https://api.bithumb.com/public/ticker/USDT_KRW",
-          {
-            next: { revalidate: 60 },
-          }
-        );
-
-        if (bithumbResponse.ok) {
-          const bithumbData = await bithumbResponse.json();
-          if (bithumbData?.data?.closing_price) {
-            usdtKrwPrice = parseFloat(
-              bithumbData.data.closing_price.replace(/,/g, "")
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Bithumb API 오류:", error);
+  try {
+    const upbitResponse = await fetch(
+      "https://api.upbit.com/v1/ticker?markets=KRW-USDT",
+      {
+        next: { revalidate: 60 },
       }
+    );
 
-      // Upbit fallback
-      if (usdtKrwPrice === null) {
-        try {
-          const upbitResponse = await fetch(
-            "https://api.upbit.com/v1/ticker?markets=KRW-USDT",
-            {
-              next: { revalidate: 60 },
-            }
-          );
-
-          if (upbitResponse.ok) {
-            const upbitData = await upbitResponse.json();
-            if (upbitData?.[0]?.trade_price) {
-              usdtKrwPrice = upbitData[0].trade_price;
-            }
-          }
-        } catch (error) {
-          console.error("Upbit API 오류:", error);
-        }
+    if (upbitResponse.ok) {
+      const upbitData = await upbitResponse.json();
+      if (upbitData?.[0]?.trade_price) {
+        return upbitData[0].trade_price;
       }
+    }
+  } catch (error) {
+    console.error("Upbit API 오류:", error);
+  }
 
-      // LBank 데이터를 차트 형식으로 변환
-      const chartData: ChartDataPoint[] = lbankData.data
-        .map((item: any) => {
-          // LBank 응답 형식: [timestamp, open, high, low, close, volume]
-          const [timestamp, open, high, low, close, volume] = item;
+  return null;
+}
 
-          // USDT 가격을 KRW로 변환
-          const convertToKrw = (usdtPrice: number) => {
-            return usdtKrwPrice ? usdtPrice * usdtKrwPrice : usdtPrice;
-          };
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get("period") || "1day";
+    const size = searchParams.get("size") || "100";
 
+    const usdtKrwPrice = await fetchUsdtKrwPrice();
+    const convertToKrw = (usdtPrice: number) =>
+      usdtKrwPrice != null ? usdtPrice * usdtKrwPrice : usdtPrice;
+
+    let chartData: ChartDataPoint[] = [];
+    let usedSource: "lbank" | "ccapi" = "lbank";
+
+    const lbankResponse = await fetch(
+      `https://api.lbkex.com/v2/supplement/kline.do?symbol=bmb_usdt&type=${period}&size=${size}`,
+      {
+        next: { revalidate: 60 },
+      }
+    );
+
+    const lbankData = lbankResponse.ok ? await lbankResponse.json() : null;
+    const lbankRows =
+      lbankData &&
+      Array.isArray(lbankData.data) &&
+      lbankData.data.length > 0 &&
+      lbankData.result !== "false" &&
+      lbankData.result !== false
+        ? lbankData.data
+        : null;
+
+    if (lbankRows) {
+      chartData = lbankRows
+        .map((item: unknown[]) => {
+          const [timestamp, open, high, low, close, volume] = item as [
+            number,
+            string,
+            string,
+            string,
+            string,
+            string,
+          ];
           return {
             time: timestamp,
             open: convertToKrw(parseFloat(open)),
@@ -95,16 +110,51 @@ export async function GET(request: Request) {
             volume: parseFloat(volume),
           };
         })
-        .reverse(); // 시간순 정렬 (오래된 것부터)
-
-      return NextResponse.json({
-        data: chartData,
-        period,
-        usdtKrwPrice,
-      });
+        .reverse();
+      usedSource = "lbank";
     } else {
-      throw new Error("LBANK API 응답 구조가 예상과 다릅니다.");
+      const interval = LBANK_PERIOD_TO_CCAPI[period] ?? "1d";
+      const to = Date.now();
+      const ccapiUrl = getCcapiKlinesUrl(
+        "bmb_usdt",
+        interval,
+        to,
+        Number.parseInt(size, 10) || 100
+      );
+      const ccapiResponse = await fetchCcapi(ccapiUrl, {
+        next: { revalidate: 60 },
+      });
+
+      if (!ccapiResponse.ok) {
+        throw new Error(`ccapi 차트 오류: ${ccapiResponse.status}`);
+      }
+
+      const ccapiJson = await ccapiResponse.json();
+      const klines = ccapiJson?.data?.klines;
+      if (!Array.isArray(klines) || klines.length === 0) {
+        throw new Error("ccapi에 캔들 데이터가 없습니다.");
+      }
+
+      chartData = klines
+        .map((item: { t: number; o: string; h: string; l: string; c: string; v: string }) => ({
+          time: Number(item.t),
+          open: convertToKrw(parseFloat(String(item.o))),
+          high: convertToKrw(parseFloat(String(item.h))),
+          low: convertToKrw(parseFloat(String(item.l))),
+          close: convertToKrw(parseFloat(String(item.c))),
+          volume: parseFloat(String(item.v)),
+        }))
+        .sort((a: ChartDataPoint, b: ChartDataPoint) => a.time - b.time);
+
+      usedSource = "ccapi";
     }
+
+    return NextResponse.json({
+      data: chartData,
+      period,
+      usdtKrwPrice,
+      source: usedSource,
+    });
   } catch (error) {
     console.error("Error fetching chart data:", error);
     return NextResponse.json(
