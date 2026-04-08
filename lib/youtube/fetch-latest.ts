@@ -1,14 +1,10 @@
 import { YOUTUBE_CHANNELS, YoutubeChannel } from "./channels";
 
 /**
- * 공개 채널 최신 영상은 Atom 피드로 가져옴 (Data API 키·일일 할당 불필요).
- * https://www.youtube.com/feeds/videos.xml?channel_id=…
+ * YouTube는 channel_id 기반 Atom 피드(/feeds/videos.xml)를 404로 막는 경우가 많음(2025~).
+ * 채널 /videos 탭 HTML 안의 ytInitialData(JSON)에서 videoRenderer를 수집한다.
  */
 const MAX_RESULTS_PER_CHANNEL = 3;
-
-function channelFeedUrl(channelId: string) {
-  return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`;
-}
 
 export const CACHE_TTL_SECONDS = 300;
 
@@ -29,14 +25,32 @@ export type YoutubeFetchResult = {
   errors?: Record<string, string>;
   succeededCount: number;
   failedCount: number;
-  /** Data API 미사용 — 항상 false (라우트 캐시 fallback 호환용) */
   sawRateLimit: boolean;
 };
 
-const rssFetchInit: RequestInit = {
+type VideoRendererJson = {
+  videoId?: string;
+  title?: { runs?: { text?: string }[] };
+  thumbnail?: { thumbnails?: { url?: string }[] };
+  publishedTimeText?: { simpleText?: string };
+  navigationEndpoint?: {
+    watchEndpoint?: { videoId?: string };
+    reelWatchEndpoint?: { videoId?: string };
+  };
+};
+
+const RENDERER_KEYS = [
+  "videoRenderer",
+  "compactVideoRenderer",
+  "gridVideoRenderer",
+] as const;
+
+const browseFetchInit: RequestInit = {
   cache: "no-store",
   headers: {
-    Accept: "application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   },
@@ -45,7 +59,7 @@ const rssFetchInit: RequestInit = {
 export async function fetchYoutubeLatest(): Promise<YoutubeFetchResult> {
   const errors: Record<string, string> = {};
   const settled = await Promise.allSettled(
-    YOUTUBE_CHANNELS.map((ch) => fetchChannelLatestFromRss(ch))
+    YOUTUBE_CHANNELS.map((ch) => fetchChannelLatestFromBrowse(ch))
   );
 
   const videos = settled.flatMap((result, index) => {
@@ -75,86 +89,238 @@ export async function fetchYoutubeLatest(): Promise<YoutubeFetchResult> {
   };
 }
 
-async function fetchChannelLatestFromRss(
+async function fetchChannelLatestFromBrowse(
   channel: YoutubeChannel
 ): Promise<YoutubeVideo[]> {
-  const res = await fetch(channelFeedUrl(channel.channelId), rssFetchInit);
+  const handleSlug = channel.handle.replace(/^@/, "");
+  const urls = [
+    `https://www.youtube.com/channel/${encodeURIComponent(channel.channelId)}/videos`,
+    `https://www.youtube.com/@${encodeURIComponent(handleSlug)}/videos`,
+  ];
 
-  if (!res.ok) {
-    throw new Error(`feed HTTP ${res.status}`);
+  let lastErr: Error | null = null;
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, browseFetchInit);
+      if (!res.ok) {
+        throw new Error(`browse HTTP ${res.status}`);
+      }
+      const html = await res.text();
+      const videos = videosFromBrowseHtml(html, channel);
+      if (videos.length > 0) {
+        return videos;
+      }
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+    }
   }
 
-  const xml = await res.text();
-  return parseAtomFeed(xml, channel);
+  throw lastErr ?? new Error("noVideosInPage");
 }
 
-function parseAtomFeed(xml: string, channel: YoutubeChannel): YoutubeVideo[] {
-  const chunks = xml.split("<entry>").slice(1);
+function videosFromBrowseHtml(
+  html: string,
+  channel: YoutubeChannel
+): YoutubeVideo[] {
+  const data = extractYtInitialData(html);
+  if (!data) {
+    throw new Error("ytInitialData missing");
+  }
+
+  const renderers: VideoRendererJson[] = [];
+  collectVideoRenderers(data, renderers);
+
+  const seen = new Set<string>();
   const videos: YoutubeVideo[] = [];
 
-  for (const chunk of chunks) {
+  for (const vr of renderers) {
     if (videos.length >= MAX_RESULTS_PER_CHANNEL) {
       break;
     }
-
-    const block = (chunk.split("</entry>")[0] ?? chunk).trim();
-
-    const videoId =
-      block.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1]?.trim() ??
-      block.match(/<id>yt:video:([^<]+)<\/id>/)?.[1]?.trim();
-
-    if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    const id = videoIdFromRenderer(vr);
+    if (!id || seen.has(id)) {
       continue;
     }
+    seen.add(id);
 
-    const published =
-      block.match(/<published>([^<]+)<\/published>/)?.[1]?.trim() ??
-      block.match(/<updated>([^<]+)<\/updated>/)?.[1]?.trim();
+    const title =
+      vr.title?.runs?.map((r) => r.text ?? "").join("")?.trim() ?? "";
+    const publishedLabel = vr.publishedTimeText?.simpleText?.trim() ?? "";
+    const publishedAt =
+      parseRelativeTimeLabel(publishedLabel) ?? fallbackPublishedAt(videos.length);
 
-    if (!published) {
-      continue;
-    }
-
-    const title = extractEntryTitle(block);
-    const thumbMatch = block.match(/<media:thumbnail[^>]*\burl="([^"]+)"/);
+    const thumbs = vr.thumbnail?.thumbnails;
     const thumbnail =
-      thumbMatch?.[1] ?? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+      thumbs && thumbs.length > 0
+        ? thumbs[thumbs.length - 1]?.url ?? ""
+        : `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
 
     videos.push({
-      videoId,
-      url: `https://www.youtube.com/watch?v=${videoId}`,
+      videoId: id,
+      url: `https://www.youtube.com/watch?v=${id}`,
       title,
       thumbnail,
       channelTitle: channel.displayName,
       channelId: channel.channelId,
       displayName: channel.displayName,
       handle: channel.handle,
-      publishedAt: published,
+      publishedAt,
     });
   }
 
   return videos;
 }
 
-function extractEntryTitle(block: string): string {
-  const cdata = block.match(
-    /<title>\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*<\/title>/
-  );
-  if (cdata) {
-    return decodeXmlEntities(cdata[1].trim());
+function videoIdFromRenderer(vr: VideoRendererJson): string | undefined {
+  const raw = vr.videoId?.trim();
+  if (raw && /^[a-zA-Z0-9_-]{11}$/.test(raw)) {
+    return raw;
   }
-  const plain = block.match(/<title>([^<]*)<\/title>/)?.[1];
-  return decodeXmlEntities((plain ?? "").trim());
+  const nav = vr.navigationEndpoint;
+  const fromWatch = nav?.watchEndpoint?.videoId?.trim();
+  if (fromWatch && /^[a-zA-Z0-9_-]{11}$/.test(fromWatch)) {
+    return fromWatch;
+  }
+  const fromReel = nav?.reelWatchEndpoint?.videoId?.trim();
+  if (fromReel && /^[a-zA-Z0-9_-]{11}$/.test(fromReel)) {
+    return fromReel;
+  }
+  return undefined;
 }
 
-function decodeXmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+function extractYtInitialData(html: string): unknown | null {
+  const marker = "var ytInitialData = ";
+  const start = html.indexOf(marker);
+  if (start === -1) {
+    return null;
+  }
+  let i = start + marker.length;
+  while (i < html.length && (html[i] === " " || html[i] === "\n")) {
+    i++;
+  }
+  if (html[i] !== "{") {
+    return null;
+  }
+  let depth = 0;
+  const jsonStart = i;
+  let inStr = false;
+  let esc = false;
+  for (; i < html.length; i++) {
+    const c = html[i];
+    if (inStr) {
+      if (esc) {
+        esc = false;
+        continue;
+      }
+      if (c === "\\") {
+        esc = true;
+        continue;
+      }
+      if (c === '"') {
+        inStr = false;
+      }
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === "{") {
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(jsonStart, i + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function collectVideoRenderers(node: unknown, out: VideoRendererJson[]): void {
+  if (node === null || typeof node !== "object") {
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const x of node) {
+      collectVideoRenderers(x, out);
+    }
+    return;
+  }
+  const rec = node as Record<string, unknown>;
+  for (const key of RENDERER_KEYS) {
+    const r = rec[key];
+    if (r && typeof r === "object") {
+      out.push(r as VideoRendererJson);
+    }
+  }
+  for (const [k, v] of Object.entries(rec)) {
+    if ((RENDERER_KEYS as readonly string[]).includes(k)) {
+      continue;
+    }
+    collectVideoRenderers(v, out);
+  }
+}
+
+/** 전각 숫자(０–９) → ASCII 숫자 (YouTube UI·지역별 문자 대응) */
+function normalizeDisplayDigits(s: string): string {
+  return s.replace(/[\uFF10-\uFF19]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0xff10 + 0x30)
+  );
+}
+
+/** 상대 시각 문구(한/영) → 대략적인 ISO 시각 (정렬·노출용) */
+function parseRelativeTimeLabel(label: string): string | null {
+  const s = normalizeDisplayDigits(label.trim());
+  if (!s) {
+    return null;
+  }
+  const now = Date.now();
+  const ko = [
+    /^(\d+)\s*초\s*전$/,
+    /^(\d+)\s*분\s*전$/,
+    /^(\d+)\s*시간\s*전$/,
+    /^(\d+)\s*일\s*전$/,
+    /^(\d+)\s*주\s*전$/,
+    /^(\d+)\s*개월\s*전$/,
+  ];
+  const en = [
+    /^(\d+)\s*seconds?\s*ago$/i,
+    /^(\d+)\s*minutes?\s*ago$/i,
+    /^(\d+)\s*hours?\s*ago$/i,
+    /^(\d+)\s*days?\s*ago$/i,
+    /^(\d+)\s*weeks?\s*ago$/i,
+    /^(\d+)\s*months?\s*ago$/i,
+  ];
+  const mults = [1000, 60_000, 3_600_000, 86_400_000, 604_800_000, 2_592_000_000];
+
+  for (let j = 0; j < mults.length; j++) {
+    const km = s.match(ko[j]);
+    const em = s.match(en[j]);
+    const m = km ?? em;
+    if (m) {
+      return new Date(now - Number(m[1]) * mults[j]).toISOString();
+    }
+  }
+  if (/^(방금|지금|Just now|just now)/i.test(s)) {
+    return new Date(now).toISOString();
+  }
+  if (/^(어제|Yesterday)/i.test(s)) {
+    return new Date(now - 86_400_000).toISOString();
+  }
+  if (/streamed|live|라이브|스트리밍/i.test(s)) {
+    return new Date(now).toISOString();
+  }
+  return null;
+}
+
+function fallbackPublishedAt(index: number): string {
+  return new Date(Date.now() - index * 3600_000).toISOString();
 }
 
 function deduplicateAndSort(videos: YoutubeVideo[]) {

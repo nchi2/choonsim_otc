@@ -47,6 +47,22 @@ function formatAbsoluteTime(isoDate: string) {
   return dateFormatter.format(date);
 }
 
+function humanizeFetchReason(reason: string): string {
+  if (reason === "noVideosInPage") {
+    return "목록 없음";
+  }
+  if (reason === "ytInitialData missing") {
+    return "페이지 형식 변경/차단";
+  }
+  if (reason.startsWith("browse HTTP ")) {
+    return reason.replace("browse HTTP ", "페이지 HTTP ");
+  }
+  if (reason.startsWith("feed HTTP ")) {
+    return reason.replace("feed HTTP ", "피드 HTTP ");
+  }
+  return reason;
+}
+
 function formatPartialErrors(errors: Record<string, string>) {
   const entries = Object.entries(errors);
   if (entries.length === 0) {
@@ -57,7 +73,7 @@ function formatPartialErrors(errors: Record<string, string>) {
     return "일부 채널은 YouTube API 일일 할당 한도로 이번에 가져오지 못했습니다. 다른 시간에 다시 시도해 주세요.";
   }
   return `일부 채널에서 오류가 발생했습니다: ${entries
-    .map(([handle, reason]) => `${handle} (${reason})`)
+    .map(([handle, reason]) => `${handle} (${humanizeFetchReason(reason)})`)
     .join(", ")}`;
 }
 
