@@ -169,23 +169,19 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
       <S.QrVideoWrap>
         <S.QrVideo ref={videoRef} muted playsInline autoPlay />
         {!cameraActive ? (
-          <S.QrGuideOverlay>
-            <S.QrGuideFrame aria-hidden />
-            <S.QrGuideTitle>QR로 지갑 주소 입력</S.QrGuideTitle>
-            <S.QrGuideCallout>공개 주소를 스캔해 주세요</S.QrGuideCallout>
-            <S.QrGuideSub>
-              아래 버튼으로 카메라를 켠 뒤, 지갑에서 보이는 공개 주소 QR을
-              프레임 안에 맞춰 주세요.
-            </S.QrGuideSub>
-            <S.QrStartButton
-              type="button"
-              onClick={() => {
-                setError(null);
-                setCameraActive(true);
-              }}
-            >
-              카메라로 스캔하기
-            </S.QrStartButton>
+          <S.QrGuideOverlay aria-label="QR 스캔 — 카메라를 켜려면 버튼을 누르세요">
+            <S.QrGuideInner>
+              <S.QrGuideFrame aria-hidden />
+              <S.QrStartButton
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setCameraActive(true);
+                }}
+              >
+                카메라로 스캔하기
+              </S.QrStartButton>
+            </S.QrGuideInner>
           </S.QrGuideOverlay>
         ) : (
           <>

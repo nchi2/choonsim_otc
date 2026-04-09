@@ -1,6 +1,4 @@
-/** 포맷팅 · 주소 · 등급 헬퍼 */
-
-import type { TokenResult } from "./tokens";
+/** 포맷팅 · 주소 헬퍼 */
 
 export function isValidAddress(input: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(input.trim());
@@ -57,19 +55,4 @@ export function shortAddress(addr: string): string {
   const a = addr.trim();
   if (a.length < 10) return addr;
   return `${a.slice(0, 6)}...${a.slice(-4)}`;
-}
-
-export function getPortfolioTier(results: TokenResult[]): string {
-  const has = (fn: (t: TokenResult) => boolean) =>
-    results.some((t) => fn(t) && t.balance > 0);
-
-  const hasSbmb = has((t) => t.symbol === "SBMB");
-  const hasLdt = has((t) => t.symbol === "LDT");
-  const hasOtaverse = has((t) => t.tier === "otaverse");
-  const hasOurs = has((t) => t.tier === "ours");
-
-  if (hasSbmb && hasLdt && hasOtaverse) return "OTA HOLDER";
-  if (hasSbmb && hasLdt) return "FULL HOLDER";
-  if (hasOurs) return "HOLDER";
-  return "—";
 }

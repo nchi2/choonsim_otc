@@ -4,6 +4,7 @@ import {
   SCANNER_NETWORK_LABEL,
   SCANNER_NETWORK_ORDER,
   SCANNER_TOKENS,
+  scannerTokenOverviewLabel,
 } from "@/app/scanner/lib/tokens";
 import * as S from "../styles";
 
@@ -28,7 +29,7 @@ export function SupportedTokensOverview() {
                   <S.SupportedTokensLi
                     key={`${t.symbol}-${t.network}-${t.type}-${t.label}`}
                   >
-                    {t.label}
+                    {scannerTokenOverviewLabel(t.label)}
                     {t.type === "native" ? " · 네이티브" : null}
                   </S.SupportedTokensLi>
                 ))}

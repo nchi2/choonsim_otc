@@ -11,6 +11,20 @@ export const SCANNER_NETWORK_LABEL: Record<Network, string> = {
   bsc: "BNB Chain",
 };
 
+/** 조회 가능 토큰 목록 — 열 제목이 체인이므로 라벨 끝의 `(Base)` 등 제거 */
+export function scannerTokenOverviewLabel(label: string): string {
+  return label
+    .replace(/ \(BNB Chain\)$/, "")
+    .replace(/ \(Ethereum\)$/, "")
+    .replace(/ \(Base\)$/, "");
+}
+
+/** TokenRow 등 — 심볼 옆 전체 표기 */
+export const SCANNER_SYMBOL_DISPLAY: Readonly<Partial<Record<string, string>>> = {
+  LDT: "LDT (Lucem Diffundo Token)",
+  WBMB: "WBMB (Wrapped BMB)",
+};
+
 export type TokenType = "native" | "erc20";
 
 export type Tier = "ours" | "otaverse";
@@ -108,7 +122,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     address: ERC20_ADDRESS_PLACEHOLDER,
     decimals: 18,
     tier: "ours",
-    label: "LDT (Ethereum)",
+    label: "LDT (Lucem Diffundo Token) (Ethereum)",
     colorVar: "--scanner-tier-ours",
   },
   {
@@ -118,7 +132,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     address: "0x504B262539d3A4194d0649f69Fe3cCA06D5bB24a",
     decimals: 18,
     tier: "ours",
-    label: "LDT (Base)",
+    label: "LDT (Lucem Diffundo Token) (Base)",
     colorVar: "--scanner-tier-ours",
   },
   {
@@ -128,7 +142,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     address: "0x71E7CBD674762F95D4D685138749feC3665c8225",
     decimals: 18,
     tier: "otaverse",
-    label: "WBMB (Base)",
+    label: "WBMB (Wrapped BMB) (Base)",
     colorVar: "--scanner-tier-otaverse",
   },
   {
@@ -138,7 +152,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     address: "0x504B262539d3A4194d0649f69Fe3cCA06D5bB24a",
     decimals: 18,
     tier: "ours",
-    label: "LDT (BNB Chain)",
+    label: "LDT (Lucem Diffundo Token) (BNB Chain)",
     colorVar: "--scanner-tier-ours",
   },
   {
@@ -170,7 +184,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     address: "0x9E4c611B834672c3643D9818249366bf65ae4C86",
     decimals: 18,
     tier: "otaverse",
-    label: "WBMB (BNB Chain)",
+    label: "WBMB (Wrapped BMB) (BNB Chain)",
     colorVar: "--scanner-tier-otaverse",
   },
 

@@ -173,64 +173,40 @@ export const QrVideo = styled.video`
   object-fit: cover;
 `;
 
-/** 스캔 유도 — 카메라 꺼진 상태 */
+/** 스캔 유도 — 카메라 꺼진 상태 (grid로 영역 정중앙 고정) */
 export const QrGuideOverlay = styled.div`
   position: absolute;
   inset: 0;
   z-index: 2;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 55%, #020617 100%);
+`;
+
+export const QrGuideInner = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem 1rem 1.25rem;
-  text-align: center;
-  background: linear-gradient(165deg, #1e293b 0%, #0f172a 55%, #020617 100%);
+  gap: 0.875rem;
+  max-height: 100%;
+  width: 100%;
+  max-width: 16rem;
 `;
 
 export const QrGuideFrame = styled.div`
-  width: min(58%, 11.5rem);
+  flex-shrink: 0;
+  width: min(52%, 10rem);
   aspect-ratio: 1;
-  margin-bottom: 0.25rem;
   border: 2px dashed rgba(148, 163, 184, 0.55);
   border-radius: 0.625rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 `;
 
-export const QrGuideTitle = styled.p`
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  letter-spacing: -0.02em;
-
-  @media (min-width: 768px) {
-    font-size: 0.875rem;
-  }
-`;
-
-export const QrGuideCallout = styled.p`
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #cbd5e1;
-  line-height: 1.4;
-
-  @media (min-width: 768px) {
-    font-size: 0.8125rem;
-  }
-`;
-
-export const QrGuideSub = styled.p`
-  margin: 0;
-  max-width: 16rem;
-  font-size: 0.6875rem;
-  line-height: 1.45;
-  color: #94a3b8;
-`;
-
 export const QrStartButton = styled.button`
-  margin-top: 0.25rem;
+  flex-shrink: 0;
   font-family: inherit;
   cursor: pointer;
   padding: 0.5rem 1.125rem;
@@ -466,7 +442,7 @@ export const TokenRowLeft = styled.div`
   flex: 1;
 `;
 
-export const TokenRowIcon = styled.div<{ $colorVar: string }>`
+export const TokenRowIcon = styled.div<{ $colorVar: string; $image?: boolean }>`
   flex-shrink: 0;
   width: 2.375rem;
   height: 2.375rem;
@@ -478,13 +454,27 @@ export const TokenRowIcon = styled.div<{ $colorVar: string }>`
   font-weight: 800;
   letter-spacing: -0.03em;
   color: #111827;
-  background: color-mix(in srgb, var(${(p) => p.$colorVar}) 28%, #ffffff);
+  overflow: hidden;
+  background: ${(p) =>
+    p.$image ? "transparent" : `color-mix(in srgb, var(${p.$colorVar}) 28%, #ffffff)`};
+  border: none;
+  padding: 0;
 
   @media (min-width: 768px) {
     width: 2.625rem;
     height: 2.625rem;
     font-size: 0.7rem;
   }
+`;
+
+export const TokenRowIconImg = styled.img<{ $scale?: number }>`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transform: scale(${(p) => p.$scale ?? 1});
+  transform-origin: center center;
 `;
 
 export const TokenRowMeta = styled.div`
@@ -719,11 +709,6 @@ export const PortfolioSummaryStats = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
-
-  @media (min-width: 480px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
 `;
 
 export const PortfolioSummaryStat = styled.div`
@@ -752,28 +737,4 @@ export const PortfolioSummaryStatValue = styled.span`
   @media (min-width: 768px) {
     font-size: 1.0625rem;
   }
-`;
-
-export const PortfolioSummaryTier = styled.div`
-  margin-top: 0.875rem;
-  padding-top: 0.875rem;
-  border-top: 1px solid #f3f4f6;
-  font-size: 0.875rem;
-
-  @media (min-width: 768px) {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    font-size: 0.9375rem;
-  }
-`;
-
-export const PortfolioSummaryTierLabel = styled.span`
-  font-weight: 600;
-  color: #6b7280;
-  margin-right: 0.375rem;
-`;
-
-export const PortfolioSummaryTierValue = styled.span`
-  font-weight: 700;
-  color: #2563eb;
 `;

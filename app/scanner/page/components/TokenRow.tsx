@@ -3,7 +3,9 @@
 import {
   type Token,
   SCANNER_NETWORK_LABEL,
+  SCANNER_SYMBOL_DISPLAY,
 } from "@/app/scanner/lib/tokens";
+import { tokenRowIconScale, tokenRowIconSrc } from "@/app/scanner/lib/token-icons";
 import { formatBalance } from "@/app/scanner/lib/utils";
 import * as S from "../styles";
 
@@ -43,15 +45,23 @@ export function TokenRow({ token, balance }: TokenRowProps) {
   const borderVar = rowBorderVar(token);
   const tint = rowTint(token);
   const iconVar = iconColorVar(token);
+  const iconSrc = tokenRowIconSrc(token);
+  const iconScale = tokenRowIconScale(token);
 
   return (
     <S.TokenRowRoot $borderVar={borderVar} $tint={tint}>
       <S.TokenRowLeft>
-        <S.TokenRowIcon $colorVar={iconVar} aria-hidden>
-          {symbolInitials(token.symbol)}
+        <S.TokenRowIcon $colorVar={iconVar} $image={Boolean(iconSrc)} aria-hidden>
+          {iconSrc ? (
+            <S.TokenRowIconImg src={iconSrc} alt="" $scale={iconScale} />
+          ) : (
+            symbolInitials(token.symbol)
+          )}
         </S.TokenRowIcon>
         <S.TokenRowMeta>
-          <S.TokenRowSymbol>{token.symbol}</S.TokenRowSymbol>
+          <S.TokenRowSymbol>
+            {SCANNER_SYMBOL_DISPLAY[token.symbol] ?? token.symbol}
+          </S.TokenRowSymbol>
           <S.TokenRowNetwork>{SCANNER_NETWORK_LABEL[token.network]}</S.TokenRowNetwork>
         </S.TokenRowMeta>
       </S.TokenRowLeft>
