@@ -127,12 +127,14 @@ export default function YouTubeSection() {
             detailParts.push(
               Object.entries(json.details)
                 .map(([k, v]) => `${k}: ${v}`)
-                .join(", ")
+                .join(", "),
             );
           }
           const suffix =
             detailParts.length > 0 ? ` — ${detailParts.join(" · ")}` : "";
-          throw new Error(`YouTube를 불러오지 못했습니다. (${res.status})${suffix}`);
+          throw new Error(
+            `YouTube를 불러오지 못했습니다. (${res.status})${suffix}`,
+          );
         }
         if (!cancelled) {
           setData(json);
@@ -168,7 +170,7 @@ export default function YouTubeSection() {
   const videos = useMemo(() => data?.items ?? [], [data]);
   const visibleVideos = useMemo(
     () => videos.slice(0, visibleCount),
-    [videos, visibleCount]
+    [videos, visibleCount],
   );
   const canLoadMore = visibleVideos.length < videos.length;
 

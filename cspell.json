@@ -31,6 +31,8 @@
     // K
     "Klines",
     "klines",
+    "Kakao",
+    "kakao",
     "linktr",
     // L
     "lbank",
@@ -43,12 +45,16 @@
     "Mobick",
     "mobick",
     "Mobicker",
+    "Movn",
+    "movn",
+    "MOVN",
     // N
     "Nyekv",
     // O
     "otaverse",
     "oceanpage",
     // P
+    "PRR",
     "PlanetScale",
     "planetscale",
     "Prisma",

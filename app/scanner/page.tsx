@@ -1,0 +1,103 @@
+"use client";
+
+import { useCallback, useState, type FormEvent } from "react";
+import PageLayout from "@/components/layouts/PageLayout";
+import { NetworkTab } from "./page/components/NetworkTab";
+import { SupportedTokensOverview } from "./page/components/SupportedTokensOverview";
+import { PortfolioSummary } from "./page/components/PortfolioSummary";
+import { StatusMessage } from "./page/components/StatusMessage";
+import { TokenRow } from "./page/components/TokenRow";
+import { WalletQrScanner } from "./page/components/WalletQrScanner";
+import { useScanner } from "./page/hooks/useScanner";
+import * as S from "./page/styles";
+
+export default function ScannerPage() {
+  const [input, setInput] = useState("");
+  const {
+    address,
+    status,
+    results,
+    activeTab,
+    setActiveTab,
+    errorMessage,
+    handleScan,
+    filteredResults,
+  } = useScanner();
+
+  const hasAnyBalance = results.some((r) => r.balance > 0);
+  const showResultsChrome = status === "done" && hasAnyBalance;
+
+  const onSubmitForm = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    void handleScan(input);
+  };
+
+  const onQrDetected = useCallback(
+    (addr: string) => {
+      setInput(addr);
+      void handleScan(addr);
+    },
+    [handleScan],
+  );
+
+  return (
+    <PageLayout>
+      <S.ScannerPageWrapper>
+        <S.ScannerSection aria-label="EVM wallet scanner">
+          <S.SectionTitle>EVM Wallet Scanner</S.SectionTitle>
+          <S.SectionLead>
+            여러 체인의 네이티브·토큰 잔고를 한 화면에서 조회합니다.
+          </S.SectionLead>
+
+          <WalletQrScanner onDetected={onQrDetected} paused={status === "loading"} />
+
+          <S.ScannerForm onSubmit={onSubmitForm}>
+            <S.ScannerFormRow>
+              <S.ScannerInput
+                name="wallet"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="0x... 지갑 주소를 입력하세요"
+                value={input}
+                disabled={status === "loading"}
+                onChange={(e) => setInput(e.target.value)}
+              />
+              <S.ScannerSubmitButton type="submit" disabled={status === "loading"}>
+                {status === "loading" ? "조회 중…" : "SCAN"}
+              </S.ScannerSubmitButton>
+            </S.ScannerFormRow>
+            <S.ScannerSecurityNote>
+              공공장소에서 화면 노출에 주의하세요. 이 앱은 입력한 주소를
+              저장하지 않습니다.
+            </S.ScannerSecurityNote>
+          </S.ScannerForm>
+
+          {status === "loading" && <StatusMessage state="loading" />}
+
+          {status === "error" && (
+            <StatusMessage state="error" message={errorMessage} />
+          )}
+
+          {status === "done" && !hasAnyBalance && (
+            <StatusMessage state="empty" />
+          )}
+
+          {showResultsChrome && (
+            <>
+              <NetworkTab active={activeTab} onChange={setActiveTab} />
+              <PortfolioSummary results={results} address={address} />
+              {filteredResults.map((row) => (
+                <TokenRow key={`${row.symbol}-${row.network}-${row.address}`} token={row} balance={row.balance} />
+              ))}
+            </>
+          )}
+        </S.ScannerSection>
+
+        <S.ScannerSection aria-label="이 페이지에서 조회 가능한 토큰 안내">
+          <SupportedTokensOverview />
+        </S.ScannerSection>
+      </S.ScannerPageWrapper>
+    </PageLayout>
+  );
+}

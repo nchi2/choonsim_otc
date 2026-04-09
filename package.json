@@ -7,10 +7,12 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "@zxing/browser": "^0.1.5",
     "next": "16.0.7",
     "prisma": "^6.19.0",
     "react": "19.2.0",

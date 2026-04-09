@@ -1,6 +1,12 @@
 :root {
   --background: #f5f5f5;
   --foreground: #171717;
+  /* app/scanner/lib/tokens.ts 의 colorVar — UI에서 동일 이름으로 사용 */
+  --scanner-native-eth: #627eea;
+  --scanner-native-base: #0052ff;
+  --scanner-native-bsc: #f0b90b;
+  --scanner-tier-ours: #2563eb;
+  --scanner-tier-otaverse: #7c3aed;
 }
 
 * {
