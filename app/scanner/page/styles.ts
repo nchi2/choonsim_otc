@@ -1,6 +1,29 @@
+import Link from "next/link";
 import styled, { css, keyframes } from "styled-components";
 
 /** 스캐너 페이지 레이아웃 — 홈 `app/page/styles` 의 OTC 섹션 톤과 정렬 */
+
+export const ScannerBackLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #111827;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 0.9375rem;
+    margin-bottom: 1.125rem;
+  }
+`;
 
 export const ScannerPageWrapper = styled.div`
   width: 100%;

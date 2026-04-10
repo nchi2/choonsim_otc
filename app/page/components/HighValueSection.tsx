@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import styled from "styled-components";
 import { LinktreeIcon } from "@/components/LinktreeIcon";
 import {
@@ -42,11 +43,11 @@ export default function HighValueSection() {
                 SBMB 링크 모음
               </S.HighValuePrimaryButton>
               <S.HighValueSecondaryButton
-                href="http://stablebmb.com"
-                target="_blank"
-                rel="noopener noreferrer"
+                as={Link}
+                href="/scanner"
+                aria-label="EVM Scanner 페이지로 이동"
               >
-                SBMB 웹사이트
+                EVM Scanner
               </S.HighValueSecondaryButton>
             </S.HighValueActions>
           </S.HighValueTextBox>

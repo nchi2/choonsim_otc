@@ -43,6 +43,9 @@ export default function ScannerPage() {
   return (
     <PageLayout>
       <S.ScannerPageWrapper>
+        <S.ScannerBackLink href="/" aria-label="메인 페이지로 돌아가기">
+          ← 돌아가기
+        </S.ScannerBackLink>
         <S.ScannerSection aria-label="EVM wallet scanner">
           <S.SectionTitle>EVM Wallet Scanner</S.SectionTitle>
           <S.SectionLead>
