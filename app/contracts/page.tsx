@@ -28,8 +28,11 @@ export default function ContractsPage() {
         <S.Hero>
           <S.Title>컨트랙트 · 토큰 정보</S.Title>
           <S.Lead>
-            체인별 ERC-20 컨트랙트 주소를 확인하고, 지갑 내 브라우저에서 토큰을
-            추가할 수 있습니다. 지갑 연결/서명 요청은 하지 않습니다.
+            체인별 ERC-20 컨트랙트 주소를 확인합니다. 지갑에 추가 시 표시된
+            네트워크(Ethereum·Base·BNB)로 전환한 후 해당 토큰을 등록합니다.
+            일반 모바일 브라우저에서는 버튼을 눌러 Trust Wallet으로 열어
+            앱 내 브라우저에서 다시 시도할 수 있습니다. 연결·토큰 추가 확인 시에만
+            지갑에 요청합니다.
           </S.Lead>
           <S.CrossNav>
             공개 주소로 지갑 잔고를 조회하려면{" "}
@@ -44,11 +47,7 @@ export default function ContractsPage() {
           <S.SectionTitle id="contracts-tokens">토큰 목록</S.SectionTitle>
           <S.CardGrid>
             {tokenGroups.map((g) => (
-              <TokenCard
-                key={g.symbol}
-                group={g}
-                showAddButton={inWalletBrowser}
-              />
+              <TokenCard key={g.symbol} group={g} />
             ))}
           </S.CardGrid>
         </S.Section>

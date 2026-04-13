@@ -18,13 +18,7 @@ function isBnbPreparingRow(symbol: string, network: Network): boolean {
   return network === "bsc" && (symbol === "SBMB" || symbol === "LDT");
 }
 
-export function TokenCard({
-  group,
-  showAddButton,
-}: {
-  group: ContractTokenGroup;
-  showAddButton: boolean;
-}) {
+export function TokenCard({ group }: { group: ContractTokenGroup }) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,25 +79,22 @@ export function TokenCard({
                     익스플로러
                   </S.ExplorerLink>
                 )}
-                {showAddButton ? (
-                  <S.GhostButton
-                    type="button"
-                    disabled={rowActionsDisabled}
-                    onClick={() =>
-                      void addTokenToWallet({
-                        address: row.address,
-                        symbol: group.symbol,
-                        decimals: row.decimals,
-                      })
-                    }
-                  >
-                    지갑에 추가
-                  </S.GhostButton>
-                ) : null}
+                <S.GhostButton
+                  type="button"
+                  disabled={rowActionsDisabled}
+                  onClick={() =>
+                    void addTokenToWallet({
+                      address: row.address,
+                      symbol: group.symbol,
+                      decimals: row.decimals,
+                      network: row.network,
+                    })
+                  }
+                >
+                  지갑에 추가
+                </S.GhostButton>
               </S.RowActions>
-              {showCopied ? (
-                <S.CopiedHint>복사되었습니다.</S.CopiedHint>
-              ) : null}
+              {showCopied ? <S.CopiedHint>복사되었습니다.</S.CopiedHint> : null}
             </S.RowActionsWrap>
           </S.ChainRow>
         );

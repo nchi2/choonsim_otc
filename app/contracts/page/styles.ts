@@ -105,6 +105,29 @@ export const WalletGuideBox = styled.div`
   }
 `;
 
+export const WalletGuideActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+`;
+
+export const WalletGuideOpenButton = styled.button`
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid #ca8a04;
+  background: #fffbeb;
+  color: #854d0e;
+  cursor: pointer;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: #fef3c7;
+  }
+`;
+
 export const Section = styled.section`
   margin-bottom: 2rem;
 `;
