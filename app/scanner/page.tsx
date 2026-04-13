@@ -100,6 +100,22 @@ export default function ScannerPage() {
         <S.ScannerSection aria-label="이 페이지에서 조회 가능한 토큰 안내">
           <SupportedTokensOverview />
         </S.ScannerSection>
+
+        <S.ScannerSection aria-label="공개 주소 조회 한계 및 Trust Wallet 안내">
+          <S.ScannerUsageNoticeTitle>지갑 사용 안내</S.ScannerUsageNoticeTitle>
+          <S.ScannerUsageNoticeText>
+            이 페이지는 <strong>공개 주소</strong>를 통해 해당 지갑의 잔고만 확인할 수
+            있습니다. 송금·거래 등 실제 사용은 <strong>Trust Wallet</strong>에서
+            진행해 주세요.
+          </S.ScannerUsageNoticeText>
+          <S.ScannerGuideLinkButton
+            href="https://choonsim.gitbook.io/sbmb_introduce/5.-evm"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Trust Wallet 가이드 바로가기
+          </S.ScannerGuideLinkButton>
+        </S.ScannerSection>
       </S.ScannerPageWrapper>
     </PageLayout>
   );

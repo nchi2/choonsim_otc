@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Inter } from "next/font/google";
 import StyledComponentsRegistry from "./registry";
 import "./globals.css";
@@ -22,6 +23,8 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,6 +34,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className={inter.variable}>
         <StyledComponentsRegistry>{children}</StyledComponentsRegistry>
+        {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
       </body>
     </html>
   );

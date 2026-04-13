@@ -173,6 +173,57 @@ export const ScannerSecurityNote = styled.p`
   }
 `;
 
+/** 지갑 실사용 안내 — 공개 주소 조회 한계 및 Trust Wallet 가이드 */
+export const ScannerUsageNoticeTitle = styled.h3`
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    margin-bottom: 0.625rem;
+  }
+`;
+
+export const ScannerUsageNoticeText = styled.p`
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #4b5563;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+    margin-bottom: 1.125rem;
+  }
+`;
+
+export const ScannerGuideLinkButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  padding: 0.625rem 1.25rem;
+  background: #2563eb;
+  border-radius: 0.375rem;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #1d4ed8;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.6875rem 1.375rem;
+  }
+`;
+
 /** QR — 스캔 유도 후 버튼으로 카메라 시작 */
 export const QrScannerBlock = styled.div`
   margin: 0 0 1rem;
