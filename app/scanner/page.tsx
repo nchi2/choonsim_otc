@@ -43,8 +43,8 @@ export default function ScannerPage() {
   return (
     <PageLayout>
       <S.ScannerPageWrapper>
-        <S.ScannerBackLink href="/" aria-label="메인 페이지로 돌아가기">
-          ← 돌아가기
+        <S.ScannerBackLink href="/" aria-label="메인으로 이동">
+          ← 메인으로
         </S.ScannerBackLink>
         <S.ScannerSection aria-label="EVM wallet scanner">
           <S.SectionTitle>EVM Wallet Scanner</S.SectionTitle>
@@ -52,7 +52,10 @@ export default function ScannerPage() {
             여러 체인의 네이티브·토큰 잔고를 한 화면에서 조회합니다.
           </S.SectionLead>
 
-          <WalletQrScanner onDetected={onQrDetected} paused={status === "loading"} />
+          <WalletQrScanner
+            onDetected={onQrDetected}
+            paused={status === "loading"}
+          />
 
           <S.ScannerForm onSubmit={onSubmitForm}>
             <S.ScannerFormRow>
@@ -66,7 +69,10 @@ export default function ScannerPage() {
                 disabled={status === "loading"}
                 onChange={(e) => setInput(e.target.value)}
               />
-              <S.ScannerSubmitButton type="submit" disabled={status === "loading"}>
+              <S.ScannerSubmitButton
+                type="submit"
+                disabled={status === "loading"}
+              >
                 {status === "loading" ? "조회 중…" : "SCAN"}
               </S.ScannerSubmitButton>
             </S.ScannerFormRow>
@@ -91,7 +97,11 @@ export default function ScannerPage() {
               <NetworkTab active={activeTab} onChange={setActiveTab} />
               <PortfolioSummary results={results} address={address} />
               {filteredResults.map((row) => (
-                <TokenRow key={`${row.symbol}-${row.network}-${row.address}`} token={row} balance={row.balance} />
+                <TokenRow
+                  key={`${row.symbol}-${row.network}-${row.address}`}
+                  token={row}
+                  balance={row.balance}
+                />
               ))}
             </>
           )}
@@ -101,12 +111,26 @@ export default function ScannerPage() {
           <SupportedTokensOverview />
         </S.ScannerSection>
 
+        <S.ScannerSection aria-label="컨트랙트 주소 및 지갑에 토큰 추가">
+          <S.ScannerUsageNoticeTitle>
+            컨트랙트 주소 · 토큰 추가
+          </S.ScannerUsageNoticeTitle>
+          <S.ScannerContractsCrossText>
+            체인별 ERC-20 컨트랙트 주소 확인·복사, 지갑 앱 내 브라우저에서 토큰
+            추가는{" "}
+            <S.ScannerContractsCrossLink href="/contracts">
+              /contracts
+            </S.ScannerContractsCrossLink>
+            페이지에서 하실 수 있습니다.
+          </S.ScannerContractsCrossText>
+        </S.ScannerSection>
+
         <S.ScannerSection aria-label="공개 주소 조회 한계 및 Trust Wallet 안내">
           <S.ScannerUsageNoticeTitle>지갑 사용 안내</S.ScannerUsageNoticeTitle>
           <S.ScannerUsageNoticeText>
-            이 페이지는 <strong>공개 주소</strong>를 통해 해당 지갑의 잔고만 확인할 수
-            있습니다. 송금·거래 등 실제 사용은 <strong>Trust Wallet</strong>에서
-            진행해 주세요.
+            이 페이지는 <strong>공개 주소</strong>를 통해 해당 지갑의 잔고만
+            확인할 수 있습니다. 송금·거래 등 실제 사용은{" "}
+            <strong>Trust Wallet</strong>에서 진행해 주세요.
           </S.ScannerUsageNoticeText>
           <S.ScannerGuideLinkButton
             href="https://choonsim.gitbook.io/sbmb_introduce/5.-evm"

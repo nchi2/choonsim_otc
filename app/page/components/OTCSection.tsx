@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   COMMUNITY_SECTION_ANCHOR_ID,
-  ECOSYSTEM_NEWS_ANCHOR_ID,
   SBMB_SECTION_ANCHOR_ID,
 } from "@/lib/community-linktree";
 import * as S from "../styles";
@@ -81,9 +80,11 @@ export default function OTCSection({
           <S.OTCHeroHubLink href={`/#${SBMB_SECTION_ANCHOR_ID}`} scroll>
             SBMB
           </S.OTCHeroHubLink>
-          <S.OTCHeroHubLink href={`/#${ECOSYSTEM_NEWS_ANCHOR_ID}`} scroll>
+          {/* 모빅 뉴스 섹션(NewsSection) 비활성화 — 복구 시 주석 해제
+          <S.OTCHeroHubLink href={`/#ecosystem-news`} scroll>
             생태계 뉴스
           </S.OTCHeroHubLink>
+          */}
           <S.OTCHeroHubLink href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`} scroll>
             커뮤니티
           </S.OTCHeroHubLink>

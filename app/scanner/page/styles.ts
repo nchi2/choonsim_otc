@@ -224,6 +224,165 @@ export const ScannerGuideLinkButton = styled.a`
   }
 `;
 
+export const ScannerContractsCrossText = styled.p`
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #4b5563;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+  }
+`;
+
+export const ScannerContractsCrossLink = styled(Link)`
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    color: #1d4ed8;
+    border-bottom-color: #93c5fd;
+  }
+`;
+
+
+
+/** ERC-20 컨트랙트 참조 — 이름·소개·주소·복사 */
+export const ContractRefList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin: 0;
+
+  @media (min-width: 768px) {
+    gap: 1rem;
+  }
+`;
+
+export const ContractRefCard = styled.article`
+  margin: 0;
+  padding: 0.875rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  border-left: 3px solid var(--scanner-tier-ours, #2563eb);
+
+  @media (min-width: 768px) {
+    padding: 1rem 1.125rem;
+  }
+`;
+
+export const ContractRefHeading = styled.h3`
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.375rem;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem 0.5rem;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+export const ContractRefChainBadge = styled.span`
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #4b5563;
+  background: #f3f4f6;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+`;
+
+export const ContractRefIntro = styled.p`
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #6b7280;
+  margin: 0 0 0.625rem;
+
+  @media (min-width: 768px) {
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+  }
+`;
+
+export const ContractRefAddressRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+`;
+
+export const ContractRefAddress = styled.code`
+  display: block;
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  word-break: break-all;
+  color: #111827;
+  background: #f9fafb;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.25rem;
+  border: 1px solid #e5e7eb;
+
+  @media (min-width: 768px) {
+    font-size: 0.8125rem;
+  }
+`;
+
+export const ContractRefAddressPending = styled(ContractRefAddress)`
+  color: #9ca3af;
+  font-style: italic;
+`;
+
+export const ContractRefCopyButton = styled.button<{ $copied?: boolean }>`
+  flex-shrink: 0;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: ${(p) => (p.$copied ? "#15803d" : "#fff")};
+  background: ${(p) => (p.$copied ? "#dcfce7" : "#2563eb")};
+  border: 1px solid ${(p) => (p.$copied ? "#86efac" : "transparent")};
+  border-radius: 0.375rem;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: ${(p) => (p.$copied ? "#bbf7d0" : "#1d4ed8")};
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    background: #e5e7eb;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+  }
+
+  @media (min-width: 640px) {
+    align-self: flex-start;
+  }
+`;
+
 /** QR — 스캔 유도 후 버튼으로 카메라 시작 */
 export const QrScannerBlock = styled.div`
   margin: 0 0 1rem;

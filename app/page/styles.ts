@@ -837,6 +837,32 @@ export const HighValueActions = styled.div`
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: stretch;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+  }
+`;
+
+/** Mobile: secondary row on small screens; display:contents from md */
+export const HighValueSecondaryRow = styled.div`
+  display: flex;
+  gap: 12px;
+  width: 100%;
+
+  & > * {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (min-width: 768px) {
+    display: contents;
+
+    & > * {
+      flex: initial;
+      min-width: unset;
+    }
+  }
 `;
 
 export const HighValuePrimaryButton = styled.a`
@@ -857,6 +883,11 @@ export const HighValuePrimaryButton = styled.a`
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  @media (max-width: 767px) {
+    width: 100%;
+    box-sizing: border-box;
   }
 `;
 

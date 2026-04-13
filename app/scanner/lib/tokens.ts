@@ -20,10 +20,11 @@ export function scannerTokenOverviewLabel(label: string): string {
 }
 
 /** TokenRow 등 — 심볼 옆 전체 표기 */
-export const SCANNER_SYMBOL_DISPLAY: Readonly<Partial<Record<string, string>>> = {
-  LDT: "LDT (Lucem Diffundo Token)",
-  WBMB: "WBMB (Wrapped BMB)",
-};
+export const SCANNER_SYMBOL_DISPLAY: Readonly<Partial<Record<string, string>>> =
+  {
+    LDT: "LDT (Lucem Diffundo Token)",
+    WBMB: "WBMB (Wrapped BMB)",
+  };
 
 export type TokenType = "native" | "erc20";
 
@@ -89,7 +90,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     symbol: "SBMB",
     network: "eth",
     type: "erc20",
-    address: ERC20_ADDRESS_PLACEHOLDER,
+    address: "0xc90990Db321F5806587bF496a3652c19aB223b94",
     decimals: 18,
     tier: "ours",
     label: "SBMB (Ethereum)",
@@ -119,7 +120,7 @@ export const SCANNER_TOKENS: readonly Token[] = [
     symbol: "LDT",
     network: "eth",
     type: "erc20",
-    address: ERC20_ADDRESS_PLACEHOLDER,
+    address: "0xD437aB2F890A119c654B67B3d392e204087A3696",
     decimals: 18,
     tier: "ours",
     label: "LDT (Lucem Diffundo Token) (Ethereum)",
@@ -199,3 +200,8 @@ export const SCANNER_TOKENS: readonly Token[] = [
     colorVar: "--scanner-tier-otaverse",
   },
 ];
+
+/** ERC-20만 — 스커너 컨트랙트 참조·/contracts 등 공통 사용 */
+export function getScannerErc20Tokens(): readonly Token[] {
+  return SCANNER_TOKENS.filter((t) => t.type === "erc20");
+}

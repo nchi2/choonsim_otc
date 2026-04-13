@@ -15,6 +15,8 @@
     "Ccapi",
     "Choonsim",
     "choonsim",
+    "Consolas",
+
     // D
     // E
     // F
@@ -44,12 +46,14 @@
     // M
     "MOVL",
     "movl",
+    "Menlo",
     "Mobick",
     "mobick",
     "Mobicker",
     "Movn",
     "movn",
     "MOVN",
+    "MOVEN",
     // N
     "Nyekv",
     // O

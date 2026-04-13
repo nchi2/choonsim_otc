@@ -42,13 +42,22 @@ export default function HighValueSection() {
                 <LinktreeIcon size={22} />
                 SBMB 링크 모음
               </S.HighValuePrimaryButton>
-              <S.HighValueSecondaryButton
-                as={Link}
-                href="/scanner"
-                aria-label="EVM Scanner 페이지로 이동"
-              >
-                EVM Scanner
-              </S.HighValueSecondaryButton>
+              <S.HighValueSecondaryRow>
+                <S.HighValueSecondaryButton
+                  as={Link}
+                  href="/scanner"
+                  aria-label="EVM Scanner 페이지로 이동"
+                >
+                  EVM Scanner
+                </S.HighValueSecondaryButton>
+                <S.HighValueSecondaryButton
+                  as={Link}
+                  href="/contracts"
+                  aria-label="컨트랙트 · 토큰 정보 페이지로 이동"
+                >
+                  Contracts
+                </S.HighValueSecondaryButton>
+              </S.HighValueSecondaryRow>
             </S.HighValueActions>
           </S.HighValueTextBox>
 
