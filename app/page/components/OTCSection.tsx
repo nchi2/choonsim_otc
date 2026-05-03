@@ -1,10 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  COMMUNITY_SECTION_ANCHOR_ID,
-  SBMB_SECTION_ANCHOR_ID,
-} from "@/lib/community-linktree";
 import * as S from "../styles";
 
 const LBANK_BMB_USDT_URL = "https://www.lbank.com/trade/bmb_usdt";
@@ -74,21 +70,6 @@ export default function OTCSection({
         <S.OTCHeroDescription>
           오프라인 OTC, SBMB, 모빅 생태계 소식을 한번에 확인하세요.
         </S.OTCHeroDescription>
-
-        <S.OTCHeroHubRow>
-          <S.OTCHeroHubLink href="/otc">OTC 거래</S.OTCHeroHubLink>
-          <S.OTCHeroHubLink href={`/#${SBMB_SECTION_ANCHOR_ID}`} scroll>
-            SBMB
-          </S.OTCHeroHubLink>
-          {/* 모빅 뉴스 섹션(NewsSection) 비활성화 — 복구 시 주석 해제
-          <S.OTCHeroHubLink href={`/#ecosystem-news`} scroll>
-            생태계 뉴스
-          </S.OTCHeroHubLink>
-          */}
-          <S.OTCHeroHubLink href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`} scroll>
-            커뮤니티
-          </S.OTCHeroHubLink>
-        </S.OTCHeroHubRow>
 
         <S.OTCHeroPriceGrid>
           <S.OTCHeroPriceCard>

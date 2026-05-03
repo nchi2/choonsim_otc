@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import styled from "styled-components";
 import { KakaoTalkIcon } from "@/components/KakaoTalkIcon";
 import { LinktreeIcon } from "@/components/LinktreeIcon";
@@ -27,6 +28,23 @@ const Description = styled.p`
   @media (min-width: 768px) {
     font-size: 0.9375rem;
     margin: -1.25rem 0 2rem;
+  }
+`;
+
+const SbmbStatusLink = styled(Link)`
+  color: #434392;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #6570c5;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #434392;
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 `;
 
@@ -78,10 +96,10 @@ export default function CommunityLinktreeSection() {
       <S.Section>
         <S.SectionTitle>커뮤니티 · 링크</S.SectionTitle>
         <Description>
-          춘심 카카오톡 커뮤니티 및 생태계 링크를 모아두었습니다. SBMB 전용
-          Linktree는 메인 <strong>SBMB</strong> 섹션의 링크트리 아이콘과 함께
-          있는
-          <strong>SBMB</strong> 버튼에서 열 수 있습니다.
+          춘심 카카오톡 커뮤니티 및 생태계 링크를 모아두었습니다. SBMB 프로그램
+          안내·링크 모음은{" "}
+          <SbmbStatusLink href="/sbmb">SBMB 현황</SbmbStatusLink> 페이지에서
+          확인할 수 있습니다.
         </Description>
         <PillRow>
           {COMMUNITY_MAIN_SECTION_PILLS.map((item) => (

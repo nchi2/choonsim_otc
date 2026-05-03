@@ -98,9 +98,7 @@ export default function HeroContent({
         CHOONSIM TEAM · SBMB
       </TagLine>
       <Title>SBMB 신청 현황</Title>
-      <Desc>
-        신청 현황 조회, 진행 로드맵, 공지사항을 확인하세요.
-      </Desc>
+      <Desc>신청 현황 조회, 진행 로드맵, 공지사항을 확인하세요.</Desc>
       <PillRow>
         <PillPrimary type="button" onClick={onScrollToLookupCard}>
           신청 현황 조회
@@ -112,7 +110,7 @@ export default function HeroContent({
           참여 신청
         </PillOutline>
         <PillOutline type="button" onClick={() => onScrollToSection("video")}>
-          가이드
+          지갑 사용법
         </PillOutline>
       </PillRow>
     </Wrap>

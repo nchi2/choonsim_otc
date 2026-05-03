@@ -3,11 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styled from "styled-components";
-import { LinktreeIcon } from "@/components/LinktreeIcon";
-import {
-  COMMUNITY_LINKTREE,
-  SBMB_SECTION_ANCHOR_ID,
-} from "@/lib/community-linktree";
+import { SBMB_SECTION_ANCHOR_ID } from "@/lib/community-linktree";
 import * as S from "../styles";
 
 const SbmbAnchor = styled.div`
@@ -34,13 +30,11 @@ export default function HighValueSection() {
             프로그램을 안내합니다.
             <S.HighValueActions>
               <S.HighValuePrimaryButton
-                href={COMMUNITY_LINKTREE.stablebmb.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="SBMB Linktree 열기"
+                as={Link}
+                href="/sbmb"
+                aria-label="SBMB 현황 페이지로 이동"
               >
-                <LinktreeIcon size={22} />
-                SBMB 링크 모음
+                SBMB 현황보기
               </S.HighValuePrimaryButton>
               <S.HighValueSecondaryRow>
                 <S.HighValueSecondaryButton

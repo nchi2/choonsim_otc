@@ -30,6 +30,9 @@ const COLORS = {
   gray700: "#374151",
 };
 
+/** true면 호가·카드형 거래 UI 대신 준비 안내만 표시 */
+const OTC_TRADING_COMING_SOON = true;
+
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -1233,6 +1236,12 @@ function OTCContent() {
   }, [isAssetDropdownOpen]);
 
   useEffect(() => {
+    if (OTC_TRADING_COMING_SOON) {
+      setListedLoading(false);
+      setListedError(null);
+      return;
+    }
+
     const fetchOrderBookLevels = async () => {
       if (activeTab === "orderbook") {
         try {
@@ -1269,6 +1278,12 @@ function OTCContent() {
   }, [activeTab, assetType]);
 
   useEffect(() => {
+    if (OTC_TRADING_COMING_SOON) {
+      setCardLoading(false);
+      setCardError(null);
+      return;
+    }
+
     const fetchCardRequests = async () => {
       if (activeTab === "card") {
         try {
@@ -1488,8 +1503,12 @@ function OTCContent() {
 
       <MainContent>
         <ContentWrapper>
-          {/* 자산 선택기 - 드롭다운 */}
-          <AssetSelectorWrapper>
+          {OTC_TRADING_COMING_SOON ? (
+            <EmptyState>준비 중입니다.</EmptyState>
+          ) : (
+            <>
+              {/* 자산 선택기 - 드롭다운 */}
+              <AssetSelectorWrapper>
             <AssetDropdown data-asset-dropdown>
               <AssetDropdownButton
                 $isOpen={isAssetDropdownOpen}
@@ -1823,7 +1842,9 @@ function OTCContent() {
                 )}
               </>
             )}
-          </TabContent>
+              </TabContent>
+            </>
+          )}
 
           {/* BTC/BMB 비율 차트 섹션 */}
           <ChartCard>
