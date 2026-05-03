@@ -84,12 +84,12 @@ const PillOutline = styled.button`
 
 type Props = {
   onScrollToLookupCard: () => void;
-  onScrollToLinks: () => void;
+  onScrollToSection: (sectionId: "notice" | "apply" | "video") => void;
 };
 
 export default function HeroContent({
   onScrollToLookupCard,
-  onScrollToLinks,
+  onScrollToSection,
 }: Props) {
   return (
     <Wrap>
@@ -105,8 +105,14 @@ export default function HeroContent({
         <PillPrimary type="button" onClick={onScrollToLookupCard}>
           신청 현황 조회
         </PillPrimary>
-        <PillOutline type="button" onClick={onScrollToLinks}>
-          SBMB 링크 모음
+        <PillOutline type="button" onClick={() => onScrollToSection("notice")}>
+          공지사항
+        </PillOutline>
+        <PillOutline type="button" onClick={() => onScrollToSection("apply")}>
+          참여 신청
+        </PillOutline>
+        <PillOutline type="button" onClick={() => onScrollToSection("video")}>
+          가이드
         </PillOutline>
       </PillRow>
     </Wrap>

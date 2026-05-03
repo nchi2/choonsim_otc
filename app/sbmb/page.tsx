@@ -4,6 +4,11 @@ import styled from "styled-components";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroLookupSection from "@/components/sbmb/hero/HeroLookupSection";
+import ApplySection from "@/components/sbmb/sections/ApplySection";
+import LinksSection from "@/components/sbmb/sections/LinksSection";
+import NoticeSection from "@/components/sbmb/sections/NoticeSection";
+import RoadmapSection from "@/components/sbmb/sections/RoadmapSection";
+import VideoSection from "@/components/sbmb/sections/VideoSection";
 import { T } from "@/lib/sbmb/tokens";
 
 const Shell = styled.div`
@@ -13,20 +18,19 @@ const Shell = styled.div`
   background: ${T.pageBg};
 `;
 
-const Anchor = styled.div`
-  scroll-margin-top: 72px;
-`;
-
 const Stretch = styled.div`
   flex: 1;
   min-height: 24px;
 `;
 
-const AnchorStack = styled.section`
+const Lower = styled.div`
   width: 100%;
   max-width: ${T.maxWidth};
   margin: 0 auto;
   padding: 48px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
 `;
 
 export default function SbmbPage() {
@@ -35,11 +39,13 @@ export default function SbmbPage() {
       <Header />
       <HeroLookupSection />
       <Stretch />
-      <AnchorStack aria-hidden>
-        <Anchor id="notice" />
-        <Anchor id="guide" style={{ marginTop: 160 }} />
-        <Anchor id="links" style={{ marginTop: 160 }} />
-      </AnchorStack>
+      <Lower>
+        <NoticeSection />
+        <ApplySection />
+        <RoadmapSection />
+        <LinksSection />
+        <VideoSection />
+      </Lower>
       <Footer />
     </Shell>
   );

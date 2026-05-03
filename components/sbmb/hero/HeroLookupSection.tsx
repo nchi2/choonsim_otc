@@ -33,9 +33,9 @@ const Inner = styled.div`
 export default function HeroLookupSection() {
   const cardRef = useRef<LookupCardHandle>(null);
 
-  const scrollToLinks = () => {
+  const scrollToSection = (sectionId: "notice" | "apply" | "video") => {
     document
-      .getElementById("links")
+      .getElementById(sectionId)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -44,7 +44,7 @@ export default function HeroLookupSection() {
       <Inner>
         <HeroContent
           onScrollToLookupCard={() => cardRef.current?.scrollToCard()}
-          onScrollToLinks={scrollToLinks}
+          onScrollToSection={scrollToSection}
         />
       </Inner>
       <LookupCard ref={cardRef} />

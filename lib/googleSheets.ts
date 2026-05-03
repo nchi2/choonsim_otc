@@ -5,6 +5,8 @@ export const SBMB_SHEET_TEN_MO = "10모 단위 참여";
 /** 시트2 — 동일하게 3행부터 데이터 */
 export const SBMB_SHEET_CONVERT = "고액권 전환 참여";
 export const SBMB_SHEET_WALLET_LIST = "전체 지갑 리스트";
+/** 시트4 — 1·2행 헤더 후 3행~ (워크플로우와 동일) */
+export const SBMB_SHEET_NOTICES = "공지사항";
 export const SBMB_SHEET_ROADMAP = "로드맵";
 export const SBMB_TEN_MO_FIRST_DATA_ROW = 3;
 

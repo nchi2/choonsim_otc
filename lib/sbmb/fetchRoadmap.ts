@@ -14,5 +14,11 @@ export async function fetchRoadmapItems(): Promise<SbmbRoadmapItem[]> {
       label: r[0] != null ? String(r[0]).trim() : "",
       status: r[1] != null ? String(r[1]).trim() : "",
     }))
-    .filter((item) => item.label.length > 0);
+    .filter((item) => item.label.length > 0)
+    .filter(
+      (item) =>
+        item.label !== "단계명" &&
+        item.label.toLowerCase() !== "label" &&
+        item.label !== "단계",
+    );
 }

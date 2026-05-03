@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
+import { getClientIp } from "@/lib/sbmb/clientIp";
 import { rateLimitAllow } from "@/lib/sbmb/rateLimit";
 import { verifySbmbParticipant } from "@/lib/sbmb/verifyParticipant";
-
-function getClientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() ?? "unknown";
-  }
-  return request.headers.get("x-real-ip")?.trim() ?? "unknown";
-}
 
 export async function POST(request: Request) {
   let body: unknown;

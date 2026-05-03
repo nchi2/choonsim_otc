@@ -46,3 +46,19 @@ export type SbmbVerifyOk = {
 export type SbmbVerifyResponse = SbmbVerifyOk | { found: false };
 
 export type SbmbRoadmapItem = { label: string; status: string };
+
+export type SbmbNoticeListItem = {
+  date: string;
+  important: boolean;
+  title: string;
+  summary: string;
+  slug: string;
+};
+
+export type SbmbNoticeDetail = {
+  date: string;
+  important: boolean;
+  title: string;
+  body: string;
+  link: string;
+};
