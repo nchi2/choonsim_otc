@@ -1,13 +1,25 @@
 import Link from "next/link";
 import styled, { css, keyframes } from "styled-components";
+import { T } from "@/lib/sbmb/tokens";
 
-/** 스캐너 페이지 레이아웃 — 홈 `app/page/styles` 의 OTC 섹션 톤과 정렬 */
+/** 스캐너 페이지 레이아웃 — /sbmb와 동일 max-width·좌우 20px 패딩 */
+
+export const ScannerTopBar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 1rem;
+
+  @media (min-width: 768px) {
+    margin-bottom: 1.125rem;
+  }
+`;
 
 export const ScannerBackLink = styled(Link)`
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  margin: 0 0 1rem;
+  margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
   color: #4b5563;
@@ -21,20 +33,20 @@ export const ScannerBackLink = styled(Link)`
 
   @media (min-width: 768px) {
     font-size: 0.9375rem;
-    margin-bottom: 1.125rem;
   }
 `;
 
 export const ScannerPageWrapper = styled.div`
   width: 100%;
-  max-width: 800px;
+  max-width: ${T.maxWidth};
   margin: 0 auto;
-  padding: 1rem 1rem 3rem;
+  padding: 20px 20px 3rem;
+  box-sizing: border-box;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 
   @media (min-width: 768px) {
-    padding: 1.5rem 1rem 4rem;
+    padding: 24px 20px 4rem;
   }
 `;
 

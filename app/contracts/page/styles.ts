@@ -1,11 +1,23 @@
 import Link from "next/link";
 import styled, { css } from "styled-components";
+import { T } from "@/lib/sbmb/tokens";
+
+export const ContractsTopBar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 1rem;
+
+  @media (min-width: 768px) {
+    margin-bottom: 1.125rem;
+  }
+`;
 
 export const ContractsBackLink = styled(Link)`
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  margin: 0 0 1rem;
+  margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
   color: #4b5563;
@@ -19,20 +31,20 @@ export const ContractsBackLink = styled(Link)`
 
   @media (min-width: 768px) {
     font-size: 0.9375rem;
-    margin-bottom: 1.125rem;
   }
 `;
 
 export const PageWrap = styled.div`
   width: 100%;
-  max-width: 900px;
+  max-width: ${T.maxWidth};
   margin: 0 auto;
-  padding: 1rem 1rem 3rem;
+  padding: 20px 20px 3rem;
+  box-sizing: border-box;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 
   @media (min-width: 768px) {
-    padding: 1.5rem 1rem 4rem;
+    padding: 24px 20px 4rem;
   }
 `;
 

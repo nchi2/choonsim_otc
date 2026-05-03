@@ -8,7 +8,7 @@ import ApplySection from "@/components/sbmb/sections/ApplySection";
 import LinksSection from "@/components/sbmb/sections/LinksSection";
 import NoticeSection from "@/components/sbmb/sections/NoticeSection";
 import RoadmapSection from "@/components/sbmb/sections/RoadmapSection";
-import VideoSection from "@/components/sbmb/sections/VideoSection";
+import WalletGuideSection from "@/components/sbmb/sections/WalletGuideSection";
 import { T } from "@/lib/sbmb/tokens";
 
 const Shell = styled.div`
@@ -44,7 +44,7 @@ export default function SbmbPage() {
         <ApplySection />
         <RoadmapSection />
         <LinksSection />
-        <VideoSection />
+        <WalletGuideSection />
       </Lower>
       <Footer />
     </Shell>

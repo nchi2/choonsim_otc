@@ -864,7 +864,7 @@ export default function ResultCard({ result, onReset }: Props) {
 
   const scrollGuide = () => {
     document
-      .getElementById("video")
+      .getElementById("guide")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 

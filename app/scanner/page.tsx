@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type FormEvent } from "react";
 import PageLayout from "@/components/layouts/PageLayout";
+import SbmbHeroBanner from "@/components/sbmb/hero/SbmbHeroBanner";
 import { NetworkTab } from "./page/components/NetworkTab";
 import { SupportedTokensOverview } from "./page/components/SupportedTokensOverview";
 import { PortfolioSummary } from "./page/components/PortfolioSummary";
@@ -42,10 +43,13 @@ export default function ScannerPage() {
 
   return (
     <PageLayout>
+      <SbmbHeroBanner />
       <S.ScannerPageWrapper>
-        <S.ScannerBackLink href="/" aria-label="메인으로 이동">
-          ← 메인으로
-        </S.ScannerBackLink>
+        <S.ScannerTopBar>
+          <S.ScannerBackLink href="/sbmb" aria-label="SBMB 페이지로 이동">
+            SBMB로 →
+          </S.ScannerBackLink>
+        </S.ScannerTopBar>
         <S.ScannerSection aria-label="EVM wallet scanner">
           <S.SectionTitle>EVM Wallet Scanner</S.SectionTitle>
           <S.SectionLead>

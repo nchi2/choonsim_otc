@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PageLayout from "@/components/layouts/PageLayout";
+import SbmbHeroBanner from "@/components/sbmb/hero/SbmbHeroBanner";
 import { isWalletBrowser } from "@/app/contracts/lib/wallet";
 import { getContractPageTokens } from "@/app/contracts/lib/group-tokens";
 import { TokenCard } from "./page/components/TokenCard";
@@ -20,10 +21,13 @@ export default function ContractsPage() {
 
   return (
     <PageLayout>
+      <SbmbHeroBanner />
       <S.PageWrap>
-        <S.ContractsBackLink href="/" aria-label="메인으로 이동">
-          ← 메인으로
-        </S.ContractsBackLink>
+        <S.ContractsTopBar>
+          <S.ContractsBackLink href="/sbmb" aria-label="SBMB 페이지로 이동">
+            SBMB로 →
+          </S.ContractsBackLink>
+        </S.ContractsTopBar>
 
         <S.Hero>
           <S.Title>컨트랙트 · 토큰 정보</S.Title>

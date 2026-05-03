@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
         hostname: "**.ytimg.com",
         pathname: "/vi/**",
       },
+      {
+        protocol: "https",
+        hostname: "img.youtube.com",
+        pathname: "/vi/**",
+      },
     ],
   },
 };

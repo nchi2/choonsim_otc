@@ -3,19 +3,15 @@
 import type { ReactNode } from "react";
 import styled from "styled-components";
 import {
-  IconArrowUpRight,
-  IconBell,
   IconBookOpen,
   IconChevronRight,
-  IconClipboardList,
+  IconExternalLink,
   IconGlobe,
   IconMessageCircle,
 } from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionAnchor } from "@/components/sbmb/shared/SectionCard";
+import { COMMUNITY_LINKTREE } from "@/lib/community-linktree";
 import {
-  SBMB_FORM_CONVERT,
-  SBMB_FORM_NEW_APPLY,
-  SBMB_FORM_QUEUE_WAIT,
   SBMB_INTRO_GITBOOK_URL,
   SBMB_KAKAO_INQUIRY_URL,
   SBMB_STABLEBMB_URL,
@@ -100,6 +96,8 @@ type LinkDef = {
   bg: string;
 };
 
+const SBMB_LINKTREE_HREF = COMMUNITY_LINKTREE.stablebmb.href;
+
 const LINKS: LinkDef[] = [
   {
     title: "SBMB 소개서",
@@ -109,18 +107,11 @@ const LINKS: LinkDef[] = [
     icon: <IconBookOpen size={18} color={T.mintDark} />,
   },
   {
-    title: "신규 참여 신청",
-    sub: "10.5 MO 납부",
-    href: SBMB_FORM_NEW_APPLY,
-    bg: T.mintLight,
-    icon: <IconClipboardList size={18} color={T.mintDark} />,
-  },
-  {
-    title: "고액권 전환 신청",
-    sub: "고액권 보유자",
-    href: SBMB_FORM_CONVERT,
+    title: "SBMB Linktree",
+    sub: "linktr.ee/stablebmb",
+    href: SBMB_LINKTREE_HREF,
     bg: T.convertBg,
-    icon: <IconArrowUpRight size={18} color={T.convertBorder} />,
+    icon: <IconExternalLink size={18} color={T.convertBorder} />,
   },
   {
     title: "1:1 문의",
@@ -135,13 +126,6 @@ const LINKS: LinkDef[] = [
     href: SBMB_STABLEBMB_URL,
     bg: T.mintLight,
     icon: <IconGlobe size={18} color={T.mintDark} />,
-  },
-  {
-    title: "대기 신청",
-    sub: "사전 알림 신청",
-    href: SBMB_FORM_QUEUE_WAIT,
-    bg: "#FEF3C7",
-    icon: <IconBell size={18} color="#D97706" />,
   },
 ];
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import styled from "styled-components";
 import { T } from "@/lib/sbmb/tokens";
 
@@ -82,23 +83,94 @@ const PillOutline = styled.button`
   font-size: 14px;
 `;
 
-type Props = {
+const pillLinkBase = `
+  border-radius: 9999px;
+  padding: 10px 22px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+`;
+
+const PillPrimaryLink = styled(Link)`
+  ${pillLinkBase}
+  background: ${T.white};
+  color: ${T.primary};
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.125);
+`;
+
+const PillOutlineLink = styled(Link)`
+  ${pillLinkBase}
+  border: 1px solid ${T.white};
+  background: transparent;
+  color: ${T.white};
+`;
+
+type SectionId = "notice" | "apply" | "guide";
+
+type InteractiveProps = {
+  variant?: "interactive";
   onScrollToLookupCard: () => void;
-  onScrollToSection: (sectionId: "notice" | "apply" | "video") => void;
+  onScrollToSection: (sectionId: SectionId) => void;
 };
 
-export default function HeroContent({
-  onScrollToLookupCard,
-  onScrollToSection,
-}: Props) {
+type LinksProps = {
+  variant: "links";
+};
+
+type Props = InteractiveProps | LinksProps;
+
+function CrossPageToolLinks() {
   return (
-    <Wrap>
+    <>
+      <PillOutlineLink href="/scanner" aria-label="EVM Wallet Scanner로 이동">
+        스캐너
+      </PillOutlineLink>
+      <PillOutlineLink
+        href="/contracts"
+        aria-label="컨트랙트 · 토큰 정보 페이지로 이동"
+      >
+        컨트랙트
+      </PillOutlineLink>
+    </>
+  );
+}
+
+export default function HeroContent(props: Props) {
+  const shared = (
+    <>
       <TagLine>
         <Dot aria-hidden />
         CHOONSIM TEAM · SBMB
       </TagLine>
       <Title>SBMB 신청 현황</Title>
       <Desc>신청 현황 조회, 진행 로드맵, 공지사항을 확인하세요.</Desc>
+    </>
+  );
+
+  if (props.variant === "links") {
+    return (
+      <Wrap>
+        {shared}
+        <PillRow>
+          <PillPrimaryLink href="/sbmb">신청 현황 조회</PillPrimaryLink>
+          <PillOutlineLink href="/sbmb#notice">공지사항</PillOutlineLink>
+          <PillOutlineLink href="/sbmb#apply">참여 신청</PillOutlineLink>
+          <PillOutlineLink href="/sbmb#guide">지갑 사용법</PillOutlineLink>
+          <CrossPageToolLinks />
+        </PillRow>
+      </Wrap>
+    );
+  }
+
+  const { onScrollToLookupCard, onScrollToSection } = props;
+
+  return (
+    <Wrap>
+      {shared}
       <PillRow>
         <PillPrimary type="button" onClick={onScrollToLookupCard}>
           신청 현황 조회
@@ -109,9 +181,10 @@ export default function HeroContent({
         <PillOutline type="button" onClick={() => onScrollToSection("apply")}>
           참여 신청
         </PillOutline>
-        <PillOutline type="button" onClick={() => onScrollToSection("video")}>
+        <PillOutline type="button" onClick={() => onScrollToSection("guide")}>
           지갑 사용법
         </PillOutline>
+        <CrossPageToolLinks />
       </PillRow>
     </Wrap>
   );
