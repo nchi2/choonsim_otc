@@ -3,16 +3,11 @@
 import styled from "styled-components";
 import {
   IconArrowUpRight,
-  IconBookOpen,
   IconExternalLink,
   IconUserPlus,
 } from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionAnchor } from "@/components/sbmb/shared/SectionCard";
-import {
-  SBMB_FORM_CONVERT,
-  SBMB_FORM_QUEUE_WAIT,
-  SBMB_INTRO_GITBOOK_URL,
-} from "@/lib/sbmb/constants";
+import { SBMB_FORM_CONVERT, SBMB_FORM_QUEUE_WAIT } from "@/lib/sbmb/constants";
 import { T } from "@/lib/sbmb/tokens";
 
 const mobile = "@media (max-width: 767px)";
@@ -154,25 +149,6 @@ const BtnPrimary = styled.a<{ $variant: "new" | "convert" }>`
   color: ${(p) => (p.$variant === "new" ? T.mintDark : T.white)};
 `;
 
-const BtnGhost = styled.a<{ $variant: "new" | "convert" }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 46px;
-  border-radius: 12px;
-  text-decoration: none;
-  font-family: Inter, system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  background: ${T.white};
-  border: 1.5px solid
-    ${(p) => (p.$variant === "new" ? T.mint : T.convertBorder)};
-  color: ${(p) => (p.$variant === "new" ? T.mintDark : T.convertBorder)};
-`;
-
 const Warning = styled.div`
   margin-top: 16px;
   display: flex;
@@ -227,15 +203,6 @@ export default function ApplySection() {
             <IconExternalLink size={16} color={T.mintDark} />
             대기 신청하기 →
           </BtnPrimary>
-          <BtnGhost
-            $variant="new"
-            href={SBMB_INTRO_GITBOOK_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <IconBookOpen size={16} color={T.mintDark} />
-            자세한 안내
-          </BtnGhost>
         </Card>
 
         <Card $variant="convert">
@@ -273,15 +240,6 @@ export default function ApplySection() {
           >
             전환 신청하기 →
           </BtnPrimary>
-          <BtnGhost
-            $variant="convert"
-            href={SBMB_INTRO_GITBOOK_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <IconBookOpen size={16} color={T.convertBorder} />
-            자세한 안내
-          </BtnGhost>
         </Card>
       </Cards>
       <Warning>
