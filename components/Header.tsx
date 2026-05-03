@@ -1,12 +1,9 @@
 "use client";
 
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  COMMUNITY_SECTION_ANCHOR_ID,
-  SBMB_SECTION_ANCHOR_ID,
-} from "@/lib/community-linktree";
+import { COMMUNITY_SECTION_ANCHOR_ID } from "@/lib/community-linktree";
 
 const HeaderContainer = styled.header<{
   $hasBackground: boolean;
@@ -85,12 +82,35 @@ const NavLink = styled(Link)<{ $isWhite: boolean }>`
   }
 `;
 
+const SbmbNavLink = styled(Link)<{ $isWhite: boolean; $active: boolean }>`
+  color: ${(props) => (props.$isWhite ? "#ffffff" : "#111827")};
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: ${(props) => (props.$active ? 700 : 600)};
+  transition: color 0.2s;
+
+  ${(props) =>
+    props.$active &&
+    css`
+      box-shadow: 0 2px 0 0 #8fd8c7;
+      padding-bottom: 4px;
+    `}
+
+  &:hover {
+    opacity: ${(props) => (props.$isWhite ? 0.85 : 0.7)};
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
 export default function Header() {
   const pathname = usePathname();
-  // 메인 페이지와 /otc 페이지는 투명 배경 + 흰색 폰트 + absolute 위치
-  const isTransparentHeader = pathname === "/" || pathname === "/otc";
+  const isTransparentHeader =
+    pathname === "/" || pathname === "/otc" || pathname === "/sbmb";
   const isWhiteText = isTransparentHeader;
-  const isAbsolute = isTransparentHeader; // 메인과 /otc만 absolute
+  const isAbsolute = isTransparentHeader;
 
   return (
     <HeaderContainer
@@ -108,13 +128,13 @@ export default function Header() {
           <NavLink href="/otc" $isWhite={isWhiteText}>
             OTC
           </NavLink>
-          <NavLink
-            href={`/#${SBMB_SECTION_ANCHOR_ID}`}
+          <SbmbNavLink
+            href="/sbmb"
             $isWhite={isWhiteText}
-            scroll
+            $active={pathname === "/sbmb"}
           >
             SBMB
-          </NavLink>
+          </SbmbNavLink>
           <NavLink
             href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`}
             $isWhite={isWhiteText}
