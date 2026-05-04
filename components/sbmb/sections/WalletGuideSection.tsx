@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useId, useState } from "react";
 import styled from "styled-components";
 import { IconPlayCircle } from "@/components/sbmb/shared/SbmbIcons";
@@ -108,6 +107,14 @@ const ThumbWrap = styled.div`
   position: relative;
   aspect-ratio: 16 / 9;
   background: #111827;
+`;
+
+const ThumbnailImg = styled.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 const PlayOverlay = styled.div`
@@ -284,12 +291,11 @@ export default function WalletGuideSection() {
           >
             <StepBadge>STEP {String(video.step).padStart(2, "0")}</StepBadge>
             <ThumbWrap>
-              <Image
+              <ThumbnailImg
                 src={video.thumbnail}
                 alt=""
-                fill
-                sizes="(max-width: 767px) 100vw, 33vw"
-                style={{ objectFit: "cover" }}
+                loading="lazy"
+                decoding="async"
               />
               <PlayOverlay>
                 <IconPlayCircle size={32} color="rgba(255,255,255,0.92)" />

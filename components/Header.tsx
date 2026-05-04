@@ -3,7 +3,7 @@
 import styled, { css } from "styled-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { COMMUNITY_SECTION_ANCHOR_ID } from "@/lib/community-linktree";
+// import { COMMUNITY_SECTION_ANCHOR_ID } from "@/lib/community-linktree";
 
 const HeaderContainer = styled.header<{
   $hasBackground: boolean;
@@ -135,13 +135,13 @@ export default function Header() {
           >
             SBMB
           </SbmbNavLink>
-          <NavLink
+          {/* <NavLink
             href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`}
             $isWhite={isWhiteText}
             scroll
           >
             커뮤니티
-          </NavLink>
+          </NavLink> */}
         </Nav>
       </HeaderContent>
     </HeaderContainer>

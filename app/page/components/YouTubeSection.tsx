@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { YoutubeVideo } from "@/lib/youtube/fetch-latest";
 import { COMMUNITY_ECOSYSTEM_LINKTREE } from "@/lib/community-linktree";
@@ -224,11 +223,11 @@ export default function YouTubeSection() {
               <S.VideoCard>
                 <S.NewsCardThumbnail>
                   {video.thumbnail ? (
-                    <Image
+                    <img
                       src={video.thumbnail}
                       alt={video.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     "썸네일 준비중"

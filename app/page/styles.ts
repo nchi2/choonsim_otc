@@ -289,6 +289,10 @@ export const NewsCardThumbnail = styled.div`
   font-size: 0.875rem;
 
   img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
   }
 
@@ -670,7 +674,7 @@ export const OTCHeroButton = styled(Link)`
 
 export const OTCHeroButtonContainer = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;

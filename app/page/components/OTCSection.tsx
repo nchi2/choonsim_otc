@@ -143,8 +143,11 @@ export default function OTCSection({
 
         {showTradeButton && (
           <S.OTCHeroButtonContainer>
-            <S.OTCHeroButton href="/otc">
+            <S.OTCHeroButton href="/otc" aria-label="OTC 거래 페이지로 이동">
               OTC 거래 페이지로 이동
+            </S.OTCHeroButton>
+            <S.OTCHeroButton href="/sbmb" aria-label="SBMB 현황 페이지로 이동">
+              SBMB 현황보기
             </S.OTCHeroButton>
           </S.OTCHeroButtonContainer>
         )}
