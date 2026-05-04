@@ -12,8 +12,27 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Choonsim Main",
-  description: "Choonsim",
+  metadataBase: new URL("https://www.choonsim.com"),
+  title: "Choonsim Hub",
+  description:
+    "춘심팀 허브 — OTC·고액권 OTC 안내, SBMB 신청 현황 등 Choonsim Hub 서비스를 이용하세요.",
+  openGraph: {
+    title: "Choonsim Hub",
+    description:
+      "춘심팀 허브 — OTC·고액권 OTC 안내, SBMB 신청 현황 등 Choonsim Hub 서비스를 이용하세요.",
+    url: "https://www.choonsim.com/",
+    siteName: "Choonsim Hub",
+    images: [
+      {
+        url: "https://www.choonsim.com/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Choonsim Hub",
+      },
+    ],
+    locale: "ko_KR",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
