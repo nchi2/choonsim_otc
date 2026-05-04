@@ -237,7 +237,7 @@ const guideVideos = guideVideosRaw.map((v) => {
   const id = youtubeIdFromWatchUrl(v.url);
   return {
     ...v,
-    thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+    thumbnail: `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
   };
 });
 
