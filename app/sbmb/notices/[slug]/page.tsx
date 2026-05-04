@@ -201,7 +201,7 @@ export default function SbmbNoticeDetailPage() {
           <span style={{ color: T.textTertiary, fontSize: 13 }} aria-hidden>
             |
           </span>
-          <ListLink href="/sbmb#notice">목록으로</ListLink>
+          <ListLink href="/sbmb/notices">목록으로</ListLink>
         </BackRow>
 
         {state === "load" && <Muted>불러오는 중…</Muted>}

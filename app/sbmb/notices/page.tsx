@@ -3,37 +3,37 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
+import Footer from "@/components/Footer";
+import Header from "@/components/Header";
 import {
   IconAlertCircle,
   IconBell,
   IconRefreshCw,
 } from "@/components/sbmb/shared/SbmbIcons";
-import {
-  SbmbSectionAnchor,
-  SbmbSectionCard,
-} from "@/components/sbmb/shared/SectionCard";
-import { selectNoticesForHomeSection } from "@/lib/sbmb/selectNoticesForHomeSection";
+import { SbmbSectionCard } from "@/components/sbmb/shared/SectionCard";
 import { T } from "@/lib/sbmb/tokens";
 import type { SbmbNoticeListItem } from "@/types/sbmb";
 
 const desktop = "@media (min-width: 768px)";
 
-const HeaderRow = styled.div`
+const Shell = styled.div`
+  min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  flex-direction: column;
+  background: ${T.pageBg};
 `;
 
-const Title = styled.h2`
-  margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 20px;
-  color: ${T.textPrimary};
+const Main = styled.main`
+  flex: 1;
+  width: 100%;
+  max-width: ${T.maxWidth};
+  margin: 0 auto;
+  padding: 88px 20px 48px;
 `;
 
-const AllLink = styled(Link)`
+const BackLink = styled(Link)`
+  display: inline-block;
+  margin-bottom: 16px;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 500;
   font-size: 14px;
@@ -43,6 +43,21 @@ const AllLink = styled(Link)`
   &:hover {
     text-decoration: underline;
   }
+`;
+
+const PageTitle = styled.h1`
+  margin: 0 0 8px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: ${T.textPrimary};
+`;
+
+const PageDesc = styled.p`
+  margin: 0 0 20px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: ${T.textSecondary};
 `;
 
 const List = styled.div`
@@ -87,7 +102,7 @@ const DateText = styled.span`
   color: ${T.textTertiary};
 `;
 
-const CardTitle = styled.h3`
+const CardTitle = styled.h2`
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 700;
@@ -154,7 +169,6 @@ const EmptyState = styled.div`
   gap: 10px;
   padding: 28px 12px;
   color: ${T.textSecondary};
-  font-family: Inter, system-ui, sans-serif;
   font-size: 14px;
   text-align: center;
 `;
@@ -162,14 +176,12 @@ const EmptyState = styled.div`
 const ErrorBox = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 12px;
   padding: 16px;
   border-radius: 10px;
   border: 1px solid ${T.errorBorder};
   background: ${T.errorBg};
   color: ${T.errorMid};
-  font-family: Inter, system-ui, sans-serif;
   font-size: 13px;
 `;
 
@@ -182,17 +194,12 @@ const RetryBtn = styled.button`
   border: 1px solid ${T.errorBorder};
   background: ${T.white};
   color: ${T.errorDark};
-  font-family: Inter, system-ui, sans-serif;
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
-
-  &:hover {
-    background: ${T.errorBg};
-  }
 `;
 
-export default function NoticeSection() {
+export default function SbmbNoticesListPage() {
   const [items, setItems] = useState<SbmbNoticeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -222,60 +229,64 @@ export default function NoticeSection() {
   }, [load]);
 
   return (
-    <SbmbSectionAnchor id="notice" aria-labelledby="sbmb-notice-heading">
-      <SbmbSectionCard>
-        <HeaderRow>
-          <Title id="sbmb-notice-heading">공지사항</Title>
-          <AllLink href="/sbmb/notices">전체 보기 →</AllLink>
-        </HeaderRow>
+    <Shell>
+      <Header />
+      <Main>
+        <BackLink href="/sbmb">← SBMB 메인으로</BackLink>
+        <PageTitle>공지사항</PageTitle>
+        <PageDesc>전체 공지 목록입니다. 제목을 눌러 상세를 확인하세요.</PageDesc>
 
-        {loading && (
-          <List>
-            <Skeleton />
-            <Skeleton />
-          </List>
-        )}
+        <SbmbSectionCard>
+          {loading && (
+            <List>
+              <Skeleton />
+              <Skeleton />
+              <Skeleton />
+            </List>
+          )}
 
-        {!loading && error && (
-          <ErrorBox>
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <IconAlertCircle size={18} color={T.errorDark} />
-              {error}
-            </span>
-            <RetryBtn type="button" onClick={() => void load()}>
-              <IconRefreshCw size={16} color={T.errorDark} />
-              다시 시도
-            </RetryBtn>
-          </ErrorBox>
-        )}
+          {!loading && error && (
+            <ErrorBox>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <IconAlertCircle size={18} color={T.errorDark} />
+                {error}
+              </span>
+              <RetryBtn type="button" onClick={() => void load()}>
+                <IconRefreshCw size={16} color={T.errorDark} />
+                다시 시도
+              </RetryBtn>
+            </ErrorBox>
+          )}
 
-        {!loading && !error && items.length === 0 && (
-          <EmptyState>
-            <IconBell size={28} color={T.textTertiary} />
-            등록된 공지가 없습니다
-          </EmptyState>
-        )}
+          {!loading && !error && items.length === 0 && (
+            <EmptyState>
+              <IconBell size={28} color={T.textTertiary} />
+              등록된 공지가 없습니다
+            </EmptyState>
+          )}
 
-        {!loading && !error && items.length > 0 && (
-          <List>
-            {selectNoticesForHomeSection(items).map((item) => (
-              <NoticeCard key={item.slug} $important={item.important}>
-                <MetaRow>
-                  {item.important && (
-                    <ImportantBadge>중요</ImportantBadge>
-                  )}
-                  {item.date ? <DateText>{item.date}</DateText> : null}
-                </MetaRow>
-                <CardTitle>{item.title}</CardTitle>
-                {item.summary ? <Excerpt>{item.summary}</Excerpt> : null}
-                <DetailLink href={`/sbmb/notices/${item.slug}`}>
-                  자세히 보기 ↗
-                </DetailLink>
-              </NoticeCard>
-            ))}
-          </List>
-        )}
-      </SbmbSectionCard>
-    </SbmbSectionAnchor>
+          {!loading && !error && items.length > 0 && (
+            <List>
+              {items.map((item) => (
+                <NoticeCard key={item.slug} $important={item.important}>
+                  <MetaRow>
+                    {item.important ? (
+                      <ImportantBadge>중요</ImportantBadge>
+                    ) : null}
+                    {item.date ? <DateText>{item.date}</DateText> : null}
+                  </MetaRow>
+                  <CardTitle>{item.title}</CardTitle>
+                  {item.summary ? <Excerpt>{item.summary}</Excerpt> : null}
+                  <DetailLink href={`/sbmb/notices/${item.slug}`}>
+                    자세히 보기 ↗
+                  </DetailLink>
+                </NoticeCard>
+              ))}
+            </List>
+          )}
+        </SbmbSectionCard>
+      </Main>
+      <Footer />
+    </Shell>
   );
 }

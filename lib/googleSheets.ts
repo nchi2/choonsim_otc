@@ -15,6 +15,47 @@ export const SBMB_FIRST_DATA_ROW = SBMB_TEN_MO_FIRST_DATA_ROW;
 
 export type SheetCellValue = string | number | boolean | null;
 
+/** 공지·로드맵 등 부하가 큰 읽기 전용 구간용 인메모리 캐시 (서버 프로세스 단위) */
+const sheetResponseCache = new Map<
+  string,
+  { data: unknown; timestamp: number }
+>();
+const sheetInFlight = new Map<string, Promise<unknown>>();
+const SHEET_CACHE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * 동일 키에 대해 TTL 동안 시트 API 호출을 줄이고,
+ * TTL 미스 시 동시 요청은 한 번의 fetcher만 실행한 뒤 같은 결과를 공유합니다.
+ * lookup / verify 등 실시간 조회에는 사용하지 마세요.
+ */
+export async function getCachedSheet<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  const cached = sheetResponseCache.get(key);
+  if (cached && Date.now() - cached.timestamp < SHEET_CACHE_TTL_MS) {
+    return cached.data as T;
+  }
+
+  const pending = sheetInFlight.get(key) as Promise<T> | undefined;
+  if (pending) {
+    return pending;
+  }
+
+  const load = (async (): Promise<T> => {
+    try {
+      const data = await fetcher();
+      sheetResponseCache.set(key, { data, timestamp: Date.now() });
+      return data;
+    } finally {
+      sheetInFlight.delete(key);
+    }
+  })();
+
+  sheetInFlight.set(key, load);
+  return load;
+}
+
 function normalizePrivateKey(raw: string): string {
   return raw.replace(/\\n/g, "\n").trim();
 }

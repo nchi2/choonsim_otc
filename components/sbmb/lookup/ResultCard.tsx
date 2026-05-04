@@ -827,9 +827,15 @@ function VerifyEntryBlock({
 type Props = {
   result: SbmbVerifyOk;
   onReset: () => void;
+  /** 모달 안에서 섹션으로 스크롤하기 전에 모달만 닫을 때 (예: 공지·가이드 버튼) */
+  onDismissModal?: () => void;
 };
 
-export default function ResultCard({ result, onReset }: Props) {
+export default function ResultCard({
+  result,
+  onReset,
+  onDismissModal,
+}: Props) {
   const [roadmap, setRoadmap] = useState<SbmbRoadmapItem[]>([]);
   const [roadmapErr, setRoadmapErr] = useState(false);
 
@@ -857,15 +863,21 @@ export default function ResultCard({ result, onReset }: Props) {
   }, []);
 
   const scrollNotice = () => {
-    document
-      .getElementById("notice")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    onDismissModal?.();
+    requestAnimationFrame(() => {
+      document
+        .getElementById("notice")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const scrollGuide = () => {
-    document
-      .getElementById("guide")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    onDismissModal?.();
+    requestAnimationFrame(() => {
+      document
+        .getElementById("guide")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const showGuide = result.entries.some((e) =>

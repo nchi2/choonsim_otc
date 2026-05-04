@@ -53,6 +53,8 @@ export type SbmbNoticeListItem = {
   title: string;
   summary: string;
   slug: string;
+  /** 시트에서 아래쪽 행일수록 큼(A2=0). 클라이언트에서 최신 순 정렬·홈 2칸 선택용 */
+  sheetOrder: number;
 };
 
 export type SbmbNoticeDetail = {
