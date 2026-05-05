@@ -264,12 +264,13 @@ const KakaoBottomWrap = styled.div`
 const CompactRow = styled.div<{ $airdrop: boolean }>`
   min-height: 38px;
   box-sizing: border-box;
-  padding: 8px 10px 8px 10px;
+  padding: 12px 16px;
   border-radius: 8px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 4px 12px;
+  align-items: center;
   background: ${(p) => (p.$airdrop ? AIRDROP_ROW_BG : SERVICE_ROW_BG)};
   ${(p) =>
     p.$airdrop
@@ -282,9 +283,7 @@ const CompactRow = styled.div<{ $airdrop: boolean }>`
   `}
 
   ${mobile} {
-    flex-wrap: wrap;
-    row-gap: 6px;
-    align-items: flex-start;
+    align-items: center;
     min-height: auto;
     padding-top: 8px;
     padding-bottom: 8px;
@@ -300,35 +299,43 @@ const RowDot = styled.span<{ $airdrop: boolean }>`
 `;
 
 const RowLeft = styled.div`
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  min-width: 0;
-  flex-shrink: 1;
-  flex-wrap: wrap;
-  row-gap: 6px;
-
-  ${mobile} {
-    width: 100%;
-    flex-basis: 100%;
-  }
-`;
-
-/** 디자인 배지 + No를 한 줄·한 블록으로 묶어 동일 No·다른 디자인 구분 */
-const WalletIdentityStack = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
   min-width: 0;
 `;
 
 const WalletCaption = styled.span`
   font-family: Inter, system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 15px;
   color: ${T.textPrimary};
   line-height: 1.35;
+
+  ${mobile} {
+    display: none;
+  }
+`;
+
+const WalletCaptionMobile = styled.span`
+  display: none;
+
+  ${mobile} {
+    display: inline;
+    grid-column: 1;
+    grid-row: 2;
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: ${T.textPrimary};
+    line-height: 1.35;
+    align-self: center;
+    justify-self: start;
+    /* Dot(8px) + RowLeft gap(8px)만큼 들여써서 단위 뱃지 시작선과 정렬 */
+    padding-left: 16px;
+  }
 `;
 
 const DesignBadge = styled.span<{ $bg: string; $fg: string }>`
@@ -361,73 +368,35 @@ const EntryUnitTag = styled.span<{ $bg: string; $fg: string }>`
 `;
 
 const RowRight = styled.div`
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 20px;
-  flex: 1;
-  min-width: 0;
-  align-self: center;
-
-  ${mobile} {
-    flex-basis: 100%;
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 20px;
-  }
+  gap: 8px;
+  flex-shrink: 0;
 `;
 
 const RowTokens = styled.span`
+  grid-column: 2;
+  grid-row: 2;
   font-weight: 500;
   font-size: 11px;
-  color: ${T.textMuted};
+  color: #9ca3af;
   text-align: right;
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  ${mobile} {
-    text-align: left;
-    white-space: normal;
-    font-size: 10px;
-    line-height: 1.45;
-    word-break: keep-all;
-    flex: 1 1 0;
-    min-width: 0;
-    padding-right: 4px;
-  }
-`;
-
-const AddrCopyWrap = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-
-  ${mobile} {
-    flex-shrink: 0;
-    margin-left: auto;
-  }
 `;
 
 const AddrShort = styled.span`
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  color: ${T.textMuted};
+  color: #6b7280;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   max-width: 7.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  ${mobile} {
-    font-size: 10px;
-    max-width: 6.5rem;
-  }
 `;
 
 const CopyIconBtn = styled.button`
@@ -719,44 +688,39 @@ function WalletCompactRow({
     <CompactRow $airdrop={isAirdropRange}>
       <RowLeft>
         <RowDot $airdrop={isAirdropRange} aria-hidden />
-        {isAirdropRange ? (
+        {entryUnit.label ? (
           <EntryUnitTag $bg={entryUnit.bg} $fg={entryUnit.fg}>
             {entryUnit.label}
           </EntryUnitTag>
         ) : null}
-        <WalletIdentityStack>
-          {w.design ? (
-            <DesignBadge $bg={badgeBg} $fg={badgeFg}>
-              {w.design}
-            </DesignBadge>
-          ) : null}
-          <WalletCaption>
-            {w.design ? `${w.design.trim()} ${w.no}` : `No. ${w.no}`}
-          </WalletCaption>
-        </WalletIdentityStack>
+        {w.design ? (
+          <DesignBadge $bg={badgeBg} $fg={badgeFg}>
+            {w.design}
+          </DesignBadge>
+        ) : null}
+        <WalletCaption>{`No. ${w.no}`}</WalletCaption>
       </RowLeft>
+      <WalletCaptionMobile>{`No. ${w.no}`}</WalletCaptionMobile>
       <RowRight>
-        <RowTokens title={tokenSummary}>{tokenSummary}</RowTokens>
+        <AddrShort title={w.address?.trim() ? w.address.trim() : ""}>
+          {w.address?.trim() ? formatAddressShort(w.address.trim()) : "-"}
+        </AddrShort>
         {w.address?.trim() ? (
-          <AddrCopyWrap>
-            <AddrShort title={w.address.trim()}>
-              {formatAddressShort(w.address.trim())}
-            </AddrShort>
-            <CopyIconBtn
-              type="button"
-              onClick={handleCopy}
-              title={copied ? "복사됨" : "공개 주소 복사"}
-              aria-label={copied ? "복사 완료" : "공개 주소 복사"}
-            >
-              {copied ? (
-                <IconCircleCheck size={18} color={T.mintDark} />
-              ) : (
-                <IconCopy size={18} color="currentColor" />
-              )}
-            </CopyIconBtn>
-          </AddrCopyWrap>
+          <CopyIconBtn
+            type="button"
+            onClick={handleCopy}
+            title={copied ? "복사됨" : "공개 주소 복사"}
+            aria-label={copied ? "복사 완료" : "공개 주소 복사"}
+          >
+            {copied ? (
+              <IconCircleCheck size={18} color={T.mintDark} />
+            ) : (
+              <IconCopy size={18} color="currentColor" />
+            )}
+          </CopyIconBtn>
         ) : null}
       </RowRight>
+      <RowTokens title={tokenSummary}>{tokenSummary}</RowTokens>
     </CompactRow>
   );
 }
@@ -848,11 +812,7 @@ type Props = {
   onDismissModal?: () => void;
 };
 
-export default function ResultCard({
-  result,
-  onReset,
-  onDismissModal,
-}: Props) {
+export default function ResultCard({ result, onReset, onDismissModal }: Props) {
   const [roadmap, setRoadmap] = useState<SbmbRoadmapItem[]>([]);
   const [roadmapErr, setRoadmapErr] = useState(false);
 
