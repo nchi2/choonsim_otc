@@ -698,9 +698,9 @@ function WalletCompactRow({
             {w.design}
           </DesignBadge>
         ) : null}
-        <WalletCaption>{`No. ${w.no}`}</WalletCaption>
+        <WalletCaption>{`No ${w.no}`}</WalletCaption>
       </RowLeft>
-      <WalletCaptionMobile>{`No. ${w.no}`}</WalletCaptionMobile>
+      <WalletCaptionMobile>{`No ${w.no}`}</WalletCaptionMobile>
       <RowRight>
         <AddrShort title={w.address?.trim() ? w.address.trim() : ""}>
           {w.address?.trim() ? formatAddressShort(w.address.trim()) : "-"}
