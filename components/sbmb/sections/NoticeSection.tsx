@@ -3,11 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import {
-  IconAlertCircle,
-  IconBell,
-  IconRefreshCw,
-} from "@/components/sbmb/shared/SbmbIcons";
+import { IconBell } from "@/components/sbmb/shared/SbmbIcons";
 import {
   SbmbSectionAnchor,
   SbmbSectionCard,
@@ -159,39 +155,6 @@ const EmptyState = styled.div`
   text-align: center;
 `;
 
-const ErrorBox = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 10px;
-  border: 1px solid ${T.errorBorder};
-  background: ${T.errorBg};
-  color: ${T.errorMid};
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 13px;
-`;
-
-const RetryBtn = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid ${T.errorBorder};
-  background: ${T.white};
-  color: ${T.errorDark};
-  font-family: Inter, system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-
-  &:hover {
-    background: ${T.errorBg};
-  }
-`;
-
 export default function NoticeSection() {
   const [items, setItems] = useState<SbmbNoticeListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,11 +170,12 @@ export default function NoticeSection() {
         error?: string;
       };
       if (!res.ok) {
-        throw new Error(json.error ?? "공지를 불러오지 못했습니다.");
+        throw new Error(json.error ?? "notice_fetch_failed");
       }
       setItems(json.items ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      console.error("[sbmb/notices] 공지 목록을 가져오지 못했습니다.", e);
+      setError("load_failed");
     } finally {
       setLoading(false);
     }
@@ -221,8 +185,14 @@ export default function NoticeSection() {
     void load();
   }, [load]);
 
+  const hideSection = Boolean(error && !loading);
+
   return (
-    <SbmbSectionAnchor id="notice" aria-labelledby="sbmb-notice-heading">
+    <SbmbSectionAnchor
+      id="notice"
+      aria-labelledby="sbmb-notice-heading"
+      style={{ display: hideSection ? "none" : undefined }}
+    >
       <SbmbSectionCard>
         <HeaderRow>
           <Title id="sbmb-notice-heading">공지사항</Title>
@@ -234,19 +204,6 @@ export default function NoticeSection() {
             <Skeleton />
             <Skeleton />
           </List>
-        )}
-
-        {!loading && error && (
-          <ErrorBox>
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <IconAlertCircle size={18} color={T.errorDark} />
-              {error}
-            </span>
-            <RetryBtn type="button" onClick={() => void load()}>
-              <IconRefreshCw size={16} color={T.errorDark} />
-              다시 시도
-            </RetryBtn>
-          </ErrorBox>
         )}
 
         {!loading && !error && items.length === 0 && (

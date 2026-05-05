@@ -138,7 +138,10 @@ const Label = styled.label`
   color: ${T.textMuted};
 `;
 
-const Input = styled.input<{ $tone?: "default" | "error"; $thickPrimary?: boolean }>`
+const Input = styled.input<{
+  $tone?: "default" | "error";
+  $thickPrimary?: boolean;
+}>`
   height: 48px;
   padding: 0 16px;
   border-radius: 10px;
@@ -154,8 +157,7 @@ const Input = styled.input<{ $tone?: "default" | "error"; $thickPrimary?: boolea
 
   &:focus {
     border-width: 2px;
-    border-color: ${(p) =>
-      p.$tone === "error" ? T.errorBorder : T.mint};
+    border-color: ${(p) => (p.$tone === "error" ? T.errorBorder : T.mint)};
   }
 
   ${mobile} {
@@ -293,7 +295,6 @@ const GhostBtn = styled.button`
   color: ${T.textTertiary};
 `;
 
-/* 문의 플로우 비활성화 시 함께 복구
 const InquiryFlowTextBtn = styled.button`
   align-self: center;
   margin-top: 4px;
@@ -313,7 +314,6 @@ const InquiryFlowTextBtn = styled.button`
     color: #4b5563;
   }
 `;
-*/
 
 const Step2HelpBlock = styled.div`
   width: 100%;
@@ -347,7 +347,7 @@ export type SbmbLookupModalProps = {
   name: string;
   phoneDigits: string;
   confirmedName: string;
-  // onOpenInquiryFlow?: () => void;
+  onOpenInquiryFlow?: () => void;
 };
 
 export default function SbmbLookupModal({
@@ -357,6 +357,7 @@ export default function SbmbLookupModal({
   name,
   phoneDigits,
   confirmedName,
+  onOpenInquiryFlow,
 }: SbmbLookupModalProps) {
   const [modalStep, setModalStep] = useState<ModalStep>("step2");
   const [walletNo, setWalletNo] = useState("");
@@ -448,9 +449,7 @@ export default function SbmbLookupModal({
         role="dialog"
         aria-modal="true"
         aria-label={
-          modalStep === "result"
-            ? "신청 현황 조회 결과"
-            : "지갑 번호 확인"
+          modalStep === "result" ? "신청 현황 조회 결과" : "지갑 번호 확인"
         }
       >
         <CloseRow>
@@ -539,11 +538,11 @@ export default function SbmbLookupModal({
             <GhostBtn type="button" onClick={onClose}>
               처음으로 돌아가기
             </GhostBtn>
-            {/* {modalStep === "error_step2" && onOpenInquiryFlow ? (
+            {modalStep === "error_step2" && onOpenInquiryFlow ? (
               <InquiryFlowTextBtn type="button" onClick={onOpenInquiryFlow}>
                 조회가 안되시나요? →
               </InquiryFlowTextBtn>
-            ) : null} */}
+            ) : null}
           </>
         ) : null}
 

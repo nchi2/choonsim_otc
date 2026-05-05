@@ -5,7 +5,7 @@ import { useState } from "react";
 import styled from "styled-components";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
-// import SbmbInquiryFlowModal from "@/components/sbmb/lookup/SbmbInquiryFlowModal";
+import SbmbInquiryFlowModal from "@/components/sbmb/lookup/SbmbInquiryFlowModal";
 import {
   IconChevronDown,
   IconChevronUp,
@@ -117,7 +117,6 @@ const InlineActions = styled.div`
   margin-top: 14px;
 `;
 
-/* 문의 플로우 버튼 재개 시 복구
 const TextActionBtn = styled.button`
   border: none;
   background: none;
@@ -134,7 +133,6 @@ const TextActionBtn = styled.button`
     color: ${T.mintDark};
   }
 `;
-*/
 
 const TextActionLink = styled.a`
   font-family: Inter, system-ui, sans-serif;
@@ -195,7 +193,7 @@ const FAQ_ITEMS = [
 
 export default function SbmbFaqScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
-  // const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
 
   const toggle = (id: string) => {
     setOpenId((cur) => (cur === id ? null : id));
@@ -233,10 +231,8 @@ export default function SbmbFaqScreen() {
                             참여 유형별로 다른 이유가 있을 수 있습니다.
                           </AnswerP>
                           <AnswerP>
-                            확인이 어려우시면 춘심이 동생 카카오톡으로
-                            문의해주시면 안내드립니다.
+                            아래 버튼에서 상황에 맞는 안내를 확인해주세요.
                           </AnswerP>
-                          {/* 문의 플로우 모달 연결 — 재개 시 TextActionBtn·SbmbInquiryFlowModal 주석 해제
                           <InlineActions>
                             <TextActionBtn
                               type="button"
@@ -245,14 +241,14 @@ export default function SbmbFaqScreen() {
                               문의 플로우 열기 →
                             </TextActionBtn>
                           </InlineActions>
-                          */}
                         </AnswerBody>
                       ) : null}
                       {item.id === "queue" ? (
                         <AnswerBody>
                           <AnswerP>
                             해당 신청 폼은 성함과 연락처 입력만으로 이루어져
-                            개인정보 보호를 위해 조회 서비스가 제공되지 않습니다.
+                            개인정보 보호를 위해 조회 서비스가 제공되지
+                            않습니다.
                           </AnswerP>
                           <AnswerP>
                             추가접수 진행 시 신청하신 연락처로 신청 링크가
@@ -277,9 +273,9 @@ export default function SbmbFaqScreen() {
                             진행하고 있습니다.
                           </AnswerP>
                           <AnswerP>
-                            수령한 지 오래됐음에도 확인이 안되신다면 /scanner에서
-                            직접 조회해보시고, 그래도 확인이 안되신다면
-                            카카오톡으로 문의해주세요.
+                            수령한 지 오래됐음에도 확인이 안되신다면
+                            /scanner에서 직접 조회해보시고, 그래도 확인이
+                            안되신다면 카카오톡으로 문의해주세요.
                           </AnswerP>
                           <InlineActions>
                             <ScannerInlineLink href="/scanner">
@@ -290,7 +286,10 @@ export default function SbmbFaqScreen() {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              <IconMessageCircle size={15} color={T.kakaoText} />
+                              <IconMessageCircle
+                                size={15}
+                                color={T.kakaoText}
+                              />
                               카카오톡 문의 →
                             </KakaoOutlineLink>
                           </InlineActions>
@@ -305,10 +304,10 @@ export default function SbmbFaqScreen() {
         </SbmbSectionCard>
       </Main>
       <Footer />
-      {/* <SbmbInquiryFlowModal
+      <SbmbInquiryFlowModal
         open={inquiryOpen}
         onClose={() => setInquiryOpen(false)}
-      /> */}
+      />
     </Shell>
   );
 }

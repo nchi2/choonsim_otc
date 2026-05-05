@@ -8,10 +8,8 @@ import {
   useState,
 } from "react";
 import styled, { keyframes } from "styled-components";
-// import SbmbInquiryFlowModal from "@/components/sbmb/lookup/SbmbInquiryFlowModal";
+import SbmbInquiryFlowModal from "@/components/sbmb/lookup/SbmbInquiryFlowModal";
 import SbmbLookupModal from "@/components/sbmb/lookup/SbmbLookupModal";
-import { IconMessageCircle } from "@/components/sbmb/shared/SbmbIcons";
-import { SBMB_KAKAO_INQUIRY_URL } from "@/lib/sbmb/constants";
 import {
   extractPhoneDigits,
   formatPhoneLocalDigits,
@@ -97,36 +95,32 @@ const InputRow = styled.div`
   }
 `;
 
-const PhoneHints = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const PhoneHintLine = styled.p`
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.55;
-  color: ${T.textTertiary};
-`;
-
-const PhoneHintEm = styled.span`
-  font-weight: 600;
-  color: ${T.textMuted};
-`;
-
-const FieldGroup = styled.div`
-  flex: 1;
+const FieldGroup = styled.div<{ $grow?: number }>`
+  flex: ${(p) => p.$grow ?? 1};
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
 `;
 
+const LabelRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
 const Label = styled.label`
   font-weight: 500;
   font-size: 13px;
   color: ${T.textMuted};
+`;
+
+const LabelHint = styled.span`
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+  white-space: nowrap;
 `;
 
 const Input = styled.input<{
@@ -186,67 +180,37 @@ const PrimaryBtn = styled.button<{ $disabled?: boolean }>`
   }
 `;
 
-const ErrorBox = styled.div`
-  background: ${T.errorBg};
-  border: 1px solid ${T.errorBorder};
-  border-radius: 10px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-`;
-
-const ErrorTitle = styled.p`
-  margin: 0;
-  font-weight: 700;
-  font-size: 13px;
-  color: ${T.errorDark};
-`;
-
-const ErrorDesc = styled.p`
+const ErrorText = styled.p`
   margin: 0;
   font-weight: 400;
   font-size: 13px;
-  line-height: 1.6;
-  color: ${T.errorMid};
+  line-height: 1.45;
+  color: #ef4444;
+  margin-top: 4px;
 `;
 
-const KakaoBtn = styled.a`
+const InquiryFlowTextBtn = styled.button`
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 10px 14px;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  padding: 12px 20px;
-  background: ${T.kakaoYellow};
-  border: 1px solid ${T.kakaoBorder};
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 14px;
-  color: ${T.kakaoText};
-  text-decoration: none;
-  width: fit-content;
-`;
-
-/* 문의 플로우(춘심 도우미) 비활성화 시 함께 복구
-const InquiryFlowTextBtn = styled.button`
-  align-self: center;
-  margin-top: 4px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  padding: 6px 4px;
   font-family: Inter, system-ui, sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #6b7280;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #4c4598;
+  text-decoration: none;
 
   &:hover {
-    color: #4b5563;
+    background: #f9fafb;
   }
 `;
-*/
 
 export type LookupStep = "step1" | "error_step1";
 
@@ -259,7 +223,7 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
   const [step, setStep] = useState<LookupStep>("step1");
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  // const [inquiryFlowOpen, setInquiryFlowOpen] = useState(false);
+  const [inquiryFlowOpen, setInquiryFlowOpen] = useState(false);
   const [name, setName] = useState("");
   /** 숫자만 저장, 표시는 formatPhoneLocalDigits */
   const [phoneDigits, setPhoneDigits] = useState("");
@@ -327,35 +291,38 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
     }
   };
 
-  const step1InputsError = step === "error_step1";
+  const isErrorStep1 = step === "error_step1";
 
   return (
     <>
       <CardRoot id="sbmb-lookup-card" ref={innerRef}>
         {step === "step1" || step === "error_step1" ? (
           <>
-            <StepBadge $error={step1InputsError}>
-              <StepDot $error={step1InputsError} />
+            <StepBadge $error={isErrorStep1}>
+              <StepDot $error={isErrorStep1} />
               <StepBadgeText>STEP 1 · 참여자 확인</StepBadgeText>
             </StepBadge>
             <CardTitle>신청 현황 조회</CardTitle>
             <InputRow>
-              <FieldGroup>
+              <FieldGroup $grow={3.5}>
                 <Label htmlFor="sbmb-name">성함</Label>
                 <Input
                   id="sbmb-name"
-                  $tone={step1InputsError ? "error" : "default"}
+                  $tone="default"
                   placeholder="성함을 입력하세요 (공백 없이)"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                 />
               </FieldGroup>
-              <FieldGroup>
-                <Label htmlFor="sbmb-phone">연락처</Label>
+              <FieldGroup $grow={6.5}>
+                <LabelRow>
+                  <Label htmlFor="sbmb-phone">연락처</Label>
+                  <LabelHint>국가번호 제외, 숫자만 입력</LabelHint>
+                </LabelRow>
                 <Input
                   id="sbmb-phone"
-                  $tone={step1InputsError ? "error" : "focus"}
+                  $tone="focus"
                   placeholder="010-1234-5678"
                   value={formatPhoneLocalDigits(phoneDigits)}
                   onChange={(e) =>
@@ -363,40 +330,14 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
                   }
                   inputMode="tel"
                   autoComplete="tel"
-                  aria-describedby="sbmb-phone-hints"
                 />
               </FieldGroup>
             </InputRow>
-            <PhoneHints id="sbmb-phone-hints">
-              <PhoneHintLine>
-                해외 참여자는{" "}
-                <PhoneHintEm>국가번호를 제외한 번호만</PhoneHintEm> 입력해
-                주세요.
-              </PhoneHintLine>
-              <PhoneHintLine>
-                숫자만 입력하면 됩니다. 하이픈(-)을 치지 않아도{" "}
-                <PhoneHintEm>자동으로 000-0000-0000 형태</PhoneHintEm>로
-                표시됩니다.
-              </PhoneHintLine>
-            </PhoneHints>
             {step === "error_step1" ? (
-              <>
-                <ErrorBox>
-                  <ErrorTitle>아직 확인되지 않은 참여자입니다.</ErrorTitle>
-                  <ErrorDesc>
-                    참여 모빅을 전송 완료하신 경우 춘심이 동생 카카오톡으로
-                    연락해주세요.
-                  </ErrorDesc>
-                </ErrorBox>
-                <KakaoBtn
-                  href={SBMB_KAKAO_INQUIRY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <IconMessageCircle size={18} color={T.kakaoText} />
-                  카카오톡으로 문의하기
-                </KakaoBtn>
-              </>
+              <ErrorText>
+                아직 확인되지 않은 참여자입니다. 성함과 연락처를 다시
+                확인해주세요.
+              </ErrorText>
             ) : null}
             <PrimaryBtn
               type="button"
@@ -406,16 +347,20 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
               {loading ? <Spinner /> : null}
               확인하기
             </PrimaryBtn>
-            {/* 문의 플로우 모달 — 추후 재개 시 SbmbInquiryFlowModal·상태 주석 해제
-            {step === "error_step1" ? (
-              <InquiryFlowTextBtn
-                type="button"
-                onClick={() => setInquiryFlowOpen(true)}
+            <InquiryFlowTextBtn
+              type="button"
+              onClick={() => setInquiryFlowOpen(true)}
+            >
+              <span
+                style={{
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                }}
               >
-                조회가 안되시나요? →
-              </InquiryFlowTextBtn>
-            ) : null}
-            */}
+                조회가 안되시나요?
+              </span>
+              <span aria-hidden>→</span>
+            </InquiryFlowTextBtn>
           </>
         ) : null}
       </CardRoot>
@@ -426,11 +371,12 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
         name={name}
         phoneDigits={phoneDigits}
         confirmedName={confirmedName}
+        onOpenInquiryFlow={() => setInquiryFlowOpen(true)}
       />
-      {/* <SbmbInquiryFlowModal
+      <SbmbInquiryFlowModal
         open={inquiryFlowOpen}
         onClose={() => setInquiryFlowOpen(false)}
-      /> */}
+      />
     </>
   );
 });

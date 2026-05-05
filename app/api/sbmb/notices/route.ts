@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getClientIp } from "@/lib/sbmb/clientIp";
 import { fetchNoticeListItems } from "@/lib/sbmb/fetchNotices";
+import { sanitizeParticipantFacingError } from "@/lib/sbmb/participantFacingMessage";
 import { rateLimitAllow } from "@/lib/sbmb/rateLimit";
 
 export async function GET(request: Request) {
@@ -16,10 +17,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ items });
   } catch (error) {
     console.error("[sbmb/notices]", error);
-    const message =
+    const raw =
       error instanceof Error
         ? error.message
         : "공지 목록을 불러오지 못했습니다.";
+    const message = sanitizeParticipantFacingError(raw);
     return NextResponse.json({ error: message, items: [] }, { status: 500 });
   }
 }

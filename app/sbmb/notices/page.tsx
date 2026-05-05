@@ -12,6 +12,7 @@ import {
 } from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionCard } from "@/components/sbmb/shared/SectionCard";
 import { T } from "@/lib/sbmb/tokens";
+import { sanitizeParticipantFacingError } from "@/lib/sbmb/participantFacingMessage";
 import type { SbmbNoticeListItem } from "@/types/sbmb";
 
 const desktop = "@media (min-width: 768px)";
@@ -218,7 +219,9 @@ export default function SbmbNoticesListPage() {
       }
       setItems(json.items ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      const raw =
+        e instanceof Error ? e.message : "오류가 발생했습니다.";
+      setError(sanitizeParticipantFacingError(raw));
     } finally {
       setLoading(false);
     }

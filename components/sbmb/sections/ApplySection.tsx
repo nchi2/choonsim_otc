@@ -257,7 +257,7 @@ export default function ApplySection() {
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
         </span>
-        공식 안내된 링크와 Google 폼만 이용해 주세요. 출처가 불분명한
+        공식 안내된 링크와 공식 신청 폼만 이용해 주세요. 출처가 불분명한
         링크·DM은 피싱일 수 있습니다.
       </Warning>
     </SbmbSectionAnchor>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getClientIp } from "@/lib/sbmb/clientIp";
+import { sanitizeParticipantFacingError } from "@/lib/sbmb/participantFacingMessage";
 import { rateLimitAllow } from "@/lib/sbmb/rateLimit";
 import { verifySbmbParticipant } from "@/lib/sbmb/verifyParticipant";
 
@@ -67,8 +68,9 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("[sbmb/verify]", error);
-    const message =
+    const raw =
       error instanceof Error ? error.message : "확인에 실패했습니다.";
+    const message = sanitizeParticipantFacingError(raw);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

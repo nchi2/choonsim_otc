@@ -13,6 +13,7 @@ import {
   IconRotateCcw,
 } from "@/components/sbmb/shared/SbmbIcons";
 import { SBMB_KAKAO_INQUIRY_URL } from "@/lib/sbmb/constants";
+import { PARTICIPANT_DATA_LOAD_ERROR } from "@/lib/sbmb/participantFacingMessage";
 import { getStatusStyle } from "@/lib/sbmb/statusStyles";
 import { T } from "@/lib/sbmb/tokens";
 import { walletDedupeKey } from "@/lib/sbmb/walletUtils";
@@ -949,7 +950,7 @@ export default function ResultCard({
           <BlockIntroText>프로젝트 단계별 진행 상황입니다.</BlockIntroText>
         </div>
         {roadmapErr ? (
-          <RoadmapMuted>로드맵을 불러오지 못했습니다.</RoadmapMuted>
+          <RoadmapMuted>{PARTICIPANT_DATA_LOAD_ERROR}</RoadmapMuted>
         ) : roadmap.length === 0 ? (
           <RoadmapMuted>등록된 로드맵 항목이 없습니다.</RoadmapMuted>
         ) : (
