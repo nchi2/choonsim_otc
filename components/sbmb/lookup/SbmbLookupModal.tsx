@@ -293,6 +293,50 @@ const GhostBtn = styled.button`
   color: ${T.textTertiary};
 `;
 
+/* 문의 플로우 비활성화 시 함께 복구
+const InquiryFlowTextBtn = styled.button`
+  align-self: center;
+  margin-top: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #4b5563;
+  }
+`;
+*/
+
+const Step2HelpBlock = styled.div`
+  width: 100%;
+  text-align: center;
+`;
+
+const Step2KakaoTextLink = styled.a`
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.45;
+  color: ${T.textTertiary};
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+`;
+
+const Step2KakaoLinkEm = styled.span`
+  color: ${T.kakaoText};
+  text-decoration: underline;
+`;
+
 type ModalStep = "step2" | "error_step2" | "result";
 
 export type SbmbLookupModalProps = {
@@ -303,6 +347,7 @@ export type SbmbLookupModalProps = {
   name: string;
   phoneDigits: string;
   confirmedName: string;
+  // onOpenInquiryFlow?: () => void;
 };
 
 export default function SbmbLookupModal({
@@ -479,9 +524,26 @@ export default function SbmbLookupModal({
               {loading ? <Spinner /> : null}
               조회하기
             </PrimaryBtn>
+            {modalStep === "step2" ? (
+              <Step2HelpBlock>
+                <Step2KakaoTextLink
+                  href={SBMB_KAKAO_INQUIRY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  지갑 번호가 기억나지 않으신가요? 춘심이 동생{" "}
+                  <Step2KakaoLinkEm>카카오톡 문의하기 →</Step2KakaoLinkEm>
+                </Step2KakaoTextLink>
+              </Step2HelpBlock>
+            ) : null}
             <GhostBtn type="button" onClick={onClose}>
               처음으로 돌아가기
             </GhostBtn>
+            {/* {modalStep === "error_step2" && onOpenInquiryFlow ? (
+              <InquiryFlowTextBtn type="button" onClick={onOpenInquiryFlow}>
+                조회가 안되시나요? →
+              </InquiryFlowTextBtn>
+            ) : null} */}
           </>
         ) : null}
 

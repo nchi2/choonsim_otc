@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroLookupSection from "@/components/sbmb/hero/HeroLookupSection";
 import ApplySection from "@/components/sbmb/sections/ApplySection";
+import FaqLinkSection from "@/components/sbmb/sections/FaqLinkSection";
 import LinksSection from "@/components/sbmb/sections/LinksSection";
 import NoticeSection from "@/components/sbmb/sections/NoticeSection";
 import RoadmapSection from "@/components/sbmb/sections/RoadmapSection";
@@ -43,6 +44,7 @@ export default function SbmbPage() {
         <NoticeSection />
         <ApplySection />
         <RoadmapSection />
+        <FaqLinkSection />
         <LinksSection />
         <WalletGuideSection />
       </Lower>

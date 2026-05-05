@@ -12,6 +12,7 @@ import {
   participantNamesMatch,
   participantPhonesMatch,
 } from "@/lib/sbmb/normalizeParticipant";
+import { walletDedupeKey } from "@/lib/sbmb/walletUtils";
 import type {
   SbmbVerifyEntry,
   SbmbVerifyResponse,
@@ -276,19 +277,24 @@ function mergeWalletDrafts(
   offsets: number[],
   parseRow: (r: SheetCellValue[]) => WalletDraft[],
 ): WalletDraft[] {
-  const byNo = new Map<number, WalletDraft>();
+  const byKey = new Map<string, WalletDraft>();
   for (const off of offsets) {
     const r = padSheetRowToMinLength(allRows[off], SHEET_ROW_MIN_LEN);
     for (const w of parseRow(r)) {
-      const prev = byNo.get(w.no);
+      const key = walletDedupeKey(w.design, w.no);
+      const prev = byKey.get(key);
       if (!prev) {
-        byNo.set(w.no, w);
+        byKey.set(key, w);
       } else {
-        byNo.set(w.no, mergeWalletDraftSameNo(prev, w));
+        byKey.set(key, mergeWalletDraftSameNo(prev, w));
       }
     }
   }
-  return [...byNo.values()].sort((a, b) => a.no - b.no);
+  return [...byKey.values()].sort((a, b) =>
+    a.no !== b.no
+      ? a.no - b.no
+      : (a.design ?? "").localeCompare(b.design ?? "", "ko"),
+  );
 }
 
 function sheetStatusOverlaySync(

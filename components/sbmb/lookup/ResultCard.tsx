@@ -15,6 +15,7 @@ import {
 import { SBMB_KAKAO_INQUIRY_URL } from "@/lib/sbmb/constants";
 import { getStatusStyle } from "@/lib/sbmb/statusStyles";
 import { T } from "@/lib/sbmb/tokens";
+import { walletDedupeKey } from "@/lib/sbmb/walletUtils";
 import type {
   SbmbRoadmapItem,
   SbmbVerifyEntry,
@@ -262,10 +263,10 @@ const KakaoBottomWrap = styled.div`
 const CompactRow = styled.div<{ $airdrop: boolean }>`
   min-height: 38px;
   box-sizing: border-box;
-  padding: 5px 10px 5px 10px;
+  padding: 8px 10px 8px 10px;
   border-radius: 8px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   background: ${(p) => (p.$airdrop ? AIRDROP_ROW_BG : SERVICE_ROW_BG)};
@@ -299,12 +300,12 @@ const RowDot = styled.span<{ $airdrop: boolean }>`
 
 const RowLeft = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   min-width: 0;
   flex-shrink: 1;
   flex-wrap: wrap;
-  row-gap: 4px;
+  row-gap: 6px;
 
   ${mobile} {
     width: 100%;
@@ -312,11 +313,21 @@ const RowLeft = styled.div`
   }
 `;
 
-const RowNo = styled.span`
-  font-weight: 700;
+/** 디자인 배지 + No를 한 줄·한 블록으로 묶어 동일 No·다른 디자인 구분 */
+const WalletIdentityStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+`;
+
+const WalletCaption = styled.span`
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 600;
   font-size: 13px;
   color: ${T.textPrimary};
-  flex-shrink: 0;
+  line-height: 1.35;
 `;
 
 const DesignBadge = styled.span<{ $bg: string; $fg: string }>`
@@ -355,6 +366,7 @@ const RowRight = styled.div`
   gap: 20px;
   flex: 1;
   min-width: 0;
+  align-self: center;
 
   ${mobile} {
     flex-basis: 100%;
@@ -711,12 +723,16 @@ function WalletCompactRow({
             {entryUnit.label}
           </EntryUnitTag>
         ) : null}
-        {w.design ? (
-          <DesignBadge $bg={badgeBg} $fg={badgeFg}>
-            {w.design}
-          </DesignBadge>
-        ) : null}
-        <RowNo>No. {w.no}</RowNo>
+        <WalletIdentityStack>
+          {w.design ? (
+            <DesignBadge $bg={badgeBg} $fg={badgeFg}>
+              {w.design}
+            </DesignBadge>
+          ) : null}
+          <WalletCaption>
+            {w.design ? `${w.design.trim()} ${w.no}` : `No. ${w.no}`}
+          </WalletCaption>
+        </WalletIdentityStack>
       </RowLeft>
       <RowRight>
         <RowTokens title={tokenSummary}>{tokenSummary}</RowTokens>
@@ -759,7 +775,7 @@ function CompactWalletList({
 
   const renderRow = (w: SbmbVerifyWallet) => (
     <WalletCompactRow
-      key={`${listKey}-${w.no}-${w.design ?? ""}`}
+      key={`${listKey}-${walletDedupeKey(w.design, w.no)}`}
       wallet={w}
       entryType={entryType}
     />

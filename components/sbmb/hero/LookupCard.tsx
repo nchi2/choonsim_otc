@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import styled, { keyframes } from "styled-components";
+// import SbmbInquiryFlowModal from "@/components/sbmb/lookup/SbmbInquiryFlowModal";
 import SbmbLookupModal from "@/components/sbmb/lookup/SbmbLookupModal";
 import { IconMessageCircle } from "@/components/sbmb/shared/SbmbIcons";
 import { SBMB_KAKAO_INQUIRY_URL } from "@/lib/sbmb/constants";
@@ -225,6 +226,28 @@ const KakaoBtn = styled.a`
   width: fit-content;
 `;
 
+/* 문의 플로우(춘심 도우미) 비활성화 시 함께 복구
+const InquiryFlowTextBtn = styled.button`
+  align-self: center;
+  margin-top: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #4b5563;
+  }
+`;
+*/
+
 export type LookupStep = "step1" | "error_step1";
 
 export type LookupCardHandle = {
@@ -236,6 +259,7 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
   const [step, setStep] = useState<LookupStep>("step1");
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // const [inquiryFlowOpen, setInquiryFlowOpen] = useState(false);
   const [name, setName] = useState("");
   /** 숫자만 저장, 표시는 formatPhoneLocalDigits */
   const [phoneDigits, setPhoneDigits] = useState("");
@@ -382,6 +406,16 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
               {loading ? <Spinner /> : null}
               확인하기
             </PrimaryBtn>
+            {/* 문의 플로우 모달 — 추후 재개 시 SbmbInquiryFlowModal·상태 주석 해제
+            {step === "error_step1" ? (
+              <InquiryFlowTextBtn
+                type="button"
+                onClick={() => setInquiryFlowOpen(true)}
+              >
+                조회가 안되시나요? →
+              </InquiryFlowTextBtn>
+            ) : null}
+            */}
           </>
         ) : null}
       </CardRoot>
@@ -393,6 +427,10 @@ const LookupCard = forwardRef<LookupCardHandle>(function LookupCard(_, ref) {
         phoneDigits={phoneDigits}
         confirmedName={confirmedName}
       />
+      {/* <SbmbInquiryFlowModal
+        open={inquiryFlowOpen}
+        onClose={() => setInquiryFlowOpen(false)}
+      /> */}
     </>
   );
 });
