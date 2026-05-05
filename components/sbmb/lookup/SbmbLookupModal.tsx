@@ -6,11 +6,8 @@ import styled, { keyframes } from "styled-components";
 import ResultCard from "@/components/sbmb/lookup/ResultCard";
 import {
   IconCircleCheck,
-  IconMessageCircle,
-  IconRefreshCw,
   IconX,
 } from "@/components/sbmb/shared/SbmbIcons";
-import { SBMB_KAKAO_INQUIRY_URL } from "@/lib/sbmb/constants";
 import { T } from "@/lib/sbmb/tokens";
 import type { SbmbVerifyOk } from "@/types/sbmb";
 
@@ -150,7 +147,7 @@ const Input = styled.input<{
     if (p.$tone === "error") return `1px solid ${T.errorBorder}`;
     return `1px solid ${T.border}`;
   }};
-  background: ${(p) => (p.$tone === "error" ? T.errorBg : T.white)};
+  background: ${T.white};
   font-size: 14px;
   color: ${T.textPrimary};
   outline: none;
@@ -227,47 +224,19 @@ const ErrorDesc = styled.p`
   color: ${T.errorMid};
 `;
 
-const ErrorActions = styled.div`
-  display: flex;
-  gap: 10px;
-  width: 100%;
-
-  ${mobile} {
-    flex-direction: column;
-  }
+const InlineWarnText = styled.p`
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: ${T.errorMid};
+  white-space: pre-line;
 `;
 
-const SecondaryBtn = styled.button`
-  flex: 1;
-  height: 46px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: ${T.textMuted};
-  background: #f3f4f6;
-`;
-
-const KakaoHalfBtn = styled.a`
-  flex: 1;
-  height: 46px;
-  border-radius: 12px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: ${T.kakaoText};
-  background: ${T.kakaoYellow};
-  border: 1px solid ${T.kakaoBorder};
-  text-decoration: none;
+const ErrorText = styled.p`
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ef4444;
 `;
 
 const ConfirmedChip = styled.div`
@@ -295,13 +264,15 @@ const GhostBtn = styled.button`
   color: ${T.textTertiary};
 `;
 
-const InquiryFlowTextBtn = styled.button`
+const InquiryFlowTextBtn = styled.button<{ $emphasized?: boolean }>`
   align-self: center;
   margin-top: 4px;
-  border: none;
-  background: none;
+  border: ${(p) => (p.$emphasized ? `1px solid ${T.primary}` : "none")};
+  border-radius: ${(p) => (p.$emphasized ? "10px" : "0")};
+  background: ${(p) => (p.$emphasized ? "#eef4f9" : "none")};
   cursor: pointer;
-  padding: 6px 4px;
+  padding: ${(p) => (p.$emphasized ? "10px 14px" : "6px 4px")};
+  width: ${(p) => (p.$emphasized ? "100%" : "auto")};
   font-family: Inter, system-ui, sans-serif;
   font-weight: 400;
   font-size: 12px;
@@ -313,28 +284,6 @@ const InquiryFlowTextBtn = styled.button`
   &:hover {
     color: #4b5563;
   }
-`;
-
-const Step2HelpBlock = styled.div`
-  width: 100%;
-  text-align: center;
-`;
-
-const Step2KakaoTextLink = styled.a`
-  font-family: Inter, system-ui, sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 1.45;
-  color: ${T.textTertiary};
-  text-decoration: none;
-  border: none;
-  background: none;
-  cursor: pointer;
-`;
-
-const Step2KakaoLinkEm = styled.span`
-  color: ${T.kakaoText};
-  text-decoration: underline;
 `;
 
 type ModalStep = "step2" | "error_step2" | "result";
@@ -363,6 +312,9 @@ export default function SbmbLookupModal({
   const [walletNo, setWalletNo] = useState("");
   const [result, setResult] = useState<SbmbVerifyOk | null>(null);
   const [loading, setLoading] = useState(false);
+  const [failCount, setFailCount] = useState(0);
+  const [blocked, setBlocked] = useState(false);
+  const [blockMessage, setBlockMessage] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -370,6 +322,9 @@ export default function SbmbLookupModal({
     setWalletNo("");
     setResult(null);
     setLoading(false);
+    setFailCount(0);
+    setBlocked(false);
+    setBlockMessage("");
   }, [open]);
 
   useEffect(() => {
@@ -394,9 +349,22 @@ export default function SbmbLookupModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onKeyDown]);
 
+  const registerFailure = useCallback(() => {
+    setFailCount((prev) => {
+      const next = prev + 1;
+      if (next >= 10) {
+        setBlocked(true);
+        setBlockMessage(
+          "입력 가능 횟수를 초과했습니다.\n춘심 도우미를 통해 문의해주세요.",
+        );
+      }
+      return next;
+    });
+  }, []);
+
   const handleVerify = async () => {
     const n = parseInt(walletNo.trim(), 10);
-    if (!name.trim() || !phoneDigits || !Number.isFinite(n)) return;
+    if (!name.trim() || !phoneDigits || !Number.isFinite(n) || blocked) return;
     setLoading(true);
     try {
       const res = await fetch("/api/sbmb/verify", {
@@ -409,7 +377,17 @@ export default function SbmbLookupModal({
         }),
       });
       const data = await res.json();
+      if (data?.blocked === true) {
+        setBlocked(true);
+        setModalStep("error_step2");
+        setBlockMessage(
+          "일시적으로 조회가 제한되었습니다.\n잠시 후 다시 시도하거나 춘심 도우미를 통해 문의해주세요.",
+        );
+        setFailCount((prev) => Math.max(prev, 10));
+        return;
+      }
       if (!res.ok) {
+        registerFailure();
         setModalStep("error_step2");
         return;
       }
@@ -419,11 +397,16 @@ export default function SbmbLookupModal({
         data.entries.length > 0
       ) {
         setResult(data as SbmbVerifyOk);
+        setFailCount(0);
+        setBlocked(false);
+        setBlockMessage("");
         setModalStep("result");
       } else {
+        registerFailure();
         setModalStep("error_step2");
       }
     } catch {
+      registerFailure();
       setModalStep("error_step2");
     } finally {
       setLoading(false);
@@ -435,6 +418,10 @@ export default function SbmbLookupModal({
   const handleResetInside = () => {
     onClose();
   };
+
+  const isClientLocked = failCount >= 10;
+  const showFail5Warning = failCount >= 5 && failCount < 10 && !blocked;
+  const isLocked = blocked || isClientLocked;
 
   return createPortal(
     <>
@@ -485,61 +472,38 @@ export default function SbmbLookupModal({
                 $thickPrimary={modalStep !== "error_step2"}
                 value={walletNo}
                 onChange={(e) => setWalletNo(e.target.value)}
+                disabled={isLocked}
               />
             </FieldGroup>
+            {showFail5Warning ? (
+              <InlineWarnText>
+                지갑 번호를 여러 번 잘못 입력하셨습니다.{"\n"}지갑 후면 좌측
+                하단의 번호를 다시 확인해주세요.
+              </InlineWarnText>
+            ) : null}
+            {isLocked ? <InlineWarnText>{blockMessage}</InlineWarnText> : null}
             {modalStep === "error_step2" ? (
-              <>
-                <ErrorBox>
-                  <ErrorTitle>지갑 번호가 확인되지 않습니다.</ErrorTitle>
-                  <ErrorDesc>입력하신 번호를 다시 확인해주세요.</ErrorDesc>
-                </ErrorBox>
-                <ErrorActions>
-                  <SecondaryBtn
-                    type="button"
-                    onClick={() => {
-                      setWalletNo("");
-                      setModalStep("step2");
-                    }}
-                  >
-                    <IconRefreshCw size={16} color={T.textMuted} />
-                    다시 시도
-                  </SecondaryBtn>
-                  <KakaoHalfBtn
-                    href={SBMB_KAKAO_INQUIRY_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <IconMessageCircle size={16} color={T.kakaoText} />
-                    카카오 문의
-                  </KakaoHalfBtn>
-                </ErrorActions>
-              </>
+              <ErrorText>
+                지갑 번호가 확인되지 않습니다. 입력하신 번호를 다시 확인해주세요.
+              </ErrorText>
             ) : null}
             <PrimaryBtn
               type="button"
-              $disabled={loading || !walletNo.trim()}
+              $disabled={loading || !walletNo.trim() || isLocked}
               onClick={handleVerify}
             >
               {loading ? <Spinner /> : null}
               조회하기
             </PrimaryBtn>
-            {modalStep === "step2" ? (
-              <Step2HelpBlock>
-                <Step2KakaoTextLink
-                  href={SBMB_KAKAO_INQUIRY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  지갑 번호가 기억나지 않으신가요? 춘심이 동생{" "}
-                  <Step2KakaoLinkEm>카카오톡 문의하기 →</Step2KakaoLinkEm>
-                </Step2KakaoTextLink>
-              </Step2HelpBlock>
-            ) : null}
             <GhostBtn type="button" onClick={onClose}>
               처음으로 돌아가기
             </GhostBtn>
-            {modalStep === "error_step2" && onOpenInquiryFlow ? (
-              <InquiryFlowTextBtn type="button" onClick={onOpenInquiryFlow}>
+            {onOpenInquiryFlow ? (
+              <InquiryFlowTextBtn
+                type="button"
+                $emphasized
+                onClick={onOpenInquiryFlow}
+              >
                 조회가 안되시나요? →
               </InquiryFlowTextBtn>
             ) : null}
