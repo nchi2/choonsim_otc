@@ -688,7 +688,7 @@ function WalletCompactRow({
     <CompactRow $airdrop={isAirdropRange}>
       <RowLeft>
         <RowDot $airdrop={isAirdropRange} aria-hidden />
-        {entryUnit.label ? (
+        {isAirdropRange && entryUnit.label ? (
           <EntryUnitTag $bg={entryUnit.bg} $fg={entryUnit.fg}>
             {entryUnit.label}
           </EntryUnitTag>
