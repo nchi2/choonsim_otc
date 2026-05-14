@@ -14,8 +14,13 @@ function isPlaceholderAddress(address: string): boolean {
 }
 
 /** SBMB·LDT on BNB: same data; gray row + preparing badge only. */
-function isBnbPreparingRow(symbol: string, network: Network): boolean {
+function shouldShowPreparingBadge(symbol: string, network: Network): boolean {
   return network === "bsc" && (symbol === "SBMB" || symbol === "LDT");
+}
+
+/** SBMB·LDT on Ethereum are live, but temporarily hidden from actions. */
+function isTemporarilyDisabledRow(symbol: string, network: Network): boolean {
+  return network === "eth" && (symbol === "SBMB" || symbol === "LDT");
 }
 
 export function TokenCard({ group }: { group: ContractTokenGroup }) {
@@ -23,8 +28,8 @@ export function TokenCard({ group }: { group: ContractTokenGroup }) {
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onCopy = useCallback(
-    (network: string, address: string, preparing: boolean) => {
-      if (isPlaceholderAddress(address) || preparing) return;
+    (network: string, address: string, inactive: boolean) => {
+      if (isPlaceholderAddress(address) || inactive) return;
       void navigator.clipboard.writeText(address);
       const key = `${network}-${address}`;
       if (copyTimer.current) clearTimeout(copyTimer.current);
@@ -43,14 +48,19 @@ export function TokenCard({ group }: { group: ContractTokenGroup }) {
       {group.intro ? <S.TokenIntro>{group.intro}</S.TokenIntro> : null}
       {group.chains.map((row) => {
         const ph = isPlaceholderAddress(row.address);
-        const preparing = isBnbPreparingRow(group.symbol, row.network);
+        const preparing = shouldShowPreparingBadge(group.symbol, row.network);
+        const temporarilyDisabled = isTemporarilyDisabledRow(
+          group.symbol,
+          row.network,
+        );
+        const inactive = preparing || temporarilyDisabled;
         const key = `${row.network}-${row.address}`;
         const showCopied = copiedKey === key;
         const explorer = explorerAddressUrl(row.network, row.address);
-        const rowActionsDisabled = ph || preparing;
+        const rowActionsDisabled = ph || inactive;
 
         return (
-          <S.ChainRow key={key} $preparing={preparing}>
+          <S.ChainRow key={key} $inactive={inactive}>
             <S.ChainRowTop>
               <ChainBadge network={row.network} />
               {preparing ? <S.PreparingBadge>준비중</S.PreparingBadge> : null}

@@ -226,7 +226,7 @@ export const ChainFieldLabel = styled.span`
   margin-bottom: 0.35rem;
 `;
 
-export const ChainRow = styled.div<{ $preparing?: boolean }>`
+export const ChainRow = styled.div<{ $inactive?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -239,7 +239,7 @@ export const ChainRow = styled.div<{ $preparing?: boolean }>`
   }
 
   ${(p) =>
-    p.$preparing
+    p.$inactive
       ? css`
           margin: 0.25rem -0.35rem 0;
           padding: 0.65rem 0.45rem;
