@@ -6,5 +6,5 @@ export const scannerErc20Intro: Readonly<Record<string, string>> = {
   PRR: "대구 모빅회관 연습용 ERC-20 토큰입니다. 생태계 내 EVM 토큰입니다.",
   WBMB: "Wrapped BMB",
   MOVL: "Mobick On-chain Value Ledger",
-  MOVN: "생태계 토큰입니다.",
+  MOVN: "1 Movn = $1의 기준 가치를 지향하는 가치 안정화 토큰",
 };
