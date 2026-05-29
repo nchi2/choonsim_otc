@@ -6,14 +6,14 @@ import { ERC20_ADDRESS_PLACEHOLDER } from "@/app/scanner/lib/tokens";
 import { explorerAddressUrl } from "@/app/contracts/lib/chains";
 import { addTokenToWallet } from "@/app/contracts/lib/wallet";
 import type { ContractTokenGroup } from "@/app/contracts/lib/group-tokens";
-import { ChainBadge } from "./ChainBadge";
+import { ChainContractCard } from "./ChainContractCard";
 import * as S from "../styles";
 
 function isPlaceholderAddress(address: string): boolean {
   return address === ERC20_ADDRESS_PLACEHOLDER;
 }
 
-/** SBMB·LDT on BNB: same data; gray row + preparing badge only. */
+/** SBMB·LDT on BNB: same data; gray header + preparing badge only. */
 function shouldShowPreparingBadge(symbol: string, network: Network): boolean {
   return network === "bsc" && (symbol === "SBMB" || symbol === "LDT");
 }
@@ -60,12 +60,11 @@ export function TokenCard({ group }: { group: ContractTokenGroup }) {
         const rowActionsDisabled = ph || inactive;
 
         return (
-          <S.ChainRow key={key} $inactive={inactive}>
-            <S.ChainRowTop>
-              <ChainBadge network={row.network} />
-              {preparing ? <S.PreparingBadge>준비중</S.PreparingBadge> : null}
-            </S.ChainRowTop>
-            <S.ChainFieldLabel>컨트랙트 주소</S.ChainFieldLabel>
+          <ChainContractCard
+            key={key}
+            network={row.network}
+            showPreparingBadge={preparing}
+          >
             <S.AddressLine>{row.address}</S.AddressLine>
             <S.RowActionsWrap>
               <S.RowActions>
@@ -106,7 +105,7 @@ export function TokenCard({ group }: { group: ContractTokenGroup }) {
               </S.RowActions>
               {showCopied ? <S.CopiedHint>복사되었습니다.</S.CopiedHint> : null}
             </S.RowActionsWrap>
-          </S.ChainRow>
+          </ChainContractCard>
         );
       })}
     </S.TokenCardRoot>

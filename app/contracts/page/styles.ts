@@ -217,44 +217,49 @@ export const TokenIntro = styled.p`
   line-height: 1.45;
 `;
 
-export const ChainFieldLabel = styled.span`
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: #9ca3af;
-  letter-spacing: 0.02em;
-  margin-bottom: 0.35rem;
+/* Chain contract card — colored header + address body as one unit. */
+export const ChainContractCardRoot = styled.div`
+  border: 0.5px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+
+  & + & {
+    margin-top: 0.65rem;
+  }
 `;
 
-export const ChainRow = styled.div<{ $inactive?: boolean }>`
+export const ChainContractCardHeader = styled.div<{
+  $headerBg: string;
+  $textColor: string;
+}>`
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 0;
-  border-top: 1px solid #e5e7eb;
+  width: 100%;
+  padding: 7px 12px;
+  background: ${(p) => p.$headerBg};
+  color: ${(p) => p.$textColor};
+  box-sizing: border-box;
+`;
 
-  &:first-of-type {
-    border-top: none;
-    padding-top: 0;
-  }
+export const ChainContractCardDot = styled.span<{ $dotColor: string }>`
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: ${(p) => p.$dotColor};
+  flex-shrink: 0;
+`;
 
-  ${(p) =>
-    p.$inactive
-      ? css`
-          margin: 0.25rem -0.35rem 0;
-          padding: 0.65rem 0.45rem;
-          border-radius: 0.4rem;
-          background: #f3f4f6;
-          border-top-color: #e5e7eb;
-          opacity: 0.88;
+export const ChainContractCardName = styled.span`
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+`;
 
-          & > div:nth-of-type(2) {
-            background: #e5e7eb;
-            border-color: #d1d5db;
-            color: #6b7280;
-          }
-        `
-      : ""}
+export const ChainContractCardHeaderSpacer = styled.span`
+  flex: 1;
 `;
 
 export const PreparingBadge = styled.span`
@@ -262,18 +267,19 @@ export const PreparingBadge = styled.span`
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #9ca3af;
+  color: #6b7280;
   background: #e5e7eb;
-  padding: 0.18rem 0.45rem;
-  border-radius: 0.25rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 9999px;
   border: 1px solid #d1d5db;
 `;
 
-export const ChainRowTop = styled.div`
+export const ChainContractCardBody = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 12px;
+  background: #fff;
 `;
 
 export const AddressLine = styled.div`
@@ -350,37 +356,6 @@ export const ExplorerLink = styled.a<{ $inactive?: boolean }>`
           cursor: not-allowed;
         `
       : ""}
-`;
-
-export const ChainBadgeSpan = styled.span<{ $net: "eth" | "base" | "bsc" }>`
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  padding: 0.28rem 0.55rem;
-  border-radius: 9999px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #111827;
-
-  ${(p) => {
-    if (p.$net === "eth")
-      return css`
-        border-color: #bfdbfe;
-        color: #1d4ed8;
-      `;
-    if (p.$net === "base")
-      return css`
-        border-color: #93c5fd;
-        color: #1e40af;
-      `;
-    return css`
-      border-color: #fcd34d;
-      color: #92400e;
-    `;
-  }}
 `;
 
 export const CopiedHint = styled.span`

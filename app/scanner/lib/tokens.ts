@@ -193,10 +193,10 @@ export const SCANNER_TOKENS: readonly Token[] = [
     symbol: "MOVN",
     network: "bsc",
     type: "erc20",
-    address: ERC20_ADDRESS_PLACEHOLDER,
+    address: "0x200b63AA750c901892d4DCf82439860F9C270274",
     decimals: 18,
     tier: "otaverse",
-    label: "MOVN (BNB Chain) (예정)",
+    label: "MOVN (BNB Chain)",
     colorVar: "--scanner-tier-otaverse",
   },
 ];
