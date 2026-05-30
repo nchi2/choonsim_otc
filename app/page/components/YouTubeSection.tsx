@@ -112,10 +112,18 @@ export default function YouTubeSection() {
         const res = await fetch("/api/youtube/latest", {
           signal: controller.signal,
         });
-        const json: YoutubeLatestResponse & {
+        const raw = await res.text();
+        let json: YoutubeLatestResponse & {
           error?: string;
           details?: Record<string, string>;
-        } = await res.json();
+        };
+        try {
+          json = JSON.parse(raw) as typeof json;
+        } catch {
+          throw new Error(
+            "콘텐츠를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
+          );
+        }
 
         if (!res.ok) {
           const detailParts: string[] = [];

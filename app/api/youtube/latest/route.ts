@@ -10,7 +10,8 @@ import {
 const CACHE_TTL_MS = CACHE_TTL_SECONDS * 1000;
 
 // Next.js 16 requires literal values for route segment config
-export const revalidate = 300;
+export const revalidate = 900;
+export const maxDuration = 30;
 
 type YoutubeLatestResponse = {
   items: YoutubeVideo[];
@@ -19,7 +20,7 @@ type YoutubeLatestResponse = {
     cache: {
       hit: boolean;
       ageMs: number | null;
-      reason?: "ttl" | "rate_limited";
+      reason?: "ttl" | "rate_limited" | "error";
     };
     channels: {
       total: number;
@@ -38,39 +39,48 @@ type CachedResponse = {
 let lastSuccessfulResponse: CachedResponse | null = null;
 
 export async function GET() {
-  const cached = getFreshCache();
-  if (cached) {
-    return NextResponse.json(
-      withCacheMeta(cached.payload, {
-        hit: true,
-        ageMs: Date.now() - cached.fetchedAt,
-        reason: "ttl",
-      }),
-      buildCacheHeaders()
-    );
-  }
-
   try {
+    const cached = getFreshCache();
+    if (cached) {
+      return NextResponse.json(
+        withCacheMeta(cached.payload, {
+          hit: true,
+          ageMs: Date.now() - cached.fetchedAt,
+          reason: "ttl",
+        }),
+        buildCacheHeaders(),
+      );
+    }
+
     const { videos, errors, succeededCount, failedCount, sawRateLimit } =
       await fetchYoutubeLatest();
 
     if (!videos.length && lastSuccessfulResponse && sawRateLimit) {
-      const cachedPayload = withCacheMeta(lastSuccessfulResponse.payload, {
-        hit: true,
-        ageMs: Date.now() - lastSuccessfulResponse.fetchedAt,
-        reason: "rate_limited",
-      });
+      return NextResponse.json(
+        withCacheMeta(lastSuccessfulResponse.payload, {
+          hit: true,
+          ageMs: Date.now() - lastSuccessfulResponse.fetchedAt,
+          reason: "rate_limited",
+        }),
+        buildCacheHeaders(),
+      );
+    }
 
-      return NextResponse.json(cachedPayload, buildCacheHeaders());
+    if (!videos.length && lastSuccessfulResponse) {
+      return NextResponse.json(
+        withCacheMeta(lastSuccessfulResponse.payload, {
+          hit: true,
+          ageMs: Date.now() - lastSuccessfulResponse.fetchedAt,
+          reason: "error",
+        }),
+        buildCacheHeaders(),
+      );
     }
 
     if (!videos.length) {
       return NextResponse.json(
-        {
-          error: "Failed to fetch YouTube videos",
-          details: errors,
-        },
-        { status: 502 }
+        buildPayload([], succeededCount, failedCount, errors),
+        { status: 200, ...buildCacheHeaders() },
       );
     }
 
@@ -86,15 +96,23 @@ export async function GET() {
         withCacheMeta(lastSuccessfulResponse.payload, {
           hit: true,
           ageMs: Date.now() - lastSuccessfulResponse.fetchedAt,
-          reason: "rate_limited",
+          reason: "error",
         }),
-        buildCacheHeaders()
+        buildCacheHeaders(),
       );
     }
 
+    const routeError =
+      error instanceof Error ? error.message : "Failed to fetch YouTube videos";
+
     return NextResponse.json(
-      { error: "Failed to fetch YouTube videos" },
-      { status: 500 }
+      buildPayload(
+        [],
+        0,
+        YOUTUBE_CHANNELS.length,
+        { _route: routeError },
+      ),
+      { status: 200, ...buildCacheHeaders() },
     );
   }
 }
@@ -114,7 +132,7 @@ function getFreshCache() {
 
 function withCacheMeta(
   payload: YoutubeLatestResponse,
-  cacheMeta: YoutubeLatestResponse["meta"]["cache"]
+  cacheMeta: YoutubeLatestResponse["meta"]["cache"],
 ): YoutubeLatestResponse {
   return {
     ...payload,
@@ -129,7 +147,7 @@ function buildPayload(
   videos: YoutubeVideo[],
   succeededCount: number,
   failedCount: number,
-  errors?: Record<string, string>
+  errors?: Record<string, string>,
 ): YoutubeLatestResponse {
   return {
     items: videos,
