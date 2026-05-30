@@ -3,17 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 
-/**
- * 메인(/) · /otc 공용 가격 보드.
- *
- * - 데이터:
- *   - 메이저 8종 + BMB 24h 변동률 → `/api/market-prices/majors`
- *   - BMB 표시가격(LBANK 우선) + USDT/KRW + BMB/KRW(원화 환산) → `/api/market-prices`
- *   두 응답을 합쳐 BMB 강조 행을 구성하고 나머지 8개는 그리드로 렌더한다.
- *   기존 데이터 소스/캐시는 그대로 — 본 컴포넌트는 표시만 담당.
- * - 갱신: 30초 polling (기존 `OTCSection` 톤 유지).
- */
-
 interface MajorItem {
   symbol: string;
   name: string;
@@ -35,17 +24,9 @@ interface MarketPricesResponse {
   lbankKrwPrice: number | null;
 }
 
-/** 60초 — 서버 캐시(60s)와 정렬해 외부 호출 빈도를 낮춤. */
 const REFRESH_MS = 60_000;
-/** 파싱 실패 / 비정상 응답에 대한 사용자용 단일 메시지. 외부 본문은 절대 노출하지 않는다. */
 const FALLBACK_ERROR_MESSAGE = "시세를 일시적으로 불러올 수 없습니다.";
 
-/**
- * 안전 JSON 파서.
- *
- * - 어떤 응답이든 먼저 `text()`로 본문을 읽고 `JSON.parse`를 try/catch로 감싼다.
- * - 응답이 비-JSON(HTML 등)이거나 파싱 실패면 `null` 반환 — 본문 자체를 절대 화면에 흘리지 않는다.
- */
 async function safeJson<T>(res: Response): Promise<T | null> {
   let body: string;
   try {
@@ -60,10 +41,6 @@ async function safeJson<T>(res: Response): Promise<T | null> {
   }
 }
 
-/**
- * BMB 로고 — 추후 교체 시 이 한 줄만 바꾸면 됨.
- * 로고 영역은 별도 `BmbLogo` 컴포넌트로 분리되어 있다.
- */
 const BMB_LOGO_SRC = "/logo/Logo_BMB.png";
 
 const PRICE_DECIMALS: Record<string, number> = {
@@ -78,15 +55,10 @@ const PRICE_DECIMALS: Record<string, number> = {
   USDC: 4,
 };
 
-/** 변동률 소수 자리 — 안정코인은 작은 변화를 보이게 4자리. */
 const CHANGE_DECIMALS: Record<string, number> = {
   USDC: 4,
 };
 
-/**
- * 안정코인은 일정 임계값 이내(±0.05%)면 중립색으로 표시해
- * 1$ 페그 코인의 미세한 노이즈를 과한 빨강/초록으로 보이지 않게 한다.
- */
 const STABLE_NEUTRAL_SYMBOLS: ReadonlySet<string> = new Set(["USDC"]);
 const STABLE_NEUTRAL_THRESHOLD = 0.05;
 
@@ -105,7 +77,6 @@ function formatChange(symbol: string, pct: number): string {
 }
 
 function changeColor(symbol: string, pct: number): string {
-  /** 안정코인 미세 변동(±0.05% 이내)은 중립으로. */
   if (
     STABLE_NEUTRAL_SYMBOLS.has(symbol) &&
     Math.abs(pct) < STABLE_NEUTRAL_THRESHOLD
@@ -114,7 +85,6 @@ function changeColor(symbol: string, pct: number): string {
   }
   if (pct > 0) return "#10b981";
   if (pct < 0) return "#dc2626";
-  /** 0(완전 동일)도 "정상이지만 안 움직임"이 읽히도록 진한 회색. */
   return "#374151";
 }
 
@@ -149,16 +119,22 @@ const BoardSubtitle = styled.span`
   color: #6b7280;
 `;
 
-/* ===== BMB 강조 행 =====
- *
- * - PC(≥768px): 한 줄.
- *   [로고 + BMB / Mobick·LBANK + $가격 + 24h%]  …  [BMB/KRW][USDT/KRW]
- *   양쪽 그룹 자체는 밀집(gap 좁음), 가운데 빈 공간만 자연스럽게 벌어짐(space-between).
- * - 모바일(<768px): 왼쪽 그룹 한 줄, 원화 2종이 다음 줄로 줄바꿈(flex-wrap).
- * - 8개 메이저 카드 한 줄 높이와 비슷하게 padding/폰트 사이즈를 줄여 강조 톤은 배경+테두리로만.
- */
-const BmbRow = styled.div`
+const BmbUsdtRow = styled.div`
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    gap: 12px;
+  }
+`;
+
+const BmbCell = styled.div`
+  flex: 2;
+  min-width: 0;
   background: linear-gradient(135deg, #f3f0ff 0%, #ede9fe 100%);
   border: 1px solid #ddd6fe;
   border-radius: 12px;
@@ -167,14 +143,98 @@ const BmbRow = styled.div`
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px 16px;
-  min-width: 0;
+  gap: 10px 14px;
 
   @media (min-width: 768px) {
     padding: 12px 18px;
     flex-wrap: nowrap;
-    gap: 16px;
+    gap: 14px;
   }
+`;
+
+const UsdtCell = styled.div`
+  flex: 1;
+  min-width: 0;
+  background: #fafaff;
+  border: 1px solid #f0eef9;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  @media (min-width: 768px) {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+`;
+
+const UsdtLogoFrame = styled.span`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex: 0 0 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  color: #26a17b;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+
+  @media (min-width: 768px) {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    font-size: 20px;
+  }
+`;
+
+const UsdtIdentity = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+`;
+
+const UsdtSymbolText = styled.span`
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+`;
+
+const UsdtSubLabel = styled.span`
+  font-size: 0.7rem;
+  color: #9ca3af;
+  line-height: 1.15;
+`;
+
+const UsdtValueGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 0;
+`;
+
+const UsdtKrwLabel = styled.span`
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+`;
+
+const UsdtKrwValue = styled.span`
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
 `;
 
 const BmbLeft = styled.div`
@@ -188,10 +248,6 @@ const BmbLeft = styled.div`
   }
 `;
 
-/**
- * BMB 로고 프레임 — 다른 코인 아이콘(`IconFrame`)과 별도.
- * 추후 BMB 로고 교체는 `BMB_LOGO_SRC` 한 곳만 변경하면 된다.
- */
 const BmbLogoFrame = styled.span`
   width: 32px;
   height: 32px;
@@ -306,8 +362,6 @@ const KrwValue = styled.span`
   line-height: 1.15;
 `;
 
-/* ===== 메이저 8종 그리드 ===== */
-
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -410,10 +464,6 @@ const PartialErrorRow = styled.div`
   line-height: 1.4;
 `;
 
-/**
- * BMB 로고 컴포넌트 — 강조 행 전용.
- * 코인 8종은 `CoinIcon`(SVG) 사용. BMB만 별도 PNG/이미지로 관리.
- */
 function BmbLogo() {
   return (
     <BmbLogoFrame aria-hidden="true">
@@ -423,10 +473,6 @@ function BmbLogo() {
   );
 }
 
-/**
- * 메이저 8종용 코인 로고 — `public/coin-icons/{symbol}.svg` 정적 파일.
- * 출처: cryptocurrency-icons (MIT). 누락/로드 실패 시 이니셜 원형 폴백.
- */
 function CoinIcon({ symbol }: { symbol: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -487,7 +533,6 @@ export default function MajorPriceBoard() {
 
         if (!cancelled) setError(anyOk ? null : FALLBACK_ERROR_MESSAGE);
       } catch {
-        /** AbortError 포함 모든 에러를 흡수. 외부 메시지/스택 절대 노출 금지. */
         if (controller.signal.aborted) return;
         if (!cancelled) setError(FALLBACK_ERROR_MESSAGE);
       } finally {
@@ -504,7 +549,6 @@ export default function MajorPriceBoard() {
     };
   }, []);
 
-  /** majors 응답에서 BMB 분리. */
   const bmbFromMajors = useMemo(
     () => majors?.items.find((it) => it.symbol === "BMB") ?? null,
     [majors],
@@ -514,14 +558,6 @@ export default function MajorPriceBoard() {
     [majors],
   );
 
-  /**
-   * BMB 강조 행 데이터 합성:
-   * - price(USDT)  : `/api/market-prices` LBANK 우선 가격이 더 정확 → 1순위.
-   *                  없으면 majors의 ccapi 가격으로 폴백.
-   * - 24h %       : majors(ccapi 1h×25)
-   * - BMB/KRW    : `/api/market-prices` lbankKrwPrice (= BMB/USDT × USDT/KRW)
-   * - USDT/KRW   : `/api/market-prices` usdtKrwPrice
-   */
   const bmbRow = useMemo(() => {
     const usdtPrice =
       marketPrices?.bmbUsdtPrice ?? bmbFromMajors?.price ?? null;
@@ -532,9 +568,9 @@ export default function MajorPriceBoard() {
     return { usdtPrice, change, krw, usdtKrw };
   }, [marketPrices, bmbFromMajors]);
 
-  const partialErrors = useMemo(() => {
-    if (!majors?.errors) return [] as Array<[string, string]>;
-    return Object.entries(majors.errors);
+  const missingSymbols = useMemo(() => {
+    if (!majors?.errors) return [] as string[];
+    return Object.keys(majors.errors).filter((k) => !k.startsWith("_"));
   }, [majors]);
 
   const hasAnyData = bmbRow != null || otherMajors.length > 0;
@@ -547,42 +583,52 @@ export default function MajorPriceBoard() {
       </BoardHeader>
 
       {bmbRow && (
-        <BmbRow>
-          <BmbLeft>
-            <BmbLogo />
-            <BmbIdentity>
-              <BmbSymbolText>BMB</BmbSymbolText>
-              <BmbSubLabel>Mobick · LBANK</BmbSubLabel>
-            </BmbIdentity>
-            <BmbPriceBlock>
-              <BmbPrice>${formatPrice("BMB", bmbRow.usdtPrice)}</BmbPrice>
-              {bmbRow.change != null && (
-                <BmbChange $color={changeColor("BMB", bmbRow.change)}>
-                  {formatChange("BMB", bmbRow.change)}
-                </BmbChange>
-              )}
-            </BmbPriceBlock>
-          </BmbLeft>
+        <BmbUsdtRow>
+          <BmbCell>
+            <BmbLeft>
+              <BmbLogo />
+              <BmbIdentity>
+                <BmbSymbolText>BMB</BmbSymbolText>
+                <BmbSubLabel>Mobick · LBANK</BmbSubLabel>
+              </BmbIdentity>
+              <BmbPriceBlock>
+                <BmbPrice>${formatPrice("BMB", bmbRow.usdtPrice)}</BmbPrice>
+                {bmbRow.change != null && (
+                  <BmbChange $color={changeColor("BMB", bmbRow.change)}>
+                    {formatChange("BMB", bmbRow.change)}
+                  </BmbChange>
+                )}
+              </BmbPriceBlock>
+            </BmbLeft>
 
-          <BmbRight>
             {bmbRow.krw != null && (
-              <KrwItem>
-                <KrwLabel>BMB / KRW</KrwLabel>
-                <KrwValue>
-                  {Math.round(bmbRow.krw).toLocaleString()}원
-                </KrwValue>
-              </KrwItem>
+              <BmbRight>
+                <KrwItem>
+                  <KrwLabel>BMB / KRW</KrwLabel>
+                  <KrwValue>
+                    {Math.round(bmbRow.krw).toLocaleString()}원
+                  </KrwValue>
+                </KrwItem>
+              </BmbRight>
             )}
-            {bmbRow.usdtKrw != null && (
-              <KrwItem>
-                <KrwLabel>USDT / KRW</KrwLabel>
-                <KrwValue>
+          </BmbCell>
+
+          {bmbRow.usdtKrw != null && (
+            <UsdtCell>
+              <UsdtLogoFrame aria-hidden="true">₮</UsdtLogoFrame>
+              <UsdtIdentity>
+                <UsdtSymbolText>USDT</UsdtSymbolText>
+                <UsdtSubLabel>Tether</UsdtSubLabel>
+              </UsdtIdentity>
+              <UsdtValueGroup>
+                <UsdtKrwLabel>USDT / KRW</UsdtKrwLabel>
+                <UsdtKrwValue>
                   {Math.round(bmbRow.usdtKrw).toLocaleString()}원
-                </KrwValue>
-              </KrwItem>
-            )}
-          </BmbRight>
-        </BmbRow>
+                </UsdtKrwValue>
+              </UsdtValueGroup>
+            </UsdtCell>
+          )}
+        </BmbUsdtRow>
       )}
 
       {loading && !hasAnyData && (
@@ -615,10 +661,9 @@ export default function MajorPriceBoard() {
         </Grid>
       )}
 
-      {hasAnyData && partialErrors.length > 0 && (
+      {hasAnyData && missingSymbols.length > 0 && (
         <PartialErrorRow>
-          일부 코인 시세 조회 실패:{" "}
-          {partialErrors.map(([s, r]) => `${s} (${r})`).join(", ")}
+          일부 코인 시세를 일시적으로 불러오지 못했습니다 ({missingSymbols.join(", ")})
         </PartialErrorRow>
       )}
     </BoardCard>

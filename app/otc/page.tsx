@@ -31,7 +31,7 @@ const COLORS = {
   gray700: "#374151",
 };
 
-/** true면 호가·카드형 거래 UI 대신 준비 안내만 표시 */
+// OTC_TRADING_COMING_SOON: hide order book when true
 const OTC_TRADING_COMING_SOON = true;
 
 const PageContainer = styled.div`
@@ -998,9 +998,40 @@ const ChartTitle = styled.h2`
   font-weight: 700;
   color: #111827;
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
 
   @media (min-width: 768px) {
     font-size: 1.5rem;
+    gap: 6px;
+  }
+`;
+
+const TickerWithLogo = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const InlineCoinLogo = styled.span`
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  flex: 0 0 1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  overflow: hidden;
+
+  > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 50%;
+    display: block;
   }
 `;
 
@@ -1525,12 +1556,6 @@ function OTCContent() {
         compact
         title="Choonsim OTC"
         subtitle="BMB·메이저 코인 시세를 한눈에 확인하고 OTC 거래를 진행하세요."
-        /**
-         * 배너 내 액션 영역.
-         * - 거래 준비 중(OTC_TRADING_COMING_SOON=true): "준비 중" 안내.
-         * - 오픈 후(false): 추후 "신청하기" 버튼 등이 이 자리에 들어간다.
-         *   컨테이너(`OtcActionArea`)는 OTCSection 이 책임지므로 자식만 교체.
-         */
         actionSlot={
           OTC_TRADING_COMING_SOON ? (
             <>
@@ -1543,7 +1568,6 @@ function OTCContent() {
 
       <MainContent>
         <ContentWrapper>
-          {/* BMB 강조 행 + 메이저 8종 — /otc 전용. 메인(/)에는 노출하지 않는다. */}
           <MajorPriceBoard />
 
           {OTC_TRADING_COMING_SOON ? null : (
@@ -1890,7 +1914,22 @@ function OTCContent() {
           {/* BTC/BMB 비율 차트 섹션 */}
           <ChartCard>
             <ChartHeader>
-              <ChartTitle>BTC/BMB 비율 차트</ChartTitle>
+              <ChartTitle>
+                <TickerWithLogo>
+                  <InlineCoinLogo aria-hidden="true">
+                    <img src="/coin-icons/btc.svg" alt="" />
+                  </InlineCoinLogo>
+                  BTC
+                </TickerWithLogo>
+                <span>/</span>
+                <TickerWithLogo>
+                  <InlineCoinLogo aria-hidden="true">
+                    <img src="/logo/Logo_BMB.png" alt="" />
+                  </InlineCoinLogo>
+                  BMB
+                </TickerWithLogo>
+                <span>비율 차트</span>
+              </ChartTitle>
               <ChartDescription>
                 LBANK 거래소의 BTC/USDT와 BMB/USDT 가격 데이터를 기반으로 계산된
                 BTC/BMB 비율 추이입니다.

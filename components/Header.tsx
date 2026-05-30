@@ -72,10 +72,6 @@ const NavLink = styled(Link)<{ $isWhite: boolean; $active?: boolean }>`
   font-weight: bold;
   transition: color 0.2s;
 
-  /**
-   * 현재 페이지 항목 강조 — SBMB 메뉴와 동일 톤(청록 밑줄)으로 일관 적용.
-   * 보라 배너 위(흰 글자)에서도 청록색이 잘 보여 메인·/otc·/sbmb 어느 페이지에서나 식별 가능.
-   */
   ${(props) =>
     props.$active &&
     css`
