@@ -195,6 +195,11 @@ export const CURATED: Record<CuratedCategoryId, CuratedVideo[]> = {
       title: "BTCMobick — 10모의 기적에 대하여",
       channelTitle: "비트와모빅 공부하는 고삼이",
     },
+    {
+      videoId: "nKis24BdPFA",
+      title: "Harvest MOVN",
+      channelTitle: "BMB NEXUS",
+    },
   ],
   miracle2: [
     {

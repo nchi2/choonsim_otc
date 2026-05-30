@@ -1,17 +1,103 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import styled from "styled-components";
 import * as S from "../styles";
 
 const LBANK_BMB_USDT_URL = "https://www.lbank.com/trade/bmb_usdt";
 
+/**
+ * 배너 내 "OTC 상태/액션 영역" 컨테이너.
+ *
+ * - 추후 OTC 거래가 오픈되면 이 영역의 자식으로 "신청하기" 버튼 등이 들어간다.
+ *   본 컨테이너는 그대로 두고 자식만 교체하면 되도록 책임을 분리.
+ * - 배너 톤(좌측 정렬 타이틀/소개문) 축에 맞춰 왼쪽 정렬, 폭은 내용에 맞게 좁게.
+ *   배너 보라 톤 위에서 흰 글자가 잘 보이도록 옅은 화이트 글래스 톤 유지.
+ *
+ * `actionSlot` prop이 비어 있으면(메인(/) 등) 컨테이너 자체가 그려지지 않아 기존 모양을 유지한다.
+ */
+/**
+ * /otc 등 콘텐츠가 적은 페이지에서 사용할 슬림 배너.
+ *
+ * - 기존 `OTCHeroSection` 은 메인(/)이 BMB 3카드/CTA 버튼/LBANK 링크 등 콘텐츠가 많아
+ *   `min-height: 500px` + 큰 padding 이 자연스럽다.
+ * - /otc 는 타이틀+소개문+작은 상태 박스만 있어 같은 높이를 강제하면 위아래 빈 공간이 과해진다.
+ *   본 변형은 `min-height` 를 풀고 padding 을 줄여 콘텐츠 분량에 맞게 자동으로 작아진다.
+ * - 메인은 default `compact=false` → 기존 톤 그대로.
+ */
+const CompactOTCHeroSection = styled(S.OTCHeroSection)`
+  min-height: 0;
+  padding: 5rem 1rem 2.25rem;
+
+  @media (max-width: 768px) {
+    padding: 4.5rem 1rem 1.75rem;
+  }
+`;
+
+const OtcActionArea = styled.div`
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: auto;
+  max-width: 320px;
+  margin: 0;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  color: #ffffff;
+  text-align: left;
+
+  @media (min-width: 768px) {
+    max-width: 360px;
+    padding: 12px 16px;
+  }
+`;
+
+/**
+ * 상단 보라 배너.
+ *
+ * - 메인(/) 호출 `<OTCSection />`은 모든 prop이 default 값으로 동작해
+ *   배너 + BMB 3카드 + LBANK 링크 + CTA 버튼 2개 가 그대로 표시된다(시세 보드 통합 이전 모습).
+ * - /otc 등 가격 카드를 외부 보드(`MajorPriceBoard`) 로 옮긴 페이지에서는
+ *   `showPriceCards={false}` 를 전달해 배너에서 카드/링크를 숨기고 슬림하게 표시한다.
+ *   가격 카드를 숨긴 페이지에서는 가격 fetch 자체도 실행되지 않는다(불필요한 외부 호출 방지).
+ */
+const DEFAULT_TITLE = "Choonsim Hub";
+const DEFAULT_SUBTITLE: ReactNode =
+  "오프라인 OTC, SBMB, 모빅 생태계 소식을 한번에 확인하세요.";
+
 interface OTCSectionProps {
   showTradeButton?: boolean;
+  /** 배너 안의 BMB 3카드 + LBANK 링크 표시 여부. default true(메인 모습 유지). */
+  showPriceCards?: boolean;
+  /** 배너 타이틀. default 메인(/) 문구. */
+  title?: string;
+  /** 배너 소개문. default 메인(/) 문구. */
+  subtitle?: ReactNode;
+  /**
+   * 배너 안 OTC 상태/액션 영역의 자식 노드.
+   * - 비어 있으면 영역 자체가 렌더되지 않음(메인 호환).
+   * - /otc 등에서 "준비 중" 안내, 추후엔 "신청하기" 버튼 등을 전달.
+   */
+  actionSlot?: ReactNode;
+  /**
+   * 콘텐츠 분량이 적은 페이지에서 배너 높이를 콘텐츠에 맞게 축소.
+   * default false(메인 톤 유지). /otc 는 true.
+   */
+  compact?: boolean;
 }
 
 export default function OTCSection({
   showTradeButton = true,
+  showPriceCards = true,
+  title = DEFAULT_TITLE,
+  subtitle = DEFAULT_SUBTITLE,
+  actionSlot,
+  compact = false,
 }: OTCSectionProps) {
+  const HeroWrapper = compact ? CompactOTCHeroSection : S.OTCHeroSection;
   const [priceData, setPriceData] = useState<{
     usdtKrwPrice: number | null;
     bmbUsdtPrice: number | null;
@@ -25,6 +111,12 @@ export default function OTCSection({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /** 가격 카드를 표시하지 않는 페이지(/otc 등)에서는 외부 호출을 생략. */
+    if (!showPriceCards) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchPrices = async () => {
       try {
         setIsLoading(true);
@@ -54,7 +146,7 @@ export default function OTCSection({
     // 30초마다 업데이트
     const interval = setInterval(fetchPrices, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [showPriceCards]);
 
   /* 2모의 기적 — 이벤트 종료로 비활성화 (복구 시 아래 주석 해제)
   const miraclePrice = priceData.lbankKrwPrice
@@ -63,63 +155,67 @@ export default function OTCSection({
   */
 
   return (
-    <S.OTCHeroSection>
+    <HeroWrapper>
       <S.OTCHeroContent>
-        <S.OTCHeroTitle>Choonsim Hub</S.OTCHeroTitle>
+        <S.OTCHeroTitle>{title}</S.OTCHeroTitle>
 
-        <S.OTCHeroDescription>
-          오프라인 OTC, SBMB, 모빅 생태계 소식을 한번에 확인하세요.
-        </S.OTCHeroDescription>
+        <S.OTCHeroDescription>{subtitle}</S.OTCHeroDescription>
 
-        <S.OTCHeroPriceGrid>
-          <S.OTCHeroPriceCard>
-            <S.OTCHeroPriceLabel>BMB/USDT</S.OTCHeroPriceLabel>
-            <S.OTCHeroPriceValue>
-              {priceData.bmbUsdtPrice != null
-                ? priceData.bmbUsdtPrice.toFixed(3)
-                : isLoading
-                  ? "…"
-                  : "—"}
-              <S.OTCHeroSubLabel>USDT</S.OTCHeroSubLabel>
-            </S.OTCHeroPriceValue>
-          </S.OTCHeroPriceCard>
+        {showPriceCards && (
+          <>
+            <S.OTCHeroPriceGrid>
+              <S.OTCHeroPriceCard>
+                <S.OTCHeroPriceLabel>BMB/USDT</S.OTCHeroPriceLabel>
+                <S.OTCHeroPriceValue>
+                  {priceData.bmbUsdtPrice != null
+                    ? priceData.bmbUsdtPrice.toFixed(3)
+                    : isLoading
+                      ? "…"
+                      : "—"}
+                  <S.OTCHeroSubLabel>USDT</S.OTCHeroSubLabel>
+                </S.OTCHeroPriceValue>
+              </S.OTCHeroPriceCard>
 
-          <S.OTCHeroPriceCard>
-            <S.OTCHeroPriceLabel>USDT/KRW</S.OTCHeroPriceLabel>
-            <S.OTCHeroPriceValue>
-              {priceData.usdtKrwPrice != null
-                ? priceData.usdtKrwPrice.toLocaleString()
-                : isLoading
-                  ? "…"
-                  : "—"}
-              <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
-            </S.OTCHeroPriceValue>
-          </S.OTCHeroPriceCard>
+              <S.OTCHeroPriceCard>
+                <S.OTCHeroPriceLabel>USDT/KRW</S.OTCHeroPriceLabel>
+                <S.OTCHeroPriceValue>
+                  {priceData.usdtKrwPrice != null
+                    ? priceData.usdtKrwPrice.toLocaleString()
+                    : isLoading
+                      ? "…"
+                      : "—"}
+                  <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
+                </S.OTCHeroPriceValue>
+              </S.OTCHeroPriceCard>
 
-          <S.OTCHeroPriceCard $highlight>
-            <S.OTCHeroPriceLabel>BMB/KRW (LBANK)</S.OTCHeroPriceLabel>
-            <S.OTCHeroPriceValue>
-              {priceData.lbankKrwPrice != null
-                ? Math.round(priceData.lbankKrwPrice).toLocaleString()
-                : isLoading
-                  ? "…"
-                  : "—"}
-              <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
-            </S.OTCHeroPriceValue>
-          </S.OTCHeroPriceCard>
-        </S.OTCHeroPriceGrid>
+              <S.OTCHeroPriceCard $highlight>
+                <S.OTCHeroPriceLabel>BMB/KRW (LBANK)</S.OTCHeroPriceLabel>
+                <S.OTCHeroPriceValue>
+                  {priceData.lbankKrwPrice != null
+                    ? Math.round(priceData.lbankKrwPrice).toLocaleString()
+                    : isLoading
+                      ? "…"
+                      : "—"}
+                  <S.OTCHeroSubLabel>원</S.OTCHeroSubLabel>
+                </S.OTCHeroPriceValue>
+              </S.OTCHeroPriceCard>
+            </S.OTCHeroPriceGrid>
 
-        {error ? <S.OTCHeroPriceError>{error}</S.OTCHeroPriceError> : null}
+            {error ? <S.OTCHeroPriceError>{error}</S.OTCHeroPriceError> : null}
 
-        <S.OTCHeroLbankLinkBelowPrices>
-          <S.OTCHeroLbankLink
-            href={LBANK_BMB_USDT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            LBANK에서 실시간 시세 확인 (BMB/USDT)
-          </S.OTCHeroLbankLink>
-        </S.OTCHeroLbankLinkBelowPrices>
+            <S.OTCHeroLbankLinkBelowPrices>
+              <S.OTCHeroLbankLink
+                href={LBANK_BMB_USDT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                LBANK에서 실시간 시세 확인 (BMB/USDT)
+              </S.OTCHeroLbankLink>
+            </S.OTCHeroLbankLinkBelowPrices>
+          </>
+        )}
+
+        {actionSlot ? <OtcActionArea>{actionSlot}</OtcActionArea> : null}
 
         {/* 2모의 기적 — 종료된 이벤트
         <S.OTCHeroMiracleCardWrapper>
@@ -152,6 +248,6 @@ export default function OTCSection({
           </S.OTCHeroButtonContainer>
         )}
       </S.OTCHeroContent>
-    </S.OTCHeroSection>
+    </HeroWrapper>
   );
 }

@@ -5,6 +5,7 @@ import styled from "styled-components";
 import Link from "next/link";
 import Header from "@/components/Header";
 import OTCSection from "../page/components/OTCSection";
+import MajorPriceBoard from "../page/components/MajorPriceBoard";
 import Footer from "@/components/Footer";
 import { STATUS_LABELS } from "@/lib/constants";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -945,6 +946,25 @@ const NoticeText = styled.p`
   }
 `;
 
+// 배너 내 OTC 상태/액션 영역 — OTCSection 의 `actionSlot` 안에 배치된다.
+// 추후 OTC_TRADING_COMING_SOON=false 가 되면 이 자리에 "신청하기" 버튼이 들어간다.
+const OtcActionLabel = styled.span`
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+
+  @media (min-width: 768px) {
+    font-size: 1.05rem;
+  }
+`;
+
+const OtcActionNote = styled.span`
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.45;
+`;
+
 // 차트 섹션 스타일
 const ChartCard = styled.div`
   background-color: #ffffff;
@@ -1499,13 +1519,34 @@ function OTCContent() {
   return (
     <PageContainer>
       <Header />
-      <OTCSection showTradeButton={false} />
+      <OTCSection
+        showTradeButton={false}
+        showPriceCards={false}
+        compact
+        title="Choonsim OTC"
+        subtitle="BMB·메이저 코인 시세를 한눈에 확인하고 OTC 거래를 진행하세요."
+        /**
+         * 배너 내 액션 영역.
+         * - 거래 준비 중(OTC_TRADING_COMING_SOON=true): "준비 중" 안내.
+         * - 오픈 후(false): 추후 "신청하기" 버튼 등이 이 자리에 들어간다.
+         *   컨테이너(`OtcActionArea`)는 OTCSection 이 책임지므로 자식만 교체.
+         */
+        actionSlot={
+          OTC_TRADING_COMING_SOON ? (
+            <>
+              <OtcActionLabel>준비 중입니다</OtcActionLabel>
+              <OtcActionNote>OTC 거래 기능을 준비하고 있습니다.</OtcActionNote>
+            </>
+          ) : null
+        }
+      />
 
       <MainContent>
         <ContentWrapper>
-          {OTC_TRADING_COMING_SOON ? (
-            <EmptyState>준비 중입니다.</EmptyState>
-          ) : (
+          {/* BMB 강조 행 + 메이저 8종 — /otc 전용. 메인(/)에는 노출하지 않는다. */}
+          <MajorPriceBoard />
+
+          {OTC_TRADING_COMING_SOON ? null : (
             <>
               {/* 자산 선택기 - 드롭다운 */}
               <AssetSelectorWrapper>

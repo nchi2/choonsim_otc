@@ -403,7 +403,11 @@ export const ActionButton = styled.button`
 export const OTCHeroSection = styled.section`
   width: 100%;
   min-height: 500px;
-  background: linear-gradient(90deg, #e8e2f4 0%, #434392 100%);
+  /**
+   * 왼쪽 끝을 은은하게만 톤다운(#e8e2f4 → #bdb4dc)해 흰색 타이틀/헤더 로고·메뉴 가독성 확보.
+   * 모빅 로고 연보라 톤은 그대로 유지하고, 오른쪽 진보라(#434392)는 손대지 않음.
+   */
+  background: linear-gradient(90deg, #bdb4dc 0%, #434392 100%);
   padding: 6rem 1rem 3rem;
   display: flex;
   justify-content: center;
@@ -411,7 +415,8 @@ export const OTCHeroSection = styled.section`
 
   @media (max-width: 768px) {
     padding: 5rem 1rem 2.5rem;
-    background: linear-gradient(90deg, #c3bede 0%, #6261a5 100%);
+    /** 모바일도 같은 방향으로 살짝만 다운(#c3bede → #b1a7d3). 끝색(#6261a5)은 유지. */
+    background: linear-gradient(90deg, #b1a7d3 0%, #6261a5 100%);
   }
 `;
 

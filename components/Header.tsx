@@ -65,12 +65,23 @@ const Nav = styled.nav`
   }
 `;
 
-const NavLink = styled(Link)<{ $isWhite: boolean }>`
+const NavLink = styled(Link)<{ $isWhite: boolean; $active?: boolean }>`
   color: ${(props) => (props.$isWhite ? "#ffffff" : "#111827")};
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: bold;
   transition: color 0.2s;
+
+  /**
+   * 현재 페이지 항목 강조 — SBMB 메뉴와 동일 톤(청록 밑줄)으로 일관 적용.
+   * 보라 배너 위(흰 글자)에서도 청록색이 잘 보여 메인·/otc·/sbmb 어느 페이지에서나 식별 가능.
+   */
+  ${(props) =>
+    props.$active &&
+    css`
+      box-shadow: 0 2px 0 0 #8fd8c7;
+      padding-bottom: 4px;
+    `}
 
   &:hover {
     color: ${(props) => (props.$isWhite ? "#ffffff" : "#111827")};
@@ -122,10 +133,18 @@ export default function Header() {
           <Logo $isWhite={isWhiteText}>Choonsim Hub</Logo>
         </LogoLink>
         <Nav>
-          <NavLink href="/" $isWhite={isWhiteText}>
+          <NavLink
+            href="/"
+            $isWhite={isWhiteText}
+            $active={pathname === "/"}
+          >
             메인
           </NavLink>
-          <NavLink href="/otc" $isWhite={isWhiteText}>
+          <NavLink
+            href="/otc"
+            $isWhite={isWhiteText}
+            $active={pathname === "/otc"}
+          >
             OTC
           </NavLink>
           <SbmbNavLink
