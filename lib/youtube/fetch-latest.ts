@@ -6,6 +6,15 @@ import { YOUTUBE_CHANNELS, YoutubeChannel } from "./channels";
  */
 const MAX_RESULTS_PER_CHANNEL = 3;
 const CHANNEL_FETCH_TIMEOUT_MS = 4000;
+/**
+ * 전 채널을 합쳐 publishedAt 최신순 정렬 후 상위 N개로 자른다.
+ * UI는 PAGE_SIZE=6씩 끊어 더보기 — 24면 4페이지 분량.
+ */
+const MAX_TOTAL_RESULTS = 24;
+/** browse HTML은 보통 700KB~1.1MB. ytInitialData는 head에 있어 1.5MB로 충분. */
+const MAX_BROWSE_BODY_BYTES = 1_500_000;
+/** 한 wave에 동시에 outbound 외부 요청을 띄울 채널 수. */
+const CHANNEL_FETCH_CONCURRENCY = 6;
 
 /** 스크래핑 빈도 완화 — 15분마다 갱신(서버리스 타임아웃·YouTube 부하 감소) */
 export const CACHE_TTL_SECONDS = 900;
@@ -103,8 +112,10 @@ export async function fetchYoutubeLatest(): Promise<YoutubeFetchResult> {
   }
 
   const errors: Record<string, string> = {};
-  const settled = await Promise.allSettled(
-    YOUTUBE_CHANNELS.map((ch) => fetchChannelLatest(ch)),
+  const settled = await mapWithConcurrency(
+    YOUTUBE_CHANNELS,
+    CHANNEL_FETCH_CONCURRENCY,
+    (ch) => fetchChannelLatest(ch),
   );
 
   const videos = settled.flatMap((result, index) => {
@@ -125,13 +136,47 @@ export async function fetchYoutubeLatest(): Promise<YoutubeFetchResult> {
     (result) => result.status === "fulfilled",
   ).length;
 
+  const sortedVideos = deduplicateAndSort(videos).slice(0, MAX_TOTAL_RESULTS);
+
   return {
-    videos: deduplicateAndSort(videos),
+    videos: sortedVideos,
     errors: Object.keys(errors).length ? errors : undefined,
     succeededCount,
     failedCount: YOUTUBE_CHANNELS.length - succeededCount,
     sawRateLimit: false,
   };
+}
+
+/**
+ * `Promise.allSettled`와 동일한 결과 형태를 반환하지만, 동시에 실행되는
+ * 작업 수를 `limit`으로 제한한다. 19개 채널을 한 번에 outbound 19연결로 띄우는 대신
+ * wave당 N개씩만 처리해 메모리·rate limit 부담을 낮춘다.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results = new Array<PromiseSettledResult<R>>(items.length);
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const i = next;
+      next += 1;
+      if (i >= items.length) return;
+      try {
+        const value = await fn(items[i]);
+        results[i] = { status: "fulfilled", value };
+      } catch (e) {
+        results[i] = { status: "rejected", reason: e };
+      }
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 /** YOUTUBE_SCRAPE_DEBUG=1 일 때만 — consent / ytInitialData / 파서 경로 점검 */
@@ -283,39 +328,75 @@ function errorMessageFromUnknown(e: unknown): string {
   return String(e);
 }
 
+/**
+ * channelId 기반 `/channel/{id}/videos` 한 곳만 시도한다. 과거에는 핸들 URL도
+ * 순차로 폴백했는데, 19채널×4초×2URL = 채널당 최대 8초가 함수 한도(30s)를 위협했다.
+ * RSS도 channelId 기반이므로 두 경로가 같은 식별자에 의존 → 폴백 가치가 낮다고 판단(선택지 (b)).
+ */
 async function fetchChannelLatestFromBrowse(
   channel: YoutubeChannel,
 ): Promise<YoutubeVideo[]> {
-  const handleSlug = channel.handle.replace(/^@/, "");
-  const urls = [
-    `https://www.youtube.com/channel/${encodeURIComponent(channel.channelId)}/videos`,
-    `https://www.youtube.com/@${encodeURIComponent(handleSlug)}/videos`,
-  ];
+  const url = `https://www.youtube.com/channel/${encodeURIComponent(channel.channelId)}/videos`;
+  const res = await fetchWithTimeout(
+    url,
+    browseFetchInit,
+    CHANNEL_FETCH_TIMEOUT_MS,
+  );
+  if (!res.ok) {
+    throw new Error(`browse HTTP ${res.status}`);
+  }
+  const html = await readBoundedText(res, MAX_BROWSE_BODY_BYTES);
+  const videos = videosFromBrowseHtml(html, channel);
+  if (videos.length === 0) {
+    throw new Error("noVideosInPage");
+  }
+  return videos;
+}
 
-  let lastErr: Error | null = null;
-
-  for (const url of urls) {
+/**
+ * `res.text()`는 본문 전체를 메모리에 로드한다. 19채널 동시에 1MB짜리 HTML이 들어오면
+ * 메모리 스파이크가 커지므로 청크 누적 한도를 두고 초과 시 즉시 자른다.
+ * ytInitialData는 head 안쪽에 있어 1.5MB 안에서 충분히 잡힌다.
+ */
+async function readBoundedText(res: Response, maxBytes: number): Promise<string> {
+  const body = res.body;
+  if (!body) {
+    return res.text();
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      const remaining = maxBytes - total;
+      if (remaining <= 0) {
+        break;
+      }
+      if (value.byteLength > remaining) {
+        chunks.push(value.slice(0, remaining));
+        total += remaining;
+        break;
+      }
+      chunks.push(value);
+      total += value.byteLength;
+    }
+  } finally {
     try {
-      const res = await fetchWithTimeout(
-        url,
-        browseFetchInit,
-        CHANNEL_FETCH_TIMEOUT_MS,
-      );
-      if (!res.ok) {
-        throw new Error(`browse HTTP ${res.status}`);
-      }
-      const html = await res.text();
-      const videos = videosFromBrowseHtml(html, channel);
-      if (videos.length > 0) {
-        return videos;
-      }
-      lastErr = new Error("noVideosInPage");
-    } catch (e) {
-      lastErr = new Error(errorMessageFromUnknown(e));
+      await reader.cancel();
+    } catch {
+      // 이미 닫혔을 수 있음
     }
   }
-
-  throw lastErr ?? new Error("noVideosInPage");
+  const buf = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    buf.set(c, offset);
+    offset += c.byteLength;
+  }
+  return new TextDecoder("utf-8").decode(buf);
 }
 
 function videosFromBrowseHtml(

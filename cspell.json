@@ -5,12 +5,17 @@
     "autoincrement",
     "ACLF",
     // B
+    "Basac",
     "Bithumb",
     "bithumb",
+    "btcmobick",
+    "BTCMobick",
+    "btcmobickerjay",
     // C
     "Csvg",
     "Cpath",
     "Cusl",
+    "CKHSRCB",
     "ccapi",
     "Ccapi",
     "Choonsim",
@@ -18,11 +23,16 @@
     "Consolas",
 
     // D
+    "defi",
     // E
+    "epgm",
     // F
+    "FEAFMU",
     "futureman77777",
     // G
     "Gcmr",
+    "ggpht",
+    "googleusercontent",
     // H
     "hoguhogu",
     "Hwallets",
@@ -31,6 +41,7 @@
     // J
     "Jpvk",
     // K
+    "Kfzn",
     "Klines",
     "klines",
     "Kakao",
@@ -41,6 +52,7 @@
     "LBANK",
     "linktree",
     "Linktree",
+    "LTHAA",
     "Lucem",
     "Diffundo",
     // M
@@ -50,10 +62,15 @@
     "Mobick",
     "mobick",
     "Mobicker",
+    "Mobickers",
+    "mobickergo",
+    "mordinary",
+    "Mordinary",
     "Movn",
     "movn",
     "MOVN",
     "MOVEN",
+    "MQMKQ",
     // N
     "Nyekv",
     // O
@@ -72,9 +89,12 @@
     "SBMB",
     "sbmb",
     "stablebmb",
+    "swgv",
 
     // T
+    "Tfcn",
     // U
+    "Uaygj",
     "upbit",
     "Upbit",
     // V
@@ -87,8 +107,9 @@
     "WBMB",
     "wbmb",
     // X
-    "XKLF"
+    "XKLF",
     // Y
+    "ytimg"
     // Z
   ]
 }

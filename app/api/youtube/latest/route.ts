@@ -36,6 +36,11 @@ type CachedResponse = {
   payload: YoutubeLatestResponse;
 };
 
+/**
+ * 인스턴스-로컬 메모리 캐시. 서버리스(여러 인스턴스/콜드 스타트) 환경에서는
+ * 인스턴스마다 별도라 cache miss가 분산될 수 있다.
+ * TODO: 트래픽이 늘어나면 외부(KV/Redis 등) 공유 캐시로 승격 검토.
+ */
 let lastSuccessfulResponse: CachedResponse | null = null;
 
 export async function GET() {

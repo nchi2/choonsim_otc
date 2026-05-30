@@ -466,7 +466,9 @@ export const OTCHeroHubLink = styled(Link)`
   background: rgba(255, 255, 255, 0.95);
   text-decoration: none;
   border: 1px solid rgba(255, 255, 255, 0.65);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
@@ -659,7 +661,9 @@ export const OTCHeroButton = styled(Link)`
   color: #ffffff;
   background-color: #434392;
   text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
 
   &:hover {
@@ -706,7 +710,9 @@ export const MarketPriceBuyButton = styled(Link)`
   color: #ffffff;
   background-color: #10b981;
   text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
 
   &:hover {
@@ -731,7 +737,9 @@ export const MarketPriceSellButton = styled(Link)`
   color: #ffffff;
   background-color: #ef4444;
   text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   box-shadow: 0px 6px 30px rgba(0, 0, 0, 0.08);
 
   &:hover {
@@ -882,7 +890,9 @@ export const HighValuePrimaryButton = styled.a`
   font-weight: 600; /* semibold */
   text-decoration: none;
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
@@ -906,7 +916,9 @@ export const HighValueSecondaryButton = styled.a`
   font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 
   &:hover {
     background-color: rgba(67, 67, 146, 0.08);
@@ -940,7 +952,9 @@ export const ContentLinkButton = styled.a`
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 
   &:hover {
     background-color: #f3f4f6;
@@ -967,4 +981,115 @@ export const NewsCardLink = styled.a`
   display: block;
   color: inherit;
   text-decoration: none;
+`;
+
+/* YouTube 카테고리 탭 — 가로 스크롤, 모바일에서도 좌우 스와이프 */
+export const TabStrip = styled.div`
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.25rem 0.6rem;
+  margin-bottom: 0.5rem;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 9999px;
+  }
+`;
+
+export const TabButton = styled.button<{ $active: boolean }>`
+  flex: 0 0 auto;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  border: 1px solid ${(p) => (p.$active ? "#111827" : "#e5e7eb")};
+  background: ${(p) => (p.$active ? "#111827" : "#ffffff")};
+  color: ${(p) => (p.$active ? "#ffffff" : "#4b5563")};
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+
+  &:hover {
+    border-color: ${(p) => (p.$active ? "#111827" : "#9ca3af")};
+    color: ${(p) => (p.$active ? "#ffffff" : "#111827")};
+  }
+`;
+
+/* YouTube 채널 가로 스크롤 줄 — 영상 그리드와 별개의 채널 바로가기 */
+export const ChannelStrip = styled.div`
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem 0.85rem;
+  margin-bottom: 0.9rem;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 9999px;
+  }
+`;
+
+export const ChannelStripItem = styled.a`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  width: 64px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+`;
+
+export const ChannelAvatarFrame = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+`;
+
+export const ChannelAvatarInitial = styled.span`
+  font-size: 1rem;
+  font-weight: 700;
+  color: #4b5563;
+  letter-spacing: -0.01em;
+`;
+
+export const ChannelStripLabel = styled.span`
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.25;
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;

@@ -42,14 +42,14 @@ export default function HighValueSection() {
                   href="/scanner"
                   aria-label="EVM Scanner 페이지로 이동"
                 >
-                  EVM Scanner
+                  EVM 스캐너
                 </S.HighValueSecondaryButton>
                 <S.HighValueSecondaryButton
                   as={Link}
                   href="/contracts"
                   aria-label="컨트랙트 · 토큰 정보 페이지로 이동"
                 >
-                  Contracts
+                  토큰 컨트랙트
                 </S.HighValueSecondaryButton>
               </S.HighValueSecondaryRow>
             </S.HighValueActions>
