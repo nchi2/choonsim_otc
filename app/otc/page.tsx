@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import styled from "styled-components";
 import Link from "next/link";
 import Header from "@/components/Header";
 import OTCSection from "../page/components/OTCSection";
 import MajorPriceBoard from "../page/components/MajorPriceBoard";
+import Apply10MoModal from "./components/Apply10MoModal";
 import Footer from "@/components/Footer";
 import { STATUS_LABELS } from "@/lib/constants";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -500,43 +501,6 @@ const OrderBookPlaceholder = styled.div`
   }
 `;
 
-// CTA 섹션
-const CTASection = styled.div`
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  @media (min-width: 768px) {
-    padding: 2rem;
-    gap: 0;
-  }
-
-  @media (min-width: 768px) {
-    padding: 2.5rem;
-  }
-`;
-
-const CTATitle = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 0;
-
-  @media (min-width: 768px) {
-    font-size: 1.25rem;
-    margin-bottom: 1.5rem;
-  }
-
-  @media (min-width: 768px) {
-    font-size: 1.5rem;
-  }
-`;
-
 const CTAButtonContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -711,17 +675,6 @@ const TradeCardHeader = styled.div`
   margin-bottom: 0;
 `;
 
-const TradeCardAmount = styled.div`
-  font-size: 18px;
-  font-weight: 700;
-  color: ${COLORS.accentPurple};
-  line-height: 1.2;
-
-  @media (min-width: 768px) {
-    font-size: 22px;
-  }
-`;
-
 // 신청 번호 스타일 추가
 const TradeCardId = styled.div`
   font-size: 12px;
@@ -857,16 +810,6 @@ const TradeCardTotal = styled.div`
   }
 `;
 
-const TradeCardBranch = styled.div`
-  font-size: 13px;
-  color: ${COLORS.lightPurple};
-  line-height: 1.4;
-
-  @media (min-width: 768px) {
-    font-size: 14px;
-  }
-`;
-
 // 구매 버튼
 const TradeCardButton = styled.button<{ $status: string }>`
   width: 100%;
@@ -946,23 +889,96 @@ const NoticeText = styled.p`
   }
 `;
 
-// 배너 내 OTC 상태/액션 영역 — OTCSection 의 `actionSlot` 안에 배치된다.
-// 추후 OTC_TRADING_COMING_SOON=false 가 되면 이 자리에 "신청하기" 버튼이 들어간다.
-const OtcActionLabel = styled.span`
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
+// Banner action card — 10모 신청 진입 (보라 배너 위에서 또렷이 보이도록 흰 카드 + 그림자 강조)
+const ApplyCard = styled.div`
+  width: 100%;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow:
+    0 12px 28px rgba(15, 15, 28, 0.22),
+    0 2px 6px rgba(15, 15, 28, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 
   @media (min-width: 768px) {
+    padding: 20px 22px;
+    gap: 10px;
+  }
+`;
+
+const ApplyCardBadge = styled.span`
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  background: #14b8a6;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: none;
+`;
+
+const ApplyCardTitle = styled.span`
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: #111827;
+
+  @media (min-width: 768px) {
+    font-size: 1.3rem;
+  }
+`;
+
+const ApplyCardSubtitle = styled.span`
+  font-size: 0.85rem;
+  color: #4b5563;
+  line-height: 1.55;
+
+  @media (min-width: 768px) {
+    font-size: 0.95rem;
+  }
+`;
+
+const ApplyCardButton = styled.button`
+  align-self: stretch;
+  margin-top: 6px;
+  padding: 13px 18px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(13, 148, 136, 0.42);
+    filter: brightness(1.04);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  @media (min-width: 768px) {
+    padding: 14px 22px;
     font-size: 1.05rem;
   }
 `;
 
-const OtcActionNote = styled.span`
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.45;
+const ApplyComingSoonNote = styled.span`
+  margin-top: 4px;
+  align-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0d9488;
 `;
 
 // 차트 섹션 스타일
@@ -1219,6 +1235,14 @@ interface RatioDataPoint {
   source: "LBANK" | "CHUNSIM"; // 데이터 출처
 }
 
+// URL query key for the 10-Mo apply modal. Direct visit `/otc?apply=1` opens it.
+const APPLY_QUERY_KEY = "apply";
+const APPLY_QUERY_VALUE = "1";
+
+// 신청 기능 준비중 — true면 버튼 클릭 시 모달 대신 "준비 중입니다." 안내만 표시.
+// 오픈 시 false로 바꾸면 모달/딥링크가 다시 활성화된다.
+const APPLY_COMING_SOON = true;
+
 function OTCContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1228,6 +1252,43 @@ function OTCContent() {
   const [assetType, setAssetType] = useState<string>(() => {
     return searchParams.get("asset") || "BMB";
   });
+
+  // Apply modal — open state is driven by URL searchParam so deep links work.
+  // 준비중(APPLY_COMING_SOON)이면 딥링크로도 열리지 않도록 강제로 닫는다.
+  const isApplyOpen =
+    !APPLY_COMING_SOON &&
+    searchParams.get(APPLY_QUERY_KEY) === APPLY_QUERY_VALUE;
+  const pushedByOpenRef = useRef(false);
+  const [applyComingSoonShown, setApplyComingSoonShown] = useState(false);
+
+  const openApplyModal = useCallback(() => {
+    if (isApplyOpen) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(APPLY_QUERY_KEY, APPLY_QUERY_VALUE);
+    pushedByOpenRef.current = true;
+    router.push(`/otc?${params.toString()}`, { scroll: false });
+  }, [isApplyOpen, router, searchParams]);
+
+  const closeApplyModal = useCallback(() => {
+    if (!isApplyOpen) return;
+    if (pushedByOpenRef.current) {
+      pushedByOpenRef.current = false;
+      router.back();
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(APPLY_QUERY_KEY);
+    const qs = params.toString();
+    router.replace(qs ? `/otc?${qs}` : "/otc", { scroll: false });
+  }, [isApplyOpen, router, searchParams]);
+
+  const handleApplyClick = useCallback(() => {
+    if (APPLY_COMING_SOON) {
+      setApplyComingSoonShown(true);
+      return;
+    }
+    openApplyModal();
+  }, [openApplyModal]);
 
   const [orderBookLevels, setOrderBookLevels] = useState<OrderBookLevel[]>([]);
   const [listedLoading, setListedLoading] = useState(true);
@@ -1557,14 +1618,25 @@ function OTCContent() {
         title="Choonsim OTC"
         subtitle="BMB·메이저 코인 시세를 한눈에 확인하고 OTC 거래를 진행하세요."
         actionSlot={
-          OTC_TRADING_COMING_SOON ? (
-            <>
-              <OtcActionLabel>준비 중입니다</OtcActionLabel>
-              <OtcActionNote>OTC 거래 기능을 준비하고 있습니다.</OtcActionNote>
-            </>
-          ) : null
+          <ApplyCard>
+            <ApplyCardBadge>NEW · 참여 모집중</ApplyCardBadge>
+            <ApplyCardTitle>10모의 기적 참여 지원</ApplyCardTitle>
+            <ApplyCardSubtitle>
+              구매부터 전송까지, 어렵지 않게 도와드려요.
+            </ApplyCardSubtitle>
+            <ApplyCardButton type="button" onClick={handleApplyClick}>
+              참여 신청하기
+            </ApplyCardButton>
+            {applyComingSoonShown && (
+              <ApplyComingSoonNote role="status">
+                준비 중입니다.
+              </ApplyComingSoonNote>
+            )}
+          </ApplyCard>
         }
       />
+
+      <Apply10MoModal open={isApplyOpen} onClose={closeApplyModal} />
 
       <MainContent>
         <ContentWrapper>
@@ -1821,7 +1893,6 @@ function OTCContent() {
                         {cardRequests.map((card) => {
                           const priceNum = parseFloat(card.price);
                           const amountNum = card.amount;
-                          const totalPrice = priceNum * amountNum;
                           const statusLabel =
                             STATUS_LABELS[
                               card.status as keyof typeof STATUS_LABELS
@@ -1917,6 +1988,7 @@ function OTCContent() {
               <ChartTitle>
                 <TickerWithLogo>
                   <InlineCoinLogo aria-hidden="true">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/coin-icons/btc.svg" alt="" />
                   </InlineCoinLogo>
                   BTC
@@ -1924,6 +1996,7 @@ function OTCContent() {
                 <span>/</span>
                 <TickerWithLogo>
                   <InlineCoinLogo aria-hidden="true">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/logo/Logo_BMB.png" alt="" />
                   </InlineCoinLogo>
                   BMB

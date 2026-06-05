@@ -15,25 +15,13 @@ const CompactOTCHeroSection = styled(S.OTCHeroSection)`
   }
 `;
 
+// Plain wrapper — actionSlot child is responsible for its own background/padding.
 const OtcActionArea = styled.div`
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  width: auto;
-  max-width: 320px;
+  width: 100%;
+  max-width: 520px;
   margin: 0;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 10px;
-  color: #ffffff;
-  text-align: left;
-
-  @media (min-width: 768px) {
-    max-width: 360px;
-    padding: 12px 16px;
-  }
 `;
 
 const DEFAULT_TITLE = "Choonsim Hub";

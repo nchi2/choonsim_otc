@@ -10,11 +10,7 @@
  * 파일이라 단어 단위 등록은 의미 없음. (영상 메타 외 일반 텍스트 변경 시 주의)
  */
 
-export type CuratedCategoryId =
-  | "highdenom"
-  | "sbmb"
-  | "miracle10"
-  | "miracle2";
+export type CuratedCategoryId = "highdenom" | "sbmb" | "miracle10" | "miracle2";
 
 export interface CuratedCategory {
   id: CuratedCategoryId;
@@ -78,7 +74,8 @@ export const CURATED: Record<CuratedCategoryId, CuratedVideo[]> = {
     },
     {
       videoId: "wnpMYZCfTWQ",
-      title: "뉴비를 위한 비트모빅 정액권 지갑과 콘솔 Q&A — 9/14(토) 오태버스 라방 내용 요약",
+      title:
+        "뉴비를 위한 비트모빅 정액권 지갑과 콘솔 Q&A — 9/14(토) 오태버스 라방 내용 요약",
       channelTitle: "모빅리엘",
     },
     {
@@ -106,7 +103,8 @@ export const CURATED: Record<CuratedCategoryId, CuratedVideo[]> = {
     },
     {
       videoId: "ut9UZJSOJD8",
-      title: "SBMB, 비트모빅 콘솔을 포기했던 사람에게 열린 마지막 문 (ft. 10모로 200모 이율)",
+      title:
+        "SBMB, 비트모빅 콘솔을 포기했던 사람에게 열린 마지막 문 (ft. 10모로 200모 이율)",
       channelTitle: "블랙조",
     },
     {
@@ -164,14 +162,28 @@ export const CURATED: Record<CuratedCategoryId, CuratedVideo[]> = {
   ],
   miracle10: [
     {
+      videoId: "G7tfc-0fXQE",
+      title: "10모의 기적 신청 3단계",
+      channelTitle: "BMB NEXUS",
+    },
+    {
+      videoId: "YT7RyCVbR9k",
+      title: "10모의 기적 신청 2단계",
+      channelTitle: "BMB NEXUS",
+    },
+    {
+      videoId: "tZra9E6UPFs",
+      title: "10모의 기적 신청 1단계",
+      channelTitle: "BMB NEXUS",
+    },
+    {
       videoId: "LJgGxDmeQTw",
       title: "10모의 기적 신청하기 2부 — [WBMB 스왑 / 종이지갑에 넣기]",
       channelTitle: "비트와모빅 공부하는 고삼이",
     },
     {
       videoId: "xrbPWKyYqwI",
-      title:
-        "10모의 기적 신청하기 1부 — [신청 및 송금 그리고 종이지갑 수령]",
+      title: "10모의 기적 신청하기 1부 — [신청 및 송금 그리고 종이지갑 수령]",
       channelTitle: "비트와모빅 공부하는 고삼이",
     },
     {
@@ -298,7 +310,9 @@ export function parseVideoId(url: string): string | null {
       const v = u.searchParams.get("v");
       if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
       // /shorts/{id}, /live/{id}, /embed/{id}
-      const m = u.pathname.match(/^\/(?:shorts|live|embed)\/([a-zA-Z0-9_-]{11})/);
+      const m = u.pathname.match(
+        /^\/(?:shorts|live|embed)\/([a-zA-Z0-9_-]{11})/,
+      );
       if (m) return m[1];
     }
   } catch {
