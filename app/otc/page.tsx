@@ -955,7 +955,10 @@ const ApplyCardButton = styled.button`
   border-radius: 12px;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
 
   &:hover {
     transform: translateY(-1px);
@@ -1241,7 +1244,7 @@ const APPLY_QUERY_VALUE = "1";
 
 // 신청 기능 준비중 — true면 버튼 클릭 시 모달 대신 "준비 중입니다." 안내만 표시.
 // 오픈 시 false로 바꾸면 모달/딥링크가 다시 활성화된다.
-const APPLY_COMING_SOON = true;
+const APPLY_COMING_SOON = false;
 
 function OTCContent() {
   const searchParams = useSearchParams();
@@ -1646,338 +1649,346 @@ function OTCContent() {
             <>
               {/* 자산 선택기 - 드롭다운 */}
               <AssetSelectorWrapper>
-            <AssetDropdown data-asset-dropdown>
-              <AssetDropdownButton
-                $isOpen={isAssetDropdownOpen}
-                onClick={() => setIsAssetDropdownOpen(!isAssetDropdownOpen)}
-              >
-                {assetType}
-              </AssetDropdownButton>
-              <AssetDropdownMenu $isOpen={isAssetDropdownOpen}>
-                {assetTypes.map((type) => (
-                  <AssetDropdownItem
-                    key={type}
-                    onClick={() => handleAssetTypeChange(type)}
+                <AssetDropdown data-asset-dropdown>
+                  <AssetDropdownButton
+                    $isOpen={isAssetDropdownOpen}
+                    onClick={() => setIsAssetDropdownOpen(!isAssetDropdownOpen)}
                   >
-                    {type}
-                  </AssetDropdownItem>
-                ))}
-              </AssetDropdownMenu>
-            </AssetDropdown>
-          </AssetSelectorWrapper>
+                    {assetType}
+                  </AssetDropdownButton>
+                  <AssetDropdownMenu $isOpen={isAssetDropdownOpen}>
+                    {assetTypes.map((type) => (
+                      <AssetDropdownItem
+                        key={type}
+                        onClick={() => handleAssetTypeChange(type)}
+                      >
+                        {type}
+                      </AssetDropdownItem>
+                    ))}
+                  </AssetDropdownMenu>
+                </AssetDropdown>
+              </AssetSelectorWrapper>
 
-          {/* 탭 네비게이션 */}
-          <TabContainer>
-            <TabButton
-              $active={activeTab === "orderbook"}
-              onClick={() => setActiveTab("orderbook")}
-            >
-              호가형(소액 가능)
-            </TabButton>
-            <TabButton
-              $active={activeTab === "card"}
-              onClick={() => setActiveTab("card")}
-            >
-              카드형(맞춤 거래)
-            </TabButton>
-          </TabContainer>
+              {/* 탭 네비게이션 */}
+              <TabContainer>
+                <TabButton
+                  $active={activeTab === "orderbook"}
+                  onClick={() => setActiveTab("orderbook")}
+                >
+                  호가형(소액 가능)
+                </TabButton>
+                <TabButton
+                  $active={activeTab === "card"}
+                  onClick={() => setActiveTab("card")}
+                >
+                  카드형(맞춤 거래)
+                </TabButton>
+              </TabContainer>
 
-          <TabContent>
-            {activeTab === "orderbook" && (
-              <>
-                <OrderBookCard>
-                  <OrderBookHeader>
-                    <OrderBookTitle>호가형 거래</OrderBookTitle>
-                    <OrderBookDescription>
-                      소액 거래도 가능한 호가형 거래입니다. 원하는 가격과 수량을
-                      선택하여 거래를 진행할 수 있습니다.
-                    </OrderBookDescription>
-                  </OrderBookHeader>
+              <TabContent>
+                {activeTab === "orderbook" && (
+                  <>
+                    <OrderBookCard>
+                      <OrderBookHeader>
+                        <OrderBookTitle>호가형 거래</OrderBookTitle>
+                        <OrderBookDescription>
+                          소액 거래도 가능한 호가형 거래입니다. 원하는 가격과
+                          수량을 선택하여 거래를 진행할 수 있습니다.
+                        </OrderBookDescription>
+                      </OrderBookHeader>
 
-                  {/* 안내 박스 추가 */}
-                  <NoticeBox>
-                    <NoticeText>
-                      ⚠️ 현재 데이터는 예시입니다.
-                      <br />
-                      아직 공식 오픈하지 않은 상태이므로 신청하셔도 반영되지
-                      않습니다.
-                    </NoticeText>
-                  </NoticeBox>
+                      {/* 안내 박스 추가 */}
+                      <NoticeBox>
+                        <NoticeText>
+                          ⚠️ 현재 데이터는 예시입니다.
+                          <br />
+                          아직 공식 오픈하지 않은 상태이므로 신청하셔도 반영되지
+                          않습니다.
+                        </NoticeText>
+                      </NoticeBox>
 
-                  {listedLoading && (
-                    <OrderBookPlaceholder>
-                      호가 정보를 불러오는 중...
-                    </OrderBookPlaceholder>
-                  )}
-
-                  {listedError && (
-                    <OrderBookPlaceholder style={{ color: "#dc2626" }}>
-                      {listedError}
-                    </OrderBookPlaceholder>
-                  )}
-
-                  {!listedLoading && !listedError && (
-                    <>
-                      {orderBookLevels.length > 0 ? (
-                        <>
-                          {/* 모바일용 카드 리스트 */}
-                          <OrderBookList>
-                            {(() => {
-                              const maxVolume = getMaxVolume(orderBookLevels);
-
-                              return orderBookLevels.map((level, index) => {
-                                const barWidth =
-                                  (level.totalAmount / maxVolume) * 100;
-
-                                return (
-                                  <OrderBookCardItem
-                                    key={`mobile-${level.id}-${index}`}
-                                    onClick={() => {
-                                      router.push(
-                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`,
-                                      );
-                                    }}
-                                  >
-                                    <OrderBookCardHeader>
-                                      <OrderBookCardPrice>
-                                        {formatPrice(level.price)}원
-                                      </OrderBookCardPrice>
-                                      <OrderBookCardVolume>
-                                        {level.totalAmount} Mo
-                                        {level.requestCount > 1 && (
-                                          <span
-                                            style={{
-                                              fontSize: "12px",
-                                              color: "#9ca3af",
-                                              marginLeft: "4px",
-                                              fontWeight: "normal",
-                                            }}
-                                          >
-                                            ({level.requestCount}건)
-                                          </span>
-                                        )}
-                                      </OrderBookCardVolume>
-                                    </OrderBookCardHeader>
-                                    <OrderBookCardBarContainer>
-                                      <OrderBookCardBar $width={barWidth} />
-                                    </OrderBookCardBarContainer>
-                                  </OrderBookCardItem>
-                                );
-                              });
-                            })()}
-                          </OrderBookList>
-
-                          {/* 데스크톱용 테이블 */}
-                          <OrderBookTable>
-                            <OrderBookTableHeader>
-                              <OrderBookTableHeaderCell>
-                                가격 (KRW/Mo)
-                              </OrderBookTableHeaderCell>
-                              <OrderBookTableHeaderCell>
-                                총 수량 (Mo)
-                              </OrderBookTableHeaderCell>
-                              <OrderBookTableHeaderCell>
-                                거래량 막대
-                              </OrderBookTableHeaderCell>
-                            </OrderBookTableHeader>
-
-                            {(() => {
-                              const maxVolume = getMaxVolume(orderBookLevels);
-
-                              return orderBookLevels.map((level, index) => {
-                                const barWidth =
-                                  (level.totalAmount / maxVolume) * 100;
-
-                                return (
-                                  <OrderBookTableRow
-                                    key={`desktop-${level.id}-${index}`}
-                                    onClick={() => {
-                                      router.push(
-                                        `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`,
-                                      );
-                                    }}
-                                  >
-                                    <OrderBookTableCell>
-                                      {formatPrice(level.price)}원
-                                    </OrderBookTableCell>
-                                    <OrderBookTableCell>
-                                      {level.totalAmount} Mo
-                                      {level.requestCount > 1 && (
-                                        <span
-                                          style={{
-                                            fontSize: "0.75rem",
-                                            color: "#9ca3af",
-                                            marginLeft: "0.5rem",
-                                          }}
-                                        >
-                                          ({level.requestCount}건)
-                                        </span>
-                                      )}
-                                    </OrderBookTableCell>
-                                    <OrderBookTableCell>
-                                      <OrderBookBarContainer>
-                                        <OrderBookBar $width={barWidth} />
-                                      </OrderBookBarContainer>
-                                    </OrderBookTableCell>
-                                  </OrderBookTableRow>
-                                );
-                              });
-                            })()}
-                          </OrderBookTable>
-                        </>
-                      ) : (
+                      {listedLoading && (
                         <OrderBookPlaceholder>
-                          등록된 호가가 없습니다.
+                          호가 정보를 불러오는 중...
                         </OrderBookPlaceholder>
                       )}
-                    </>
-                  )}
 
-                  <CTAButtonContainer>
-                    <CTABuyButton
-                      href={`/otc/buy/apply?mode=free&assetType=${assetType}`}
-                    >
-                      구매 신청하기
-                    </CTABuyButton>
-                    <CTASellButton
-                      href={`/otc/sell/apply?assetType=${assetType}`}
-                    >
-                      판매 신청하기
-                    </CTASellButton>
-                  </CTAButtonContainer>
-                </OrderBookCard>
-              </>
-            )}
+                      {listedError && (
+                        <OrderBookPlaceholder style={{ color: "#dc2626" }}>
+                          {listedError}
+                        </OrderBookPlaceholder>
+                      )}
 
-            {activeTab === "card" && (
-              <>
-                <CardTypeHeader>
-                  <CardTypeTitle>카드형 맞춤 거래</CardTypeTitle>
-                  <CardTypeDescription>
-                    맞춤형 거래 조건을 확인하고 원하는 매물을 선택하여
-                    거래하세요. 각 카드의 구매하기 버튼을 클릭하여 신청할 수
-                    있습니다.
-                  </CardTypeDescription>
-                </CardTypeHeader>
+                      {!listedLoading && !listedError && (
+                        <>
+                          {orderBookLevels.length > 0 ? (
+                            <>
+                              {/* 모바일용 카드 리스트 */}
+                              <OrderBookList>
+                                {(() => {
+                                  const maxVolume =
+                                    getMaxVolume(orderBookLevels);
 
-                {/* 안내 박스 추가 */}
-                <NoticeBox>
-                  <NoticeText>
-                    ⚠️ 현재 데이터는 예시입니다.
-                    <br />
-                    아직 공식 오픈하지 않은 상태이므로 신청하셔도 반영되지
-                    않습니다.
-                  </NoticeText>
-                </NoticeBox>
+                                  return orderBookLevels.map((level, index) => {
+                                    const barWidth =
+                                      (level.totalAmount / maxVolume) * 100;
 
-                <CardCTAButtonContainer>
-                  <CTASellButton
-                    href={`/otc/sell/apply?assetType=${assetType}`}
-                  >
-                    판매 신청하기
-                  </CTASellButton>
-                </CardCTAButtonContainer>
-
-                {cardLoading && (
-                  <EmptyState>카드형 정보를 불러오는 중...</EmptyState>
-                )}
-                {cardError && (
-                  <EmptyState style={{ color: "#dc2626" }}>
-                    {cardError}
-                  </EmptyState>
-                )}
-                {!cardLoading && !cardError && (
-                  <>
-                    {cardRequests.length > 0 ? (
-                      <CardGrid>
-                        {cardRequests.map((card) => {
-                          const priceNum = parseFloat(card.price);
-                          const amountNum = card.amount;
-                          const statusLabel =
-                            STATUS_LABELS[
-                              card.status as keyof typeof STATUS_LABELS
-                            ] || card.status;
-
-                          const isCompleted =
-                            card.status === "COMPLETED" ||
-                            card.status === "완료";
-
-                          return (
-                            <TradeCard
-                              key={card.id}
-                              onClick={() => {
-                                if (!isCompleted) {
-                                  router.push(
-                                    `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`,
-                                  );
-                                }
-                              }}
-                            >
-                              {/* 상단: 좌측 신청번호, 우측 현재 상태 */}
-                              <TradeCardHeader>
-                                <TradeCardId>신청 번호 #{card.id}</TradeCardId>
-                                <StatusBadge $status={card.status}>
-                                  {statusLabel}
-                                </StatusBadge>
-                              </TradeCardHeader>
-
-                              <TradeCardInfo>
-                                {/* 가격과 수량 */}
-                                <PriceAmountRow>
-                                  <TradeCardPriceKRW>
-                                    {formatPrice(card.price)}원
-                                  </TradeCardPriceKRW>
-                                  <TradeCardAmountLabel>
-                                    <span
-                                      style={{ display: "none" }}
-                                      className="mobile-hide"
-                                    >
-                                      판매 수량 :{" "}
-                                    </span>
-                                    {card.amount} Mo
-                                  </TradeCardAmountLabel>
-                                </PriceAmountRow>
-
-                                {/* 총 거래금액 */}
-                                <TradeCardTotal>
-                                  총 금액:{" "}
-                                  {formatTotalPrice(card.price, card.amount)}원
-                                </TradeCardTotal>
-                              </TradeCardInfo>
-
-                              {/* 구매하기 버튼 */}
-                              {isCompleted ? (
-                                <TradeCardButton
-                                  $status={card.status}
-                                  disabled
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  거래 완료됨
-                                </TradeCardButton>
-                              ) : (
-                                <TradeCardButton
-                                  $status={card.status}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(
-                                      `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`,
+                                    return (
+                                      <OrderBookCardItem
+                                        key={`mobile-${level.id}-${index}`}
+                                        onClick={() => {
+                                          router.push(
+                                            `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`,
+                                          );
+                                        }}
+                                      >
+                                        <OrderBookCardHeader>
+                                          <OrderBookCardPrice>
+                                            {formatPrice(level.price)}원
+                                          </OrderBookCardPrice>
+                                          <OrderBookCardVolume>
+                                            {level.totalAmount} Mo
+                                            {level.requestCount > 1 && (
+                                              <span
+                                                style={{
+                                                  fontSize: "12px",
+                                                  color: "#9ca3af",
+                                                  marginLeft: "4px",
+                                                  fontWeight: "normal",
+                                                }}
+                                              >
+                                                ({level.requestCount}건)
+                                              </span>
+                                            )}
+                                          </OrderBookCardVolume>
+                                        </OrderBookCardHeader>
+                                        <OrderBookCardBarContainer>
+                                          <OrderBookCardBar $width={barWidth} />
+                                        </OrderBookCardBarContainer>
+                                      </OrderBookCardItem>
                                     );
+                                  });
+                                })()}
+                              </OrderBookList>
+
+                              {/* 데스크톱용 테이블 */}
+                              <OrderBookTable>
+                                <OrderBookTableHeader>
+                                  <OrderBookTableHeaderCell>
+                                    가격 (KRW/Mo)
+                                  </OrderBookTableHeaderCell>
+                                  <OrderBookTableHeaderCell>
+                                    총 수량 (Mo)
+                                  </OrderBookTableHeaderCell>
+                                  <OrderBookTableHeaderCell>
+                                    거래량 막대
+                                  </OrderBookTableHeaderCell>
+                                </OrderBookTableHeader>
+
+                                {(() => {
+                                  const maxVolume =
+                                    getMaxVolume(orderBookLevels);
+
+                                  return orderBookLevels.map((level, index) => {
+                                    const barWidth =
+                                      (level.totalAmount / maxVolume) * 100;
+
+                                    return (
+                                      <OrderBookTableRow
+                                        key={`desktop-${level.id}-${index}`}
+                                        onClick={() => {
+                                          router.push(
+                                            `/otc/buy/apply?mode=free&assetType=${assetType}&price=${level.price}`,
+                                          );
+                                        }}
+                                      >
+                                        <OrderBookTableCell>
+                                          {formatPrice(level.price)}원
+                                        </OrderBookTableCell>
+                                        <OrderBookTableCell>
+                                          {level.totalAmount} Mo
+                                          {level.requestCount > 1 && (
+                                            <span
+                                              style={{
+                                                fontSize: "0.75rem",
+                                                color: "#9ca3af",
+                                                marginLeft: "0.5rem",
+                                              }}
+                                            >
+                                              ({level.requestCount}건)
+                                            </span>
+                                          )}
+                                        </OrderBookTableCell>
+                                        <OrderBookTableCell>
+                                          <OrderBookBarContainer>
+                                            <OrderBookBar $width={barWidth} />
+                                          </OrderBookBarContainer>
+                                        </OrderBookTableCell>
+                                      </OrderBookTableRow>
+                                    );
+                                  });
+                                })()}
+                              </OrderBookTable>
+                            </>
+                          ) : (
+                            <OrderBookPlaceholder>
+                              등록된 호가가 없습니다.
+                            </OrderBookPlaceholder>
+                          )}
+                        </>
+                      )}
+
+                      <CTAButtonContainer>
+                        <CTABuyButton
+                          href={`/otc/buy/apply?mode=free&assetType=${assetType}`}
+                        >
+                          구매 신청하기
+                        </CTABuyButton>
+                        <CTASellButton
+                          href={`/otc/sell/apply?assetType=${assetType}`}
+                        >
+                          판매 신청하기
+                        </CTASellButton>
+                      </CTAButtonContainer>
+                    </OrderBookCard>
+                  </>
+                )}
+
+                {activeTab === "card" && (
+                  <>
+                    <CardTypeHeader>
+                      <CardTypeTitle>카드형 맞춤 거래</CardTypeTitle>
+                      <CardTypeDescription>
+                        맞춤형 거래 조건을 확인하고 원하는 매물을 선택하여
+                        거래하세요. 각 카드의 구매하기 버튼을 클릭하여 신청할 수
+                        있습니다.
+                      </CardTypeDescription>
+                    </CardTypeHeader>
+
+                    {/* 안내 박스 추가 */}
+                    <NoticeBox>
+                      <NoticeText>
+                        ⚠️ 현재 데이터는 예시입니다.
+                        <br />
+                        아직 공식 오픈하지 않은 상태이므로 신청하셔도 반영되지
+                        않습니다.
+                      </NoticeText>
+                    </NoticeBox>
+
+                    <CardCTAButtonContainer>
+                      <CTASellButton
+                        href={`/otc/sell/apply?assetType=${assetType}`}
+                      >
+                        판매 신청하기
+                      </CTASellButton>
+                    </CardCTAButtonContainer>
+
+                    {cardLoading && (
+                      <EmptyState>카드형 정보를 불러오는 중...</EmptyState>
+                    )}
+                    {cardError && (
+                      <EmptyState style={{ color: "#dc2626" }}>
+                        {cardError}
+                      </EmptyState>
+                    )}
+                    {!cardLoading && !cardError && (
+                      <>
+                        {cardRequests.length > 0 ? (
+                          <CardGrid>
+                            {cardRequests.map((card) => {
+                              const priceNum = parseFloat(card.price);
+                              const amountNum = card.amount;
+                              const statusLabel =
+                                STATUS_LABELS[
+                                  card.status as keyof typeof STATUS_LABELS
+                                ] || card.status;
+
+                              const isCompleted =
+                                card.status === "COMPLETED" ||
+                                card.status === "완료";
+
+                              return (
+                                <TradeCard
+                                  key={card.id}
+                                  onClick={() => {
+                                    if (!isCompleted) {
+                                      router.push(
+                                        `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`,
+                                      );
+                                    }
                                   }}
                                 >
-                                  구매하기
-                                </TradeCardButton>
-                              )}
-                            </TradeCard>
-                          );
-                        })}
-                      </CardGrid>
-                    ) : (
-                      <EmptyState>등록된 판매 정보가 없습니다.</EmptyState>
+                                  {/* 상단: 좌측 신청번호, 우측 현재 상태 */}
+                                  <TradeCardHeader>
+                                    <TradeCardId>
+                                      신청 번호 #{card.id}
+                                    </TradeCardId>
+                                    <StatusBadge $status={card.status}>
+                                      {statusLabel}
+                                    </StatusBadge>
+                                  </TradeCardHeader>
+
+                                  <TradeCardInfo>
+                                    {/* 가격과 수량 */}
+                                    <PriceAmountRow>
+                                      <TradeCardPriceKRW>
+                                        {formatPrice(card.price)}원
+                                      </TradeCardPriceKRW>
+                                      <TradeCardAmountLabel>
+                                        <span
+                                          style={{ display: "none" }}
+                                          className="mobile-hide"
+                                        >
+                                          판매 수량 :{" "}
+                                        </span>
+                                        {card.amount} Mo
+                                      </TradeCardAmountLabel>
+                                    </PriceAmountRow>
+
+                                    {/* 총 거래금액 */}
+                                    <TradeCardTotal>
+                                      총 금액:{" "}
+                                      {formatTotalPrice(
+                                        card.price,
+                                        card.amount,
+                                      )}
+                                      원
+                                    </TradeCardTotal>
+                                  </TradeCardInfo>
+
+                                  {/* 구매하기 버튼 */}
+                                  {isCompleted ? (
+                                    <TradeCardButton
+                                      $status={card.status}
+                                      disabled
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      거래 완료됨
+                                    </TradeCardButton>
+                                  ) : (
+                                    <TradeCardButton
+                                      $status={card.status}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(
+                                          `/otc/buy/apply?mode=card&price=${priceNum}&amount=${amountNum}&assetType=${assetType}`,
+                                        );
+                                      }}
+                                    >
+                                      구매하기
+                                    </TradeCardButton>
+                                  )}
+                                </TradeCard>
+                              );
+                            })}
+                          </CardGrid>
+                        ) : (
+                          <EmptyState>등록된 판매 정보가 없습니다.</EmptyState>
+                        )}
+                      </>
                     )}
                   </>
                 )}
-              </>
-            )}
               </TabContent>
             </>
           )}

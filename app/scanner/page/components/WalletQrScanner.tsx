@@ -21,18 +21,77 @@ export interface WalletQrScannerProps {
   paused: boolean;
 }
 
-/** 모바일에서 후면·외부 카메라 우선 (라벨 휴리스틱) */
-async function pickCameraDeviceId(): Promise<string | undefined> {
-  try {
-    const devices = await BrowserCodeReader.listVideoInputDevices();
-    if (devices.length === 0) return undefined;
-    const back = devices.find((d) =>
-      /back|rear|environment|후면|wide|ultra|world|외부/i.test(d.label),
-    );
-    return back?.deviceId ?? devices[devices.length - 1]?.deviceId;
-  } catch {
-    return undefined;
+const SCAN_FAIL_HINT_MS = 12_000;
+const DEFAULT_HINT =
+  "공개 주소를 스캔해 주세요. QR을 파란 모서리 안에 맞추면 주소가 입력되고 자동으로 조회됩니다.";
+const FAIL_HINT = "인식이 잘 안 되면 카메라 전환을 눌러보세요.";
+
+/** 후면 후보 — 큰 가점 */
+const BACK_LABEL_RE =
+  /back|rear|environment|후면|world|외부|camera\s*0\b/i;
+/** 전면 — 큰 감점 */
+const FRONT_LABEL_RE = /front|전면|selfie|user|facetime/i;
+/**
+ * 초광각·망원·보조 렌즈 — 큰 감점.
+ * 단독 "wide"는 iPhone 메인("Back Dual Wide Camera")과 혼동되므로 제외.
+ */
+const EXCLUDE_LABEL_RE =
+  /ultra|wide[- ]?angle|광각|telephoto|tele|zoom|macro|depth|truedepth|lidari/i;
+
+type VideoDevice = MediaDeviceInfo;
+
+function scoreCameraLabel(label: string): number {
+  const l = label.toLowerCase();
+  if (!l.trim()) return 0;
+  let score = 0;
+  if (BACK_LABEL_RE.test(l)) score += 100;
+  if (FRONT_LABEL_RE.test(l)) score -= 200;
+  if (EXCLUDE_LABEL_RE.test(l)) score -= 150;
+  return score;
+}
+
+/** 점수 최고 → 동점이면 목록 앞쪽(낮은 index) 우선 */
+function pickBestDeviceId(devices: VideoDevice[]): string | undefined {
+  if (devices.length === 0) return undefined;
+  let bestIdx = 0;
+  let bestScore = scoreCameraLabel(devices[0].label);
+  for (let i = 1; i < devices.length; i++) {
+    const s = scoreCameraLabel(devices[i].label);
+    if (s > bestScore) {
+      bestScore = s;
+      bestIdx = i;
+    }
   }
+  return devices[bestIdx].deviceId;
+}
+
+/** 권한 전 enumerateDevices 라벨이 비어 있으므로 임시 스트림으로 권한 확보 */
+async function ensureCameraPermission(): Promise<void> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: "environment" } },
+  });
+  stream.getTracks().forEach((t) => t.stop());
+}
+
+async function listVideoDevices(): Promise<VideoDevice[]> {
+  return BrowserCodeReader.listVideoInputDevices();
+}
+
+function buildDeviceConstraints(
+  deviceId: string,
+  withFocus: boolean,
+): MediaStreamConstraints {
+  const video: MediaTrackConstraints & {
+    advanced?: Array<{ focusMode?: string }>;
+  } = {
+    deviceId: { exact: deviceId },
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  };
+  if (withFocus) {
+    video.advanced = [{ focusMode: "continuous" }];
+  }
+  return { video };
 }
 
 function waitNextFrames(n = 2): Promise<void> {
@@ -49,6 +108,26 @@ function waitNextFrames(n = 2): Promise<void> {
   });
 }
 
+function SwitchCameraIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M11 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+      <path d="M13 5h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+      <path d="M8 12h8" />
+      <path d="m16 9 3 3-3 3" />
+      <path d="m8 15-3-3 3-3" />
+    </svg>
+  );
+}
+
 export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
@@ -56,18 +135,55 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
     addr: "",
     t: 0,
   });
+  /** 같은 세션에서 마지막 성공 deviceId — localStorage 미사용 */
+  const preferredDeviceIdRef = useRef<string | undefined>(undefined);
+  const currentDeviceIdRef = useRef<string | undefined>(undefined);
+  const scanFailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [error, setError] = useState<string | null>(null);
-  /** 기본 켜짐.「카메라 끄기」시에만 유도 화면으로 전환 */
   const [cameraActive, setCameraActive] = useState(true);
+  const [videoDevices, setVideoDevices] = useState<VideoDevice[]>([]);
+  const [hintText, setHintText] = useState(DEFAULT_HINT);
+  const [restartCounter, setRestartCounter] = useState(0);
+
+  const clearScanFailTimer = useCallback(() => {
+    if (scanFailTimerRef.current) {
+      clearTimeout(scanFailTimerRef.current);
+      scanFailTimerRef.current = null;
+    }
+  }, []);
+
+  const resetScanFailTimer = useCallback(() => {
+    clearScanFailTimer();
+    setHintText(DEFAULT_HINT);
+    scanFailTimerRef.current = setTimeout(() => {
+      setHintText(FAIL_HINT);
+    }, SCAN_FAIL_HINT_MS);
+  }, [clearScanFailTimer]);
 
   const stop = useCallback(() => {
     controlsRef.current?.stop();
     controlsRef.current = null;
   }, []);
 
+  const switchCamera = useCallback(() => {
+    const devices = videoDevices;
+    if (devices.length < 2) return;
+
+    const current = currentDeviceIdRef.current;
+    const idx = devices.findIndex((d) => d.deviceId === current);
+    const nextIdx = idx < 0 ? 0 : (idx + 1) % devices.length;
+    preferredDeviceIdRef.current = devices[nextIdx].deviceId;
+
+    resetScanFailTimer();
+    stop();
+    setRestartCounter((c) => c + 1);
+  }, [videoDevices, resetScanFailTimer, stop]);
+
   useEffect(() => {
     if (!cameraActive || paused) {
       stop();
+      clearScanFailTimer();
       return;
     }
 
@@ -78,12 +194,10 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
     hints.set(DecodeHintType.CHARACTER_SET, "UTF-8");
 
     const reader = new BrowserQRCodeReader(hints, {
-      /** 기본 500ms는 프레임 시도가 너무 느려 인식이 답답함 */
       delayBetweenScanAttempts: 50,
       delayBetweenScanSuccess: 350,
       tryPlayVideoTimeout: 10_000,
     });
-
     const onResult = (text: string) => {
       const addr = extractEvmAddressFromText(text);
       if (!addr) return;
@@ -91,10 +205,14 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
       const { addr: last, t } = debounceRef.current;
       if (addr === last && now - t < 2200) return;
       debounceRef.current = { addr, t: now };
+      resetScanFailTimer();
       onDetected(addr);
     };
 
-    const decodeCallback = (result: { getText: () => string } | undefined, err: unknown | undefined) => {
+    const decodeCallback = (
+      result: { getText: () => string } | undefined,
+      err: unknown | undefined,
+    ) => {
       if (cancelled) return;
       if (result) {
         onResult(result.getText());
@@ -105,6 +223,78 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
       }
     };
 
+    const tryDecodeConstraints = async (
+      constraints: MediaStreamConstraints,
+    ): Promise<{ stop: () => void } | null> => {
+      try {
+        return await reader.decodeFromConstraints(
+          constraints,
+          videoRef.current!,
+          decodeCallback,
+        );
+      } catch {
+        return null;
+      }
+    };
+
+    const openByDeviceId = async (
+      deviceId: string,
+    ): Promise<{ stop: () => void } | null> => {
+      let controls = await tryDecodeConstraints(
+        buildDeviceConstraints(deviceId, true),
+      );
+      if (!controls) {
+        controls = await tryDecodeConstraints(
+          buildDeviceConstraints(deviceId, false),
+        );
+      }
+      return controls;
+    };
+
+    const startCamera = async (): Promise<{
+      controls: { stop: () => void } | null;
+      deviceId: string | undefined;
+    }> => {
+      try {
+        await ensureCameraPermission();
+      } catch {
+        /* 권한 거부 — 아래 decode 단계에서 실패 처리 */
+      }
+
+      let devices: VideoDevice[] = [];
+      try {
+        devices = await listVideoDevices();
+      } catch {
+        devices = [];
+      }
+
+      if (!cancelled) {
+        setVideoDevices(devices);
+      }
+
+      const candidateIds: string[] = [];
+      const preferred = preferredDeviceIdRef.current;
+      if (preferred && devices.some((d) => d.deviceId === preferred)) {
+        candidateIds.push(preferred);
+      }
+      const best = pickBestDeviceId(devices);
+      if (best && !candidateIds.includes(best)) {
+        candidateIds.push(best);
+      }
+
+      for (const id of candidateIds) {
+        const controls = await openByDeviceId(id);
+        if (controls) {
+          return { controls, deviceId: id };
+        }
+      }
+
+      const fallback = await tryDecodeConstraints({
+        video: { facingMode: { ideal: "environment" } },
+      });
+      return { controls: fallback, deviceId: undefined };
+    };
+
     (async () => {
       await waitNextFrames(2);
       if (cancelled) return;
@@ -113,34 +303,9 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
       if (!videoEl) return;
 
       setError(null);
+      resetScanFailTimer();
 
-      const videoConstraints: MediaTrackConstraints = {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280, min: 640 },
-        height: { ideal: 720, min: 480 },
-      };
-
-      const tryDecode = async (
-        start: () => Promise<{ stop: () => void }>,
-      ): Promise<{ stop: () => void } | null> => {
-        try {
-          return await start();
-        } catch {
-          return null;
-        }
-      };
-
-      let controls =
-        (await tryDecode(() =>
-          reader.decodeFromConstraints({ video: videoConstraints }, videoEl, decodeCallback),
-        )) ??
-        (await tryDecode(async () => {
-          const id = await pickCameraDeviceId();
-          return reader.decodeFromVideoDevice(id, videoEl, decodeCallback);
-        })) ??
-        (await tryDecode(() =>
-          reader.decodeFromVideoDevice(undefined, videoEl, decodeCallback),
-        ));
+      const { controls, deviceId } = await startCamera();
 
       if (cancelled) {
         controls?.stop();
@@ -152,17 +317,34 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
           "카메라를 켤 수 없습니다. 브라우저 권한·HTTPS(또는 localhost)를 확인해 주세요.",
         );
         setCameraActive(false);
+        clearScanFailTimer();
         return;
       }
 
       controlsRef.current = controls;
+      currentDeviceIdRef.current = deviceId;
+      if (deviceId) {
+        preferredDeviceIdRef.current = deviceId;
+      }
     })();
 
     return () => {
       cancelled = true;
       stop();
+      clearScanFailTimer();
     };
-  }, [cameraActive, paused, onDetected, stop]);
+  }, [
+    cameraActive,
+    paused,
+    onDetected,
+    stop,
+    restartCounter,
+    resetScanFailTimer,
+    clearScanFailTimer,
+  ]);
+
+  const showSwitchButton =
+    cameraActive && !paused && videoDevices.length > 1;
 
   return (
     <S.QrScannerBlock aria-label="지갑 주소 QR 스캔">
@@ -176,6 +358,7 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
                 type="button"
                 onClick={() => {
                   setError(null);
+                  setHintText(DEFAULT_HINT);
                   setCameraActive(true);
                 }}
               >
@@ -188,6 +371,17 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
             <S.QrScanHud aria-hidden>
               <S.QrScanCorners />
             </S.QrScanHud>
+            {showSwitchButton ? (
+              <S.QrSwitchButton
+                type="button"
+                aria-label="카메라 전환"
+                title="카메라 전환"
+                onClick={switchCamera}
+              >
+                <SwitchCameraIcon />
+                전환
+              </S.QrSwitchButton>
+            ) : null}
             {paused ? (
               <S.QrPausedOverlay aria-live="polite">잔고 조회 중…</S.QrPausedOverlay>
             ) : null}
@@ -197,8 +391,7 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
       {cameraActive ? (
         <>
           <S.QrScannerHint>
-            <strong>공개 주소를 스캔해 주세요.</strong> QR을 파란 모서리 안에
-            맞추면 주소가 입력되고 자동으로 조회됩니다.
+            <strong>{hintText}</strong>
           </S.QrScannerHint>
           <S.QrStopRow>
             <S.QrStopButton
@@ -207,6 +400,8 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
                 setCameraActive(false);
                 stop();
                 setError(null);
+                clearScanFailTimer();
+                setHintText(DEFAULT_HINT);
               }}
             >
               카메라 끄기

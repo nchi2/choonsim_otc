@@ -512,6 +512,42 @@ export const QrPausedOverlay = styled.div`
   font-weight: 600;
 `;
 
+/** 프리뷰 우상단 — 잘못된 렌즈(초광각 등)로 열렸을 때 다음 카메라로 순환 */
+export const QrSwitchButton = styled.button`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(248, 250, 252, 0.35);
+  border-radius: 999px;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.78);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.45);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
 export const QrStopRow = styled.div`
   margin: 0.5rem 0 0;
   display: flex;
