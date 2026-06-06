@@ -1244,7 +1244,7 @@ const APPLY_QUERY_VALUE = "1";
 
 // 신청 기능 준비중 — true면 버튼 클릭 시 모달 대신 "준비 중입니다." 안내만 표시.
 // 오픈 시 false로 바꾸면 모달/딥링크가 다시 활성화된다.
-const APPLY_COMING_SOON = false;
+const APPLY_COMING_SOON = true;
 
 function OTCContent() {
   const searchParams = useSearchParams();
