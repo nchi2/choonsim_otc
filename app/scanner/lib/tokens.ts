@@ -199,6 +199,28 @@ export const SCANNER_TOKENS: readonly Token[] = [
     label: "MOVN (BNB Chain)",
     colorVar: "--scanner-tier-otaverse",
   },
+
+  {
+    symbol: "USDT",
+    network: "eth",
+    type: "erc20",
+    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    decimals: 6,
+    tier: null,
+    label: "USDT (Tether) (Ethereum)",
+    colorVar: "--scanner-tier-otaverse",
+  },
+
+  {
+    symbol: "USDT",
+    network: "bsc",
+    type: "erc20",
+    address: "0x55d398326f99059fF775485246999027B3197955",
+    decimals: 18,
+    tier: null,
+    label: "USDT (Tether) (BNB Chain)",
+    colorVar: "--scanner-tier-otaverse",
+  },
 ];
 
 /** ERC-20만 — 스커너 컨트랙트 참조·/contracts 등 공통 사용 */

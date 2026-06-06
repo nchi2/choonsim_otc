@@ -4,6 +4,7 @@ import type { Token } from "./tokens";
 export function tokenRowIconSrc(token: Token): string | null {
   if (token.symbol === "SBMB") return "/Logo_SBMB.svg";
   if (token.symbol === "LDT") return "/Logo_LDT.svg";
+  if (token.symbol === "USDT") return "/coin-icons/usdt.svg";
   if (token.type === "native") {
     if (token.network === "eth" || token.network === "base") {
       return "/logo/ethereum.svg";
