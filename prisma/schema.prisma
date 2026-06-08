@@ -1,90 +1,111 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma schema — Neon(Postgres)
+// 10모의 기적 신청을 우선 활성화하되, 추후 OTC(매수/매도, 코인/고액권)까지
+// 확장 가능한 골격으로 설계. 자세한 내용은 README / .env.example 참고.
 
 generator client {
   provider = "prisma-client-js"
-  // output을 지정하지 않으면 기본 경로(node_modules/.prisma/client) 사용
 }
 
 datasource db {
-  provider = "mysql"  // "postgresql"에서 "mysql"로 변경
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model SellerRequest {
-  id              Int      @id @default(autoincrement())
-  name            String
-  phone           String
-  amount          Int      // 신청 수량
-  remainingAmount Int      @default(0) // 남은 수량 (매칭 시 차감)
-  price           Decimal  @db.Decimal(18, 2)
-  allowPartial    Boolean
-  branch          String
-  assetType       String   @default("BMB")
-  status          String   @default("PENDING")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+enum OrderKind {
+  MIRACLE10
+  OTC
 }
 
-model OrderBookLevel {
-  id          Int      @id @default(autoincrement())
-  assetType   String   @default("BMB")
-  price       Decimal  @db.Decimal(18, 2)
-  totalAmount Int      // 해당 가격대의 총 수량
-  requestCount Int     @default(1) // 해당 가격대의 신청 건수 (참고용)
-  updatedAt   DateTime @updatedAt
-
-  // 복합 유니크 인덱스: 같은 assetType과 price 조합은 하나만 존재
-  @@unique([assetType, price])
-  @@index([assetType, price])
+enum OrderSide {
+  BUY
+  SELL
 }
 
-model BuyerRequest {
-  id              Int      @id @default(autoincrement())
-  name            String
-  phone           String
-  amount          Int      // 신청 수량
-  remainingAmount Int      @default(0) // 남은 수량 (매칭 시 차감)
-  price           Decimal  @db.Decimal(18, 2) // 구매 가격
-  branch          String
-  assetType       String   @default("BMB")
-  status          String   @default("PENDING") // PENDING → LISTED → MATCHED → COMPLETED
-  agreedRisk      Boolean  @default(false) // 보이스피싱 안내 동의
-  agreedPrivacy   Boolean  @default(false) // 개인정보 수집 동의
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+enum AssetType {
+  COIN
+  PAPER
 }
 
-model Match {
-  id              Int      @id @default(autoincrement())
-  sellerRequestId Int
-  buyerRequestId  Int
-  matchedAmount   Int      // 매칭된 수량
-  matchedPrice    Decimal  @db.Decimal(18, 2) // 매칭 가격
-  status          String   @default("MATCHED") // MATCHED → COMPLETED
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // PlanetScale은 foreign key를 지원하지 않으므로 인덱스만 사용
-  @@index([sellerRequestId])
-  @@index([buyerRequestId])
+enum AssetSymbol {
+  BMB
+  BTC
+  SBMB
+}
+
+enum SettleMethod {
+  KRW_TRANSFER
+  KRW_CASH
+  COIN_SWAP
+  UNDECIDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONTACTED
+  VERIFIED
+  COMPLETED
+  CANCELED
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  // 연락처(카카오톡 ID 또는 전화번호) — upsert 기준 키
+  contact   String   @unique
+  createdAt DateTime @default(now())
+  // 면대면 인증 완료 시각 (null이면 미인증)
+  verifiedAt DateTime?
+
+  applications OtcOrder[]
+}
+
+model OtcOrder {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kind OrderKind // 이번엔 MIRACLE10만 생성
+  side OrderSide // 10모는 항상 BUY
+
+  assetType    AssetType // COIN | PAPER
+  asset        AssetSymbol? // 코인일 때 (BMB/BTC/SBMB)
+  denomination Int? // 고액권 단위 10|50|100|200 (PAPER일 때)
+
+  // 고액권용 — 지금은 미사용
+  interest Decimal? @db.Decimal(18, 4)
+  premium  Decimal? @db.Decimal(18, 4)
+
+  settle   SettleMethod @default(UNDECIDED)
+  quantity Int // 10모 단위 수량(모 수)
+
+  // OTC용 — 지금은 미사용
+  desiredPrice Decimal? @db.Decimal(18, 2)
+
+  status OrderStatus @default(PENDING)
+
+  // 10모 폼 필드
+  contactTimePref String?
+  visitType       String?
+  visitDate       String?
+  visitTimeSlot   String?
+
+  // 사전파악 답 (yes/no/unsure 등)
+  needUsdt     String?
+  needBmb      String?
+  needFaceAuth String?
+
+  isSbmbMember Boolean @default(false)
+  memo         String?
+
+  agreePrivacy Boolean @default(false)
+  agreeRisk    Boolean @default(false)
+  agreeP2p     Boolean @default(false)
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+
   @@index([status])
-  @@index([sellerRequestId, buyerRequestId])
-}
-
-model TradeGroup {
-  id              Int      @id @default(autoincrement())
-  buyerRequestId  Int      // 구매건 ID
-  totalMatchedAmount Int   // 총 매칭 수량
-  totalMatchedPrice Decimal @db.Decimal(18, 2) // 매칭 가격 (모든 매칭이 같은 가격)
-  status          String   @default("MATCHED") // MATCHED → COMPLETED
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@unique([buyerRequestId])
-  @@index([buyerRequestId])
-  @@index([status])
+  @@index([createdAt])
+  @@index([kind])
+  @@index([customerId])
 }

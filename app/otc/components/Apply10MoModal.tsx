@@ -47,14 +47,23 @@ const KAKAO_MAP_URL =
 const QTY_CHIPS = [10, 20, 30] as const;
 type QtyChip = (typeof QTY_CHIPS)[number] | "custom";
 
+const VISIT_TYPES = [
+  { value: "VISIT", label: "직접 방문 (면대면 인증)" },
+  { value: "REMOTE", label: "비대면 상담 후 결정" },
+] as const;
+
 interface FormState {
   name: string;
   contact: string;
   qtyChip: QtyChip;
   customQty: string;
+  visitType: string;
   visitDate: string;
   isExistingSbmb: boolean;
   memo: string;
+  agreePrivacy: boolean;
+  agreeRisk: boolean;
+  agreeP2p: boolean;
 }
 
 const INITIAL_FORM: FormState = {
@@ -62,18 +71,38 @@ const INITIAL_FORM: FormState = {
   contact: "",
   qtyChip: 10,
   customQty: "",
+  visitType: "VISIT",
   visitDate: "",
   isExistingSbmb: false,
   memo: "",
+  agreePrivacy: false,
+  agreeRisk: false,
+  agreeP2p: false,
 };
 
 interface SubmissionPayload {
   name: string;
   contact: string;
   quantity: number;
+  visitType: string;
   visitDate: string | null;
   isExistingSbmb: boolean;
   memo: string | null;
+  agreePrivacy: boolean;
+  agreeRisk: boolean;
+  agreeP2p: boolean;
+}
+
+// 방문 희망일 입력 가능 범위(내일 ~ +28일) — apply API 검증과 일치.
+function dateInputBounds(): { min: string; max: string } {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const min = new Date(today);
+  min.setDate(min.getDate() + 1);
+  const max = new Date(today);
+  max.setDate(max.getDate() + 28);
+  return { min: fmt(min), max: fmt(max) };
 }
 
 interface Apply10MoModalProps {
@@ -89,9 +118,29 @@ function getQuantity(form: FormState): number | null {
   return form.qtyChip;
 }
 
-// Single submit hook — replace inner body with a real API call later.
-async function submitApplication(payload: SubmissionPayload): Promise<void> {
-  console.log("[Apply10Mo] submission payload:", payload);
+// 신청 접수 — 공개 API(POST /api/miracle10/apply) 호출. 성공 시 접수 id 반환.
+async function submitApplication(payload: SubmissionPayload): Promise<number> {
+  const res = await fetch("/api/miracle10/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: payload.name,
+      contact: payload.contact,
+      quantity: payload.quantity,
+      visitType: payload.visitType,
+      visitDate: payload.visitDate,
+      isSbmbMember: payload.isExistingSbmb,
+      memo: payload.memo,
+      agreePrivacy: payload.agreePrivacy,
+      agreeRisk: payload.agreeRisk,
+      agreeP2p: payload.agreeP2p,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || "신청 접수에 실패했습니다.");
+  }
+  return data.id as number;
 }
 
 export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
@@ -146,8 +195,16 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         setError("연락처(카카오톡 ID 또는 전화번호)를 입력해 주세요.");
         return;
       }
-      if (qty == null) {
-        setError("신청 수량을 입력해 주세요.");
+      if (qty == null || qty % 10 !== 0) {
+        setError("신청 수량은 10모 단위로 입력해 주세요.");
+        return;
+      }
+      if (!form.visitType) {
+        setError("방문 방식을 선택해 주세요.");
+        return;
+      }
+      if (!form.agreePrivacy || !form.agreeRisk || !form.agreeP2p) {
+        setError("필수 동의 항목에 모두 동의해 주세요.");
         return;
       }
 
@@ -158,9 +215,13 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         name,
         contact,
         quantity: qty,
+        visitType: form.visitType,
         visitDate: form.visitDate.trim() || null,
         isExistingSbmb: form.isExistingSbmb,
         memo: form.memo.trim() || null,
+        agreePrivacy: form.agreePrivacy,
+        agreeRisk: form.agreeRisk,
+        agreeP2p: form.agreeP2p,
       };
 
       try {
@@ -168,8 +229,11 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         setSubmitted(payload);
         setStep("done");
       } catch (err) {
-        console.error(err);
-        setError("신청 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "신청 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        );
       } finally {
         setSubmitting(false);
       }
@@ -211,6 +275,12 @@ interface FormViewProps {
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
 }
 
+interface EstimateResult {
+  pricePerMoKrw: number;
+  totalKrw: number;
+  asOf: string;
+}
+
 function FormView({
   form,
   setForm,
@@ -224,6 +294,51 @@ function FormView({
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  const qty = getQuantity(form);
+  const [estimate, setEstimate] = useState<EstimateResult | null>(null);
+  const [estLoading, setEstLoading] = useState(false);
+  const [estError, setEstError] = useState<string | null>(null);
+  const dateBounds = dateInputBounds();
+
+  useEffect(() => {
+    if (qty == null || qty <= 0 || qty % 10 !== 0) {
+      setEstimate(null);
+      setEstError(null);
+      setEstLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEstLoading(true);
+    setEstError(null);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/miracle10/estimate?quantity=${qty}`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "예상 단가를 불러오지 못했습니다.");
+        }
+        setEstimate({
+          pricePerMoKrw: data.pricePerMoKrw,
+          totalKrw: data.totalKrw,
+          asOf: data.asOf,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setEstimate(null);
+        setEstError(
+          e instanceof Error ? e.message : "예상 단가를 불러오지 못했습니다.",
+        );
+      } finally {
+        if (!cancelled) setEstLoading(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [qty]);
 
   return (
     <FormWrapper onSubmit={onSubmit} noValidate>
@@ -321,26 +436,73 @@ function FormView({
           {form.qtyChip === "custom" && (
             <Input
               type="number"
-              min={1}
-              step={1}
+              min={10}
+              step={10}
               value={form.customQty}
               onChange={(e) => updateField("customQty", e.target.value)}
-              placeholder="모 수량 입력 (예: 50)"
+              placeholder="모 수량 입력 (10 단위, 예: 50)"
               style={{ marginTop: 8 }}
             />
           )}
+          <EstimateBox aria-live="polite">
+            {estLoading ? (
+              <EstimateMuted>예상 단가 계산 중...</EstimateMuted>
+            ) : estError ? (
+              <EstimateMuted>예상 단가를 잠시 후 다시 확인해 주세요.</EstimateMuted>
+            ) : estimate ? (
+              <>
+                <EstimateRow>
+                  <EstimateLabel>예상 단가 (1모)</EstimateLabel>
+                  <EstimateValue>
+                    {estimate.pricePerMoKrw.toLocaleString("ko-KR")}원
+                  </EstimateValue>
+                </EstimateRow>
+                <EstimateRow>
+                  <EstimateLabel>예상 총액</EstimateLabel>
+                  <EstimateValue $strong>
+                    {estimate.totalKrw.toLocaleString("ko-KR")}원
+                  </EstimateValue>
+                </EstimateRow>
+                <EstimateNote>
+                  {new Date(estimate.asOf).toLocaleString("ko-KR")} 기준 ·
+                  실제 단가는 방문 시점에 확정됩니다.
+                </EstimateNote>
+              </>
+            ) : (
+              <EstimateMuted>수량을 선택하면 예상 단가를 보여드려요.</EstimateMuted>
+            )}
+          </EstimateBox>
+        </Field>
+
+        <Field>
+          <Label htmlFor="apply-visit-type">
+            방문 방식 <Required>*</Required>
+          </Label>
+          <Select
+            id="apply-visit-type"
+            value={form.visitType}
+            onChange={(e) => updateField("visitType", e.target.value)}
+            required
+          >
+            {VISIT_TYPES.map((v) => (
+              <option key={v.value} value={v.value}>
+                {v.label}
+              </option>
+            ))}
+          </Select>
         </Field>
 
         <Field>
           <Label htmlFor="apply-visit">
-            희망 방문 일시 <Optional>(선택 · 조율 가능)</Optional>
+            희망 방문일 <Optional>(선택 · 조율 가능)</Optional>
           </Label>
           <Input
             id="apply-visit"
-            type="text"
+            type="date"
             value={form.visitDate}
+            min={dateBounds.min}
+            max={dateBounds.max}
             onChange={(e) => updateField("visitDate", e.target.value)}
-            placeholder="예: 다음 주 평일 오후 / 6/3 14시"
           />
         </Field>
 
@@ -368,6 +530,42 @@ function FormView({
             rows={3}
           />
         </Field>
+
+        <AgreeGroup>
+          <CheckboxField>
+            <input
+              type="checkbox"
+              id="agree-privacy"
+              checked={form.agreePrivacy}
+              onChange={(e) => updateField("agreePrivacy", e.target.checked)}
+            />
+            <CheckboxLabel htmlFor="agree-privacy">
+              개인정보 수집·이용에 동의합니다 (신청 처리 목적). <Required>*</Required>
+            </CheckboxLabel>
+          </CheckboxField>
+          <CheckboxField>
+            <input
+              type="checkbox"
+              id="agree-risk"
+              checked={form.agreeRisk}
+              onChange={(e) => updateField("agreeRisk", e.target.checked)}
+            />
+            <CheckboxLabel htmlFor="agree-risk">
+              가상자산 가격 변동·투자 위험을 이해했습니다. <Required>*</Required>
+            </CheckboxLabel>
+          </CheckboxField>
+          <CheckboxField>
+            <input
+              type="checkbox"
+              id="agree-p2p"
+              checked={form.agreeP2p}
+              onChange={(e) => updateField("agreeP2p", e.target.checked)}
+            />
+            <CheckboxLabel htmlFor="agree-p2p">
+              개인 간(P2P) 거래 지원 방식임을 이해했습니다. <Required>*</Required>
+            </CheckboxLabel>
+          </CheckboxField>
+        </AgreeGroup>
       </FieldGroup>
 
       <FootNotes>
@@ -807,6 +1005,68 @@ const TextArea = styled.textarea`
   resize: vertical;
   min-height: 84px;
   font-family: inherit;
+`;
+
+const Select = styled.select`
+  ${inputBase}
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+`;
+
+const EstimateBox = styled.div`
+  margin-top: 10px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const EstimateRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+`;
+
+const EstimateLabel = styled.span`
+  font-size: 0.82rem;
+  color: #0f766e;
+  font-weight: 600;
+`;
+
+const EstimateValue = styled.span<{ $strong?: boolean }>`
+  font-size: ${(p) => (p.$strong ? "1.05rem" : "0.95rem")};
+  font-weight: ${(p) => (p.$strong ? 800 : 700)};
+  color: #0d9488;
+`;
+
+const EstimateNote = styled.p`
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: #14857a;
+  line-height: 1.45;
+`;
+
+const EstimateMuted = styled.p`
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+`;
+
+const AgreeGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
 `;
 
 const ChipRow = styled.div`

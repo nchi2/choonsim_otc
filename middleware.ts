@@ -1,27 +1,33 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from "@/lib/admin-session";
 
+/**
+ * /admin/** 페이지와 /api/admin/** API 전체를 서명 세션으로 보호.
+ * - 로그인 페이지(/admin/login)와 인증 API(/api/admin/auth/*)는 공개.
+ * - 비로그인 시: 페이지는 /admin/login 리다이렉트, API는 401 JSON.
+ */
 export async function middleware(request: NextRequest) {
-  // `/admin` 경로 접근 시 인증 확인 (단, `/admin/login`은 제외)
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    if (request.nextUrl.pathname === "/admin/login") {
-      return NextResponse.next();
-    }
+  const { pathname } = request.nextUrl;
 
-    const sessionToken = request.cookies.get("admin_session");
+  if (pathname === "/admin/login") return NextResponse.next();
+  if (pathname.startsWith("/api/admin/auth/")) return NextResponse.next();
 
-    // 세션이 없으면 로그인 페이지로 리다이렉트
-    if (!sessionToken) {
-      return NextResponse.redirect(
-        new URL("/admin/login", request.url)
-      );
-    }
+  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const valid = await verifySessionToken(token);
+  if (valid) return NextResponse.next();
+
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 },
+    );
   }
 
-  return NextResponse.next();
+  const loginUrl = new URL("/admin/login", request.url);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*"],
 };
-

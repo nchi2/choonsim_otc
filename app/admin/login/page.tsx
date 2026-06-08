@@ -134,7 +134,7 @@ export default function AdminLoginPage() {
       }
 
       // 로그인 성공 시 어드민 페이지로 리다이렉트
-      router.push("/admin/otc/requests");
+      router.push("/admin/miracle10");
       router.refresh();
     } catch (err) {
       console.error("Login error:", err);
