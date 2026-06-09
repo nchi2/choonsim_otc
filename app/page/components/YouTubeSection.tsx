@@ -18,7 +18,22 @@ import {
 import { ECOSYSTEM_YOUTUBE_ANCHOR_ID } from "@/lib/ecosystem-links";
 import * as S from "../styles";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE_DESKTOP = 6;
+const PAGE_SIZE_MOBILE = 4;
+
+/** 모바일(<=767px)에서는 4개씩, 그 외에는 6개씩 노출. */
+function useResponsivePageSize(): number {
+  const [size, setSize] = useState(PAGE_SIZE_DESKTOP);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () =>
+      setSize(mq.matches ? PAGE_SIZE_MOBILE : PAGE_SIZE_DESKTOP);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return size;
+}
 
 type TabId = "all" | CuratedCategoryId;
 const TAB_ALL: { id: "all"; label: string } = { id: "all", label: "전체보기" };
@@ -169,7 +184,8 @@ export default function YouTubeSection() {
   const [data, setData] = useState<YoutubeLatestResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
+  const pageSize = useResponsivePageSize();
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE_DESKTOP);
   const [activeTab, setActiveTab] = useState<TabId>("all");
 
   useEffect(() => {
@@ -215,7 +231,6 @@ export default function YouTubeSection() {
         }
         if (!cancelled) {
           setData(json);
-          setVisibleCount(PAGE_SIZE);
           setError(null);
         }
       } catch (err) {
@@ -267,13 +282,13 @@ export default function YouTubeSection() {
     : visibleCurated.length;
   const canLoadMore = visibleForActive < totalForActive;
 
-  /** 탭을 바꾸면 처음 6개부터 다시 보이도록 리셋. */
+  /** 탭 전환 또는 화면 폭(페이지 크기) 변경 시 처음부터 다시 보이도록 리셋. */
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeTab]);
+    setVisibleCount(pageSize);
+  }, [activeTab, pageSize]);
 
   const handleLoadMore = () => {
-    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, totalForActive));
+    setVisibleCount((prev) => Math.min(prev + pageSize, totalForActive));
   };
 
   const truncateTitle = (title: string, maxLength = 30) => {
@@ -284,7 +299,10 @@ export default function YouTubeSection() {
   };
 
   return (
-    <S.Section id={ECOSYSTEM_YOUTUBE_ANCHOR_ID} style={{ scrollMarginTop: "5.5rem" }}>
+    <S.Section
+      id={ECOSYSTEM_YOUTUBE_ANCHOR_ID}
+      style={{ scrollMarginTop: "5.5rem" }}
+    >
       <S.ContentSectionHeader>
         <S.ContentSectionTitle>생태계 최신 YouTube</S.ContentSectionTitle>
       </S.ContentSectionHeader>
