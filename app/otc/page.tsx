@@ -393,7 +393,7 @@ const APPLY_QUERY_KEY = "apply";
 const APPLY_QUERY_VALUE = "1";
 
 // 신청 기능 준비중 — true면 버튼 클릭 시 모달 대신 "준비 중입니다." 안내만 표시.
-const APPLY_COMING_SOON = true;
+const APPLY_COMING_SOON = false;
 
 function OTCContent() {
   const searchParams = useSearchParams();

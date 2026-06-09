@@ -28,7 +28,13 @@ export const SCANNER_SYMBOL_DISPLAY: Readonly<Partial<Record<string, string>>> =
 
 export type TokenType = "native" | "erc20";
 
+/** balanceOf 동일 시그니처라 RPC는 type:"erc20"로 재사용하되, 표시 구분용 */
+export type TokenKind = "erc20" | "erc721";
+
 export type Tier = "ours" | "otaverse";
+
+/** LDT STAKE NFT 5개 티어를 한 행으로 묶는 그룹 키 */
+export const LDT_STAKE_NFT_GROUP = "ldt-stake-nft" as const;
 
 export interface Token {
   symbol: string;
@@ -42,6 +48,12 @@ export interface Token {
   label: string;
   /** UI용. 예: `globals.css`의 CSS 변수명 */
   colorVar: string;
+  /** 토큰 표준 구분. 없으면 erc20으로 취급 */
+  kind?: TokenKind;
+  /** 같은 행으로 묶을 그룹 키 (예: LDT STAKE NFT 티어 묶음) */
+  group?: string;
+  /** 그룹 내 NFT 티어 라벨 (예: "10", "1000"). 기존 `tier`(ours/otaverse)와 별개 */
+  nftTier?: string;
 }
 
 export interface TokenResult extends Token {
@@ -221,7 +233,78 @@ export const SCANNER_TOKENS: readonly Token[] = [
     label: "USDT (Tether) (BNB Chain)",
     colorVar: "--scanner-tier-otaverse",
   },
+
+  {
+    symbol: "LDTSTAKE",
+    network: "base",
+    type: "erc20",
+    kind: "erc721",
+    group: LDT_STAKE_NFT_GROUP,
+    nftTier: "10",
+    address: "0x4988c1d9FF849A7f7A5700A423273b7807f8EDBa",
+    decimals: 0,
+    tier: null,
+    label: "LDT STAKE NFT 10 (Base)",
+    colorVar: "--scanner-native-base",
+  },
+  {
+    symbol: "LDTSTAKE",
+    network: "base",
+    type: "erc20",
+    kind: "erc721",
+    group: LDT_STAKE_NFT_GROUP,
+    nftTier: "50",
+    address: "0xb27E75b2a671f9ed8E484213e45d53eD2FA7cc33",
+    decimals: 0,
+    tier: null,
+    label: "LDT STAKE NFT 50 (Base)",
+    colorVar: "--scanner-native-base",
+  },
+  {
+    symbol: "LDTSTAKE",
+    network: "base",
+    type: "erc20",
+    kind: "erc721",
+    group: LDT_STAKE_NFT_GROUP,
+    nftTier: "100",
+    address: "0x3e7082ac9579e008087f712587031aeef82fAbB3",
+    decimals: 0,
+    tier: null,
+    label: "LDT STAKE NFT 100 (Base)",
+    colorVar: "--scanner-native-base",
+  },
+  {
+    symbol: "LDTSTAKE",
+    network: "base",
+    type: "erc20",
+    kind: "erc721",
+    group: LDT_STAKE_NFT_GROUP,
+    nftTier: "200",
+    address: "0x0B1797d9f7147a1387D40043c77c695191683b9C",
+    decimals: 0,
+    tier: null,
+    label: "LDT STAKE NFT 200 (Base)",
+    colorVar: "--scanner-native-base",
+  },
+  {
+    symbol: "LDTSTAKE",
+    network: "base",
+    type: "erc20",
+    kind: "erc721",
+    group: LDT_STAKE_NFT_GROUP,
+    nftTier: "1000",
+    address: "0x68F1C5D3eA3b20c226e35158f1c0d8F46613B717",
+    decimals: 0,
+    tier: null,
+    label: "LDT STAKE NFT 1000 (Base)",
+    colorVar: "--scanner-native-base",
+  },
 ];
+
+/** LDT STAKE NFT 그룹 토큰 여부 */
+export function isLdtStakeNft(token: Token): boolean {
+  return token.group === LDT_STAKE_NFT_GROUP;
+}
 
 /** ERC-20만 — 스커너 컨트랙트 참조·/contracts 등 공통 사용 */
 export function getScannerErc20Tokens(): readonly Token[] {

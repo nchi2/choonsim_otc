@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type FormEvent,
@@ -10,29 +11,23 @@ import {
 } from "react";
 import styled from "styled-components";
 
-// External links / placeholders — replace before launch
-const KAKAO_INQUIRY_URL = "https://example.com/kakao"; // TODO: real Kakao channel URL
+// External links — 문의는 이메일(mailto)로 받는다.
+const KAKAO_INQUIRY_URL = "mailto:contact@choonsim.com";
 const HARVEST_MOVN_URL = "https://harvest-movn.com/";
 const OFFICE_LOCATION_LABEL = "강남 사무실";
-const OFFICE_HOURS_LABEL = "평일 10:00 ~ 18:00 (조율 가능)"; // TODO: real on-site hours
+const OFFICE_HOURS_LABEL = "월·수·금 13:00–17:00";
 
 // Office location — used in done-view map block
-const OFFICE_ADDRESS =
-  "서울 서초구 사임당로 149-5 지하층 (서초 모빅회관 내)";
+const OFFICE_ADDRESS = "서울 서초구 사임당로 149-5 지하층 (서초 모빅회관 내)";
 
-// Short landmark hint shown next to the map. Distance/time TBD — replace once measured.
-const NEAR_LANDMARK_LABEL = "강남역 도보 약 N분 · 서초 모빅회관 내 사무실";
+// Short landmark hint shown next to the map.
+const NEAR_LANDMARK_LABEL = "강남역 5번 출구 도보 약 10분";
 
-// Embedded map slot.
-//   - Naver Map does NOT expose a public no-API iframe. naver.me/map.naver.com URLs
-//     ship `X-Frame-Options: SAMEORIGIN`/DENY and won't render in <iframe>.
-//   - We keep this hook to plug in either an NCP-key-backed solution or another
-//     embed (e.g. Kakao Map iframe HTML provided by their share dialog) later
-//     without touching the JSX. When non-null, the iframe variant renders;
-//     otherwise the static fallback (image + address + direction links) renders.
-const OFFICE_MAP_IFRAME_URL: string | null = null; // TODO: fill once embed source is decided
+// Embedded map slot. 비어있으면(null) OFFICE_MAP_IMAGE_SRC로 폴백.
+const OFFICE_MAP_IFRAME_URL: string | null =
+  "https://maps.google.com/maps?q=37.492194,127.025282&z=17&output=embed";
 
-// Static map screenshot — TODO: replace with a real PNG/JPG placed under /public/otc/.
+// Static map screenshot fallback (iframe이 null일 때 사용).
 const OFFICE_MAP_IMAGE_SRC: string | null = null;
 
 // Direction links — generic "search by address" URLs survive without a place ID.
@@ -48,9 +43,18 @@ const QTY_CHIPS = [10, 20, 30] as const;
 type QtyChip = (typeof QTY_CHIPS)[number] | "custom";
 
 const VISIT_TYPES = [
-  { value: "VISIT", label: "직접 방문 (면대면 인증)" },
-  { value: "REMOTE", label: "비대면 상담 후 결정" },
+  { value: "RESERVED", label: "직접 방문 (예약일 지정)" },
+  { value: "WALK_IN", label: "예약 없이 방문 (예약자 우선 · 대기 가능)" },
 ] as const;
+
+const TIME_SLOTS = [
+  "13:00-14:00",
+  "14:00-15:00",
+  "15:00-16:00",
+  "16:00-17:00",
+] as const;
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 interface FormState {
   name: string;
@@ -59,6 +63,7 @@ interface FormState {
   customQty: string;
   visitType: string;
   visitDate: string;
+  visitTimeSlot: string;
   isExistingSbmb: boolean;
   memo: string;
   agreePrivacy: boolean;
@@ -71,8 +76,9 @@ const INITIAL_FORM: FormState = {
   contact: "",
   qtyChip: 10,
   customQty: "",
-  visitType: "VISIT",
+  visitType: "RESERVED",
   visitDate: "",
+  visitTimeSlot: "",
   isExistingSbmb: false,
   memo: "",
   agreePrivacy: false,
@@ -86,6 +92,7 @@ interface SubmissionPayload {
   quantity: number;
   visitType: string;
   visitDate: string | null;
+  visitTimeSlot: string | null;
   isExistingSbmb: boolean;
   memo: string | null;
   agreePrivacy: boolean;
@@ -93,16 +100,44 @@ interface SubmissionPayload {
   agreeP2p: boolean;
 }
 
-// 방문 희망일 입력 가능 범위(내일 ~ +28일) — apply API 검증과 일치.
-function dateInputBounds(): { min: string; max: string } {
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const min = new Date(today);
-  min.setDate(min.getDate() + 1);
-  const max = new Date(today);
-  max.setDate(max.getDate() + 28);
-  return { min: fmt(min), max: fmt(max) };
+// 전화번호 자동 하이픈 — 숫자만 받아 11자리까지 3-4-4 포맷으로 표시/저장.
+function formatPhone(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+}
+
+// --- 날짜 헬퍼 (로컬 타임존 기준 — apply API 검증과 일치) ---
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function startOfToday(): Date {
+  return startOfDay(new Date());
+}
+function addDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function fmtLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function parseLocal(s: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+function formatDisplayDate(s: string): string {
+  const d = parseLocal(s);
+  if (!d) return "날짜 선택";
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 }
 
 interface Apply10MoModalProps {
@@ -129,6 +164,7 @@ async function submitApplication(payload: SubmissionPayload): Promise<number> {
       quantity: payload.quantity,
       visitType: payload.visitType,
       visitDate: payload.visitDate,
+      visitTimeSlot: payload.visitTimeSlot,
       isSbmbMember: payload.isExistingSbmb,
       memo: payload.memo,
       agreePrivacy: payload.agreePrivacy,
@@ -203,6 +239,16 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         setError("방문 방식을 선택해 주세요.");
         return;
       }
+      if (form.visitType === "RESERVED") {
+        if (!form.visitDate) {
+          setError("예약 희망일을 선택해 주세요.");
+          return;
+        }
+        if (!form.visitTimeSlot) {
+          setError("방문 시간대를 선택해 주세요.");
+          return;
+        }
+      }
       if (!form.agreePrivacy || !form.agreeRisk || !form.agreeP2p) {
         setError("필수 동의 항목에 모두 동의해 주세요.");
         return;
@@ -217,6 +263,7 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         quantity: qty,
         visitType: form.visitType,
         visitDate: form.visitDate.trim() || null,
+        visitTimeSlot: form.visitTimeSlot.trim() || null,
         isExistingSbmb: form.isExistingSbmb,
         memo: form.memo.trim() || null,
         agreePrivacy: form.agreePrivacy,
@@ -281,6 +328,107 @@ interface EstimateResult {
   asOf: string;
 }
 
+interface InlineCalendarProps {
+  valueDate: string;
+  min: Date;
+  max: Date;
+  onSelect: (dateStr: string) => void;
+}
+
+// 인라인 월별 달력 — min~max 범위만 클릭 가능, 타이핑 입력 없음.
+function InlineCalendar({
+  valueDate,
+  min,
+  max,
+  onSelect,
+}: InlineCalendarProps) {
+  const base = parseLocal(valueDate) ?? min;
+  const [view, setView] = useState<{ y: number; m: number }>({
+    y: base.getFullYear(),
+    m: base.getMonth(),
+  });
+
+  const minMonthIdx = min.getFullYear() * 12 + min.getMonth();
+  const maxMonthIdx = max.getFullYear() * 12 + max.getMonth();
+  const viewMonthIdx = view.y * 12 + view.m;
+  const canPrev = viewMonthIdx > minMonthIdx;
+  const canNext = viewMonthIdx < maxMonthIdx;
+
+  const shiftMonth = (delta: number) => {
+    setView((v) => {
+      const idx = v.y * 12 + v.m + delta;
+      return { y: Math.floor(idx / 12), m: ((idx % 12) + 12) % 12 };
+    });
+  };
+
+  const startWeekday = new Date(view.y, view.m, 1).getDay();
+  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+  const minTime = startOfDay(min).getTime();
+  const maxTime = startOfDay(max).getTime();
+
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++)
+    cells.push(new Date(view.y, view.m, d));
+
+  const inRange = (d: Date) => {
+    const t = startOfDay(d).getTime();
+    return t >= minTime && t <= maxTime;
+  };
+
+  return (
+    <CalendarBox>
+      <CalendarHeader>
+        <CalNavButton
+          type="button"
+          disabled={!canPrev}
+          onClick={() => canPrev && shiftMonth(-1)}
+          aria-label="이전 달"
+        >
+          ‹
+        </CalNavButton>
+        <CalTitle>
+          {view.y}년 {view.m + 1}월
+        </CalTitle>
+        <CalNavButton
+          type="button"
+          disabled={!canNext}
+          onClick={() => canNext && shiftMonth(1)}
+          aria-label="다음 달"
+        >
+          ›
+        </CalNavButton>
+      </CalendarHeader>
+      <CalWeekRow>
+        {WEEKDAYS.map((w, i) => (
+          <CalWeekday key={w} $sun={i === 0} $sat={i === 6}>
+            {w}
+          </CalWeekday>
+        ))}
+      </CalWeekRow>
+      <CalGrid>
+        {cells.map((d, idx) =>
+          d ? (
+            <CalDay
+              key={idx}
+              type="button"
+              disabled={!inRange(d)}
+              $selected={valueDate === fmtLocal(d)}
+              $sun={d.getDay() === 0}
+              $sat={d.getDay() === 6}
+              onClick={() => inRange(d) && onSelect(fmtLocal(d))}
+            >
+              {d.getDate()}
+            </CalDay>
+          ) : (
+            <CalEmpty key={idx} aria-hidden="true" />
+          ),
+        )}
+      </CalGrid>
+    </CalendarBox>
+  );
+}
+
 function FormView({
   form,
   setForm,
@@ -299,7 +447,22 @@ function FormView({
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [estLoading, setEstLoading] = useState(false);
   const [estError, setEstError] = useState<string | null>(null);
-  const dateBounds = dateInputBounds();
+
+  const minDate = addDays(startOfToday(), 1);
+  const maxDate = addDays(startOfToday(), 28);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!calendarOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!datePickerRef.current?.contains(e.target as Node)) {
+        setCalendarOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [calendarOpen]);
 
   useEffect(() => {
     if (qty == null || qty <= 0 || qty % 10 !== 0) {
@@ -369,8 +532,7 @@ function FormView({
           <StepNo>2</StepNo>
           <StepLabel>
             방문·인증
-            <br />
-            ({OFFICE_LOCATION_LABEL})
+            <br />({OFFICE_LOCATION_LABEL})
           </StepLabel>
         </StepItem>
         <StepArrow aria-hidden="true">›</StepArrow>
@@ -402,10 +564,15 @@ function FormView({
           </Label>
           <Input
             id="apply-contact"
-            type="text"
+            type="tel"
+            inputMode="numeric"
             value={form.contact}
-            onChange={(e) => updateField("contact", e.target.value)}
-            placeholder="카카오톡 ID 또는 전화번호"
+            onChange={(e) =>
+              updateField("contact", formatPhone(e.target.value))
+            }
+            placeholder="010-0000-0000"
+            maxLength={13}
+            autoComplete="tel"
             required
           />
         </Field>
@@ -448,7 +615,9 @@ function FormView({
             {estLoading ? (
               <EstimateMuted>예상 단가 계산 중...</EstimateMuted>
             ) : estError ? (
-              <EstimateMuted>예상 단가를 잠시 후 다시 확인해 주세요.</EstimateMuted>
+              <EstimateMuted>
+                예상 단가를 잠시 후 다시 확인해 주세요.
+              </EstimateMuted>
             ) : estimate ? (
               <>
                 <EstimateRow>
@@ -464,47 +633,113 @@ function FormView({
                   </EstimateValue>
                 </EstimateRow>
                 <EstimateNote>
-                  {new Date(estimate.asOf).toLocaleString("ko-KR")} 기준 ·
-                  실제 단가는 방문 시점에 확정됩니다.
+                  {new Date(estimate.asOf).toLocaleString("ko-KR")} 기준 · 실제
+                  단가는 방문 시점에 확정됩니다.
                 </EstimateNote>
               </>
             ) : (
-              <EstimateMuted>수량을 선택하면 예상 단가를 보여드려요.</EstimateMuted>
+              <EstimateMuted>
+                수량을 선택하면 예상 단가를 보여드려요.
+              </EstimateMuted>
             )}
           </EstimateBox>
         </Field>
 
         <Field>
-          <Label htmlFor="apply-visit-type">
+          <Label>
             방문 방식 <Required>*</Required>
           </Label>
-          <Select
-            id="apply-visit-type"
-            value={form.visitType}
-            onChange={(e) => updateField("visitType", e.target.value)}
-            required
-          >
+          <VisitOptionGroup role="radiogroup" aria-label="방문 방식">
             {VISIT_TYPES.map((v) => (
-              <option key={v.value} value={v.value}>
+              <VisitOption
+                key={v.value}
+                type="button"
+                role="radio"
+                aria-checked={form.visitType === v.value}
+                $active={form.visitType === v.value}
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    visitType: v.value,
+                    visitDate: v.value === "RESERVED" ? prev.visitDate : "",
+                    visitTimeSlot:
+                      v.value === "RESERVED" ? prev.visitTimeSlot : "",
+                  }))
+                }
+              >
                 {v.label}
-              </option>
+              </VisitOption>
             ))}
-          </Select>
+          </VisitOptionGroup>
         </Field>
 
-        <Field>
-          <Label htmlFor="apply-visit">
-            희망 방문일 <Optional>(선택 · 조율 가능)</Optional>
-          </Label>
-          <Input
-            id="apply-visit"
-            type="date"
-            value={form.visitDate}
-            min={dateBounds.min}
-            max={dateBounds.max}
-            onChange={(e) => updateField("visitDate", e.target.value)}
-          />
-        </Field>
+        {form.visitType === "RESERVED" ? (
+          <>
+            <Field>
+              <Label>
+                예약 희망일 <Required>*</Required>
+              </Label>
+              <DatePickerWrap ref={datePickerRef}>
+                <DateSelectButton
+                  type="button"
+                  $hasValue={!!form.visitDate}
+                  onClick={() => setCalendarOpen((o) => !o)}
+                >
+                  <span>
+                    {form.visitDate
+                      ? formatDisplayDate(form.visitDate)
+                      : "날짜 선택"}
+                  </span>
+                  <DateChevron $open={calendarOpen} aria-hidden="true">
+                    ▾
+                  </DateChevron>
+                </DateSelectButton>
+                {calendarOpen && (
+                  <InlineCalendar
+                    valueDate={form.visitDate}
+                    min={minDate}
+                    max={maxDate}
+                    onSelect={(s) => {
+                      updateField("visitDate", s);
+                      setCalendarOpen(false);
+                    }}
+                  />
+                )}
+              </DatePickerWrap>
+            </Field>
+
+            {form.visitDate && (
+              <Field>
+                <Label>
+                  방문 시간대 <Required>*</Required>
+                </Label>
+                <ChipRow>
+                  {TIME_SLOTS.map((ts) => (
+                    <Chip
+                      key={ts}
+                      type="button"
+                      $active={form.visitTimeSlot === ts}
+                      onClick={() =>
+                        updateField(
+                          "visitTimeSlot",
+                          form.visitTimeSlot === ts ? "" : ts,
+                        )
+                      }
+                    >
+                      {ts}
+                    </Chip>
+                  ))}
+                </ChipRow>
+                <TimeAdjustNote>시간은 조율할게요.</TimeAdjustNote>
+              </Field>
+            )}
+          </>
+        ) : (
+          <WalkInNote>
+            예약 없이 방문하실 수 있어요. 다만 예약자분이 우선이라, 시간이
+            겹치면 잠시 기다리셔야 할 수 있어요.
+          </WalkInNote>
+        )}
 
         <CheckboxField>
           <input
@@ -540,7 +775,8 @@ function FormView({
               onChange={(e) => updateField("agreePrivacy", e.target.checked)}
             />
             <CheckboxLabel htmlFor="agree-privacy">
-              개인정보 수집·이용에 동의합니다 (신청 처리 목적). <Required>*</Required>
+              개인정보 수집·이용에 동의합니다 (신청 처리 목적).{" "}
+              <Required>*</Required>
             </CheckboxLabel>
           </CheckboxField>
           <CheckboxField>
@@ -551,7 +787,8 @@ function FormView({
               onChange={(e) => updateField("agreeRisk", e.target.checked)}
             />
             <CheckboxLabel htmlFor="agree-risk">
-              가상자산 가격 변동·투자 위험을 이해했습니다. <Required>*</Required>
+              가상자산 가격 변동·투자 위험을 이해했습니다.{" "}
+              <Required>*</Required>
             </CheckboxLabel>
           </CheckboxField>
           <CheckboxField>
@@ -562,7 +799,8 @@ function FormView({
               onChange={(e) => updateField("agreeP2p", e.target.checked)}
             />
             <CheckboxLabel htmlFor="agree-p2p">
-              개인 간(P2P) 거래 지원 방식임을 이해했습니다. <Required>*</Required>
+              개인 간(P2P) 거래 지원 방식임을 이해했습니다.{" "}
+              <Required>*</Required>
             </CheckboxLabel>
           </CheckboxField>
         </AgreeGroup>
@@ -668,6 +906,9 @@ function DoneView({ submitted, onClose }: DoneViewProps) {
             <MapIframe
               src={OFFICE_MAP_IFRAME_URL}
               title={`${OFFICE_LOCATION_LABEL} 지도`}
+              width="100%"
+              height={260}
+              style={{ border: 0 }}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               allowFullScreen
@@ -713,13 +954,7 @@ function DoneView({ submitted, onClose }: DoneViewProps) {
         </DirectionsRow>
       </LocationBlock>
 
-      <CtaPrimary
-        href={KAKAO_INQUIRY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        카카오톡으로 문의하기
-      </CtaPrimary>
+      <CtaPrimary href={KAKAO_INQUIRY_URL}>이메일 문의</CtaPrimary>
       <CtaRow>
         <CtaSecondaryLink
           href={HARVEST_MOVN_URL}
@@ -1007,13 +1242,44 @@ const TextArea = styled.textarea`
   font-family: inherit;
 `;
 
-const Select = styled.select`
-  ${inputBase}
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
+const VisitOptionGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const VisitOption = styled.button<{ $active: boolean }>`
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid ${(p) => (p.$active ? "#434392" : "#e5e7eb")};
+  background: ${(p) => (p.$active ? "#f5f3ff" : "#ffffff")};
+  color: ${(p) => (p.$active ? "#312e81" : "#374151")};
+  font-size: 0.9rem;
+  font-weight: ${(p) => (p.$active ? 700 : 500)};
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: "";
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid ${(p) => (p.$active ? "#434392" : "#cbd5e1")};
+    background: ${(p) =>
+      p.$active ? "radial-gradient(#434392 0 5px, #fff 6px 16px)" : "#fff"};
+  }
+
+  &:hover {
+    border-color: #434392;
+  }
 `;
 
 const EstimateBox = styled.div`
@@ -1057,6 +1323,161 @@ const EstimateMuted = styled.p`
   margin: 0;
   font-size: 0.8rem;
   color: #6b7280;
+`;
+
+const WalkInNote = styled.p`
+  margin: 0;
+  padding: 10px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: #92400e;
+  line-height: 1.55;
+`;
+
+const DatePickerWrap = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const DateSelectButton = styled.button<{ $hasValue: boolean }>`
+  ${inputBase}
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: ${(p) => (p.$hasValue ? "#111827" : "#9ca3af")};
+
+  &:hover {
+    border-color: #434392;
+  }
+`;
+
+const DateChevron = styled.span<{ $open: boolean }>`
+  flex: 0 0 auto;
+  color: #6b7280;
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+  transform: ${(p) => (p.$open ? "rotate(180deg)" : "rotate(0deg)")};
+`;
+
+const CalendarBox = styled.div`
+  margin-top: 8px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(15, 15, 28, 0.12);
+`;
+
+const CalendarHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
+const CalNavButton = styled.button`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #434392;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    background: #f5f3ff;
+    border-color: #434392;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+`;
+
+const CalTitle = styled.span`
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+`;
+
+const CalWeekRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+`;
+
+const CalWeekday = styled.span<{ $sun?: boolean; $sat?: boolean }>`
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 0;
+  color: ${(p) => (p.$sun ? "#dc2626" : p.$sat ? "#2563eb" : "#6b7280")};
+`;
+
+const CalGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+`;
+
+const CalEmpty = styled.div`
+  aspect-ratio: 1 / 1;
+`;
+
+const CalDay = styled.button<{
+  $selected: boolean;
+  $sun?: boolean;
+  $sat?: boolean;
+}>`
+  aspect-ratio: 1 / 1;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: ${(p) => (p.$selected ? 800 : 500)};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: ${(p) => (p.$selected ? "#434392" : "transparent")};
+  color: ${(p) =>
+    p.$selected
+      ? "#ffffff"
+      : p.$sun
+        ? "#dc2626"
+        : p.$sat
+          ? "#2563eb"
+          : "#1f2937"};
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+
+  &:hover:not(:disabled) {
+    background: ${(p) => (p.$selected ? "#363689" : "#f5f3ff")};
+  }
+
+  &:disabled {
+    color: #d1d5db;
+    cursor: not-allowed;
+  }
+`;
+
+const TimeAdjustNote = styled.p`
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+  line-height: 1.45;
 `;
 
 const AgreeGroup = styled.div`

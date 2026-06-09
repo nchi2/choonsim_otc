@@ -69,6 +69,12 @@ export async function POST(request: Request) {
 
   const contactTimePref = asTrimmed(body.contactTimePref);
   const visitTimeSlot = asTrimmed(body.visitTimeSlot);
+
+  // 직접 방문(예약)인 경우 예약 희망일·시간대는 필수.
+  if (visitType === "RESERVED") {
+    if (!visitDate) return bad("예약 희망일을 선택해 주세요.");
+    if (!visitTimeSlot) return bad("방문 시간대를 선택해 주세요.");
+  }
   const needUsdt = asTrimmed(body.needUsdt);
   const needBmb = asTrimmed(body.needBmb);
   const needFaceAuth = asTrimmed(body.needFaceAuth);

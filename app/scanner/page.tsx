@@ -6,9 +6,12 @@ import SbmbHeroBanner from "@/components/sbmb/hero/SbmbHeroBanner";
 import { NetworkTab } from "./page/components/NetworkTab";
 import { SupportedTokensOverview } from "./page/components/SupportedTokensOverview";
 import { PortfolioSummary } from "./page/components/PortfolioSummary";
+import { RecentUpdatesNotice } from "./page/components/RecentUpdatesNotice";
 import { StatusMessage } from "./page/components/StatusMessage";
 import { TokenRow } from "./page/components/TokenRow";
+import { NftStakeRow } from "./page/components/NftStakeRow";
 import { WalletQrScanner } from "./page/components/WalletQrScanner";
+import { isLdtStakeNft } from "./lib/tokens";
 import { useScanner } from "./page/hooks/useScanner";
 import * as S from "./page/styles";
 
@@ -100,16 +103,23 @@ export default function ScannerPage() {
             <>
               <NetworkTab active={activeTab} onChange={setActiveTab} />
               <PortfolioSummary results={results} address={address} />
-              {filteredResults.map((row) => (
-                <TokenRow
-                  key={`${row.symbol}-${row.network}-${row.address}`}
-                  token={row}
-                  balance={row.balance}
-                />
-              ))}
+              {filteredResults
+                .filter((row) => !isLdtStakeNft(row))
+                .map((row) => (
+                  <TokenRow
+                    key={`${row.symbol}-${row.network}-${row.address}`}
+                    token={row}
+                    balance={row.balance}
+                  />
+                ))}
+              <NftStakeRow
+                items={filteredResults.filter((row) => isLdtStakeNft(row))}
+              />
             </>
           )}
         </S.ScannerSection>
+
+        <RecentUpdatesNotice />
 
         <S.ScannerSection aria-label="이 페이지에서 조회 가능한 토큰 안내">
           <SupportedTokensOverview />

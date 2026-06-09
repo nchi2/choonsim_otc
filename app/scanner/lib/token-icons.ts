@@ -21,3 +21,12 @@ export function tokenRowIconScale(token: Token): number {
   if (token.symbol === "LDT") return 1.22;
   return 1;
 }
+
+/**
+ * LDT STAKE NFT 티어 썸네일. public/nft/thumb/ 의 128px 경량본을 사용한다
+ * (원본 2048px PNG는 뱃지 표시에 과해 로딩 실패→폴백을 유발했음).
+ * 파일이 없으면 컴포넌트에서 티어 숫자 이니셜로 폴백한다(IPFS 직접 로드 금지).
+ */
+export function nftTierImageSrc(tier: string): string {
+  return `/nft/thumb/${tier}_LDT_STAKE_NFT.png`;
+}

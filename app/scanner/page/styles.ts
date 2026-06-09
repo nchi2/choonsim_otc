@@ -810,6 +810,110 @@ export const TokenRowSymbolSuffix = styled.span`
   }
 `;
 
+/** LDT STAKE NFT — 티어 묶음 행 (대표 아이콘 없는 2단 레이아웃) */
+
+export const NftRowRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid var(--scanner-native-base);
+  background: color-mix(in srgb, var(--scanner-native-base) 6%, #ffffff);
+  margin-bottom: 0.5rem;
+`;
+
+export const NftRowTop = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+`;
+
+export const NftRowMeta = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+`;
+
+export const NftRowTitle = styled.span`
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #111827;
+
+  @media (min-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+export const NftRowSub = styled.span`
+  font-size: 0.75rem;
+  color: #6b7280;
+
+  @media (min-width: 768px) {
+    font-size: 0.8125rem;
+  }
+`;
+
+export const NftRowTotal = styled.span`
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #374151;
+`;
+
+export const NftBadgeRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+export const NftBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--scanner-native-base) 28%, #ffffff);
+  background: #ffffff;
+`;
+
+export const NftBadgeThumb = styled.div`
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--scanner-native-base) 18%, #ffffff);
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: #1e3a8a;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+`;
+
+export const NftBadgeLabel = styled.span`
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+`;
+
+export const NftBadgeCount = styled.span`
+  font-weight: 600;
+  color: #1d4ed8;
+`;
+
 /** NetworkTab — 3.3.1 */
 
 export const NetworkTabBar = styled.div`

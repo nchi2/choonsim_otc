@@ -9,8 +9,22 @@ export interface PortfolioSummaryProps {
   address: string;
 }
 
+/**
+ * 보유 토큰 수. NFT 그룹(LDT STAKE NFT)은 티어가 5개여도 1개로 센다
+ * (화면에서도 한 행으로 묶여 표시되므로 카운트도 그룹 단위가 자연스럽다).
+ */
 function countHeldTokens(results: TokenResult[]): number {
-  return results.filter((r) => r.balance > 0).length;
+  const held = results.filter((r) => r.balance > 0);
+  const groups = new Set<string>();
+  let count = 0;
+  for (const r of held) {
+    if (r.group) {
+      groups.add(r.group);
+    } else {
+      count += 1;
+    }
+  }
+  return count + groups.size;
 }
 
 export function PortfolioSummary({ results, address }: PortfolioSummaryProps) {
