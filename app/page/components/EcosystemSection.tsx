@@ -85,47 +85,89 @@ function useIsNarrow(): boolean {
 const GROUP_ICON: Record<string, ReactNode> = {
   official: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="m12 3 2.3 4.7 5.2.8-3.7 3.6.9 5.1L12 14.8 7.3 17.2l.9-5.1L4.5 8.5l5.2-.8L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path
+        d="m12 3 2.3 4.7 5.2.8-3.7 3.6.9 5.1L12 14.8 7.3 17.2l.9-5.1L4.5 8.5l5.2-.8L12 3Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   info: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-      <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="m20 20-3.5-3.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   trade: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 8h13l-3-3M20 16H7l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 8h13l-3-3M20 16H7l3 3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   participate: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M12 20s-7-4.3-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.7-7 9-7 9Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path
+        d="M12 20s-7-4.3-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.7-7 9-7 9Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   community: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
-      <path d="M3 19a6 6 0 0 1 12 0M16 6a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M3 19a6 6 0 0 1 12 0M16 6a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   content: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" strokeWidth="2" />
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
       <path d="m10 9 5 3-5 3V9Z" fill="currentColor" />
     </svg>
   ),
   offline: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path
+        d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
       <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="2" />
     </svg>
   ),
 };
 
 /** favicon 종류면 메타데이터 아이콘 우선, 없으면 구글 파비콘으로 폴백한 src 반환 */
-function logoSrcFor(link: EcosystemLink, metaIcons: MetaIconMap): string | null {
+function logoSrcFor(
+  link: EcosystemLink,
+  metaIcons: MetaIconMap,
+): string | null {
   if (link.iconSrc) return link.iconSrc;
   if (link.internal) return null;
   const logo = platformLogo(link.href);
@@ -147,7 +189,8 @@ function LinkLogo({
 }) {
   const [failed, setFailed] = useState(false);
   const src = logoSrcFor(link, metaIcons);
-  const isFavicon = !link.internal && platformLogo(link.href).kind === "favicon";
+  const isFavicon =
+    !link.internal && platformLogo(link.href).kind === "favicon";
 
   if (failed || !src) {
     return (
@@ -319,7 +362,9 @@ function GroupBlock({
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? "접기" : `더보기 (+${collapsedHidden})`}
-          <Chevron $open={expanded} aria-hidden>▾</Chevron>
+          <Chevron $open={expanded} aria-hidden>
+            ▾
+          </Chevron>
         </MoreButton>
       )}
     </GroupRoot>
