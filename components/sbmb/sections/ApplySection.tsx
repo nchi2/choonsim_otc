@@ -1,10 +1,6 @@
 "use client";
 
 import styled, { css, keyframes } from "styled-components";
-import {
-  IconArrowUpRight,
-  IconUserPlus,
-} from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionAnchor } from "@/components/sbmb/shared/SectionCard";
 import { SBMB_FORM_CONVERT } from "@/lib/sbmb/constants";
 import { T } from "@/lib/sbmb/tokens";
@@ -53,18 +49,6 @@ const CardTop = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-`;
-
-const IconBox = styled.div<{ $variant: "new" | "convert" }>`
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${(p) => (p.$variant === "new" ? T.mint : T.primary2)};
-  color: ${(p) => (p.$variant === "new" ? T.mintDark : T.white)};
 `;
 
 const Badge = styled.span<{ $variant: "new" | "convert" }>`

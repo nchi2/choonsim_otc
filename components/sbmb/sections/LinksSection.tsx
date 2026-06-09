@@ -2,13 +2,7 @@
 
 import type { ReactNode } from "react";
 import styled from "styled-components";
-import {
-  IconBookOpen,
-  IconChevronRight,
-  IconExternalLink,
-  IconGlobe,
-  IconMessageCircle,
-} from "@/components/sbmb/shared/SbmbIcons";
+import { IconChevronRight } from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionAnchor } from "@/components/sbmb/shared/SectionCard";
 import { COMMUNITY_LINKTREE } from "@/lib/community-linktree";
 import {
@@ -66,6 +60,13 @@ const IconWrap = styled.span<{ $bg: string }>`
   background: ${(p) => p.$bg};
 `;
 
+const LogoImg = styled.img<{ $rounded?: boolean }>`
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: ${(p) => (p.$rounded ? "6px" : "0")};
+`;
+
 const TextBlock = styled.span`
   display: flex;
   flex-direction: column;
@@ -103,29 +104,43 @@ const LINKS: LinkDef[] = [
     title: "SBMB 소개서",
     sub: "gitbook 바로가기",
     href: SBMB_INTRO_GITBOOK_URL,
-    bg: T.mintLight,
-    icon: <IconBookOpen size={18} color={T.mintDark} />,
+    bg: T.white,
+    icon: (
+      <LogoImg
+        src="https://www.google.com/s2/favicons?domain=gitbook.com&sz=64"
+        alt="GitBook"
+        loading="lazy"
+        decoding="async"
+      />
+    ),
   },
   {
     title: "SBMB Linktree",
     sub: "linktr.ee/stablebmb",
     href: SBMB_LINKTREE_HREF,
-    bg: T.convertBg,
-    icon: <IconExternalLink size={18} color={T.convertBorder} />,
+    bg: T.white,
+    icon: (
+      <LogoImg
+        src="https://www.google.com/s2/favicons?domain=linktr.ee&sz=64"
+        alt="Linktree"
+        loading="lazy"
+        decoding="async"
+      />
+    ),
   },
   {
     title: "1:1 문의",
     sub: "카카오톡",
     href: SBMB_KAKAO_INQUIRY_URL,
-    bg: "#FEF3C7",
-    icon: <IconMessageCircle size={18} color="#D97706" />,
+    bg: "transparent",
+    icon: <LogoImg src="/logo/Logo_Kakao.png" alt="카카오톡" $rounded />,
   },
   {
     title: "stablebmb.com",
     sub: "공식 웹사이트",
     href: SBMB_STABLEBMB_URL,
-    bg: T.mintLight,
-    icon: <IconGlobe size={18} color={T.mintDark} />,
+    bg: "transparent",
+    icon: <LogoImg src="/Logo_SBMB.svg" alt="StableBMB" />,
   },
 ];
 

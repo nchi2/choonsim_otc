@@ -3,7 +3,7 @@
 import styled, { css } from "styled-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-// import { COMMUNITY_SECTION_ANCHOR_ID } from "@/lib/community-linktree";
+import { ECOSYSTEM_SECTION_ANCHOR_ID } from "@/lib/ecosystem-links";
 
 const HeaderContainer = styled.header<{
   $hasBackground: boolean;
@@ -150,13 +150,13 @@ export default function Header() {
           >
             SBMB
           </SbmbNavLink>
-          {/* <NavLink
-            href={`/#${COMMUNITY_SECTION_ANCHOR_ID}`}
+          <NavLink
+            href={`/#${ECOSYSTEM_SECTION_ANCHOR_ID}`}
             $isWhite={isWhiteText}
             scroll
           >
             커뮤니티
-          </NavLink> */}
+          </NavLink>
         </Nav>
       </HeaderContent>
     </HeaderContainer>

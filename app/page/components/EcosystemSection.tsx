@@ -13,10 +13,13 @@ import {
   type EcosystemLink,
 } from "@/lib/ecosystem-links";
 import { YOUTUBE_CHANNELS } from "@/lib/youtube/channels";
+import { COMMUNITY_ECOSYSTEM_LINKTREE } from "@/lib/community-linktree";
 import * as S from "../styles";
 
-const DESKTOP_LIMIT = 6;
-const MOBILE_LIMIT = 4;
+const ECOSYSTEM_URL = COMMUNITY_ECOSYSTEM_LINKTREE.href;
+
+const DESKTOP_LIMIT = 4;
+const MOBILE_LIMIT = 3;
 
 /** 브랜드 로고가 직접 매핑되지 않은(=파비콘 폴백) 외부 링크 — 페이지 메타데이터에서 아이콘 수집 대상 */
 const META_ICON_HREFS: string[] = Array.from(
@@ -123,6 +126,7 @@ const GROUP_ICON: Record<string, ReactNode> = {
 
 /** favicon 종류면 메타데이터 아이콘 우선, 없으면 구글 파비콘으로 폴백한 src 반환 */
 function logoSrcFor(link: EcosystemLink, metaIcons: MetaIconMap): string | null {
+  if (link.iconSrc) return link.iconSrc;
   if (link.internal) return null;
   const logo = platformLogo(link.href);
   if (logo.kind === "brand") return logo.src;
@@ -327,8 +331,19 @@ export default function EcosystemSection() {
   return (
     <AnchorWrap id={ECOSYSTEM_SECTION_ANCHOR_ID}>
       <S.Section>
-        <S.SectionTitle>BTCMobick 생태계</S.SectionTitle>
-        <Subtitle>조회 · 거래 · 커뮤니티 · 콘텐츠를 한곳에서</Subtitle>
+        <S.ContentSectionHeader>
+          <HeaderText>
+            <S.ContentSectionTitle>BTCMobick 생태계</S.ContentSectionTitle>
+            <Subtitle>조회 · 거래 · 커뮤니티 · 콘텐츠를 한곳에서</Subtitle>
+          </HeaderText>
+          <S.ContentLinkButton
+            href={ECOSYSTEM_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            생태계 링크 보기 →
+          </S.ContentLinkButton>
+        </S.ContentSectionHeader>
         <Groups>
           {ECOSYSTEM_GROUPS.map((group) => (
             <GroupBlock key={group.id} group={group} metaIcons={metaIcons} />
@@ -352,11 +367,17 @@ const AnchorWrap = styled.div`
   justify-content: center;
 `;
 
+const HeaderText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+`;
+
 const Subtitle = styled.p`
   font-size: 0.875rem;
   color: #6b7280;
-  text-align: center;
-  margin: -1.25rem 0 2rem;
+  margin: 0;
   line-height: 1.6;
 
   @media (min-width: 768px) {

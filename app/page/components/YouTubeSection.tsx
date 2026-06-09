@@ -15,11 +15,9 @@ import {
   curatedThumbnailUrl,
   curatedWatchUrl,
 } from "@/lib/youtube/curated-videos";
-import { COMMUNITY_ECOSYSTEM_LINKTREE } from "@/lib/community-linktree";
 import { ECOSYSTEM_YOUTUBE_ANCHOR_ID } from "@/lib/ecosystem-links";
 import * as S from "../styles";
 
-const ECOSYSTEM_URL = COMMUNITY_ECOSYSTEM_LINKTREE.href;
 const PAGE_SIZE = 6;
 
 type TabId = "all" | CuratedCategoryId;
@@ -289,13 +287,6 @@ export default function YouTubeSection() {
     <S.Section id={ECOSYSTEM_YOUTUBE_ANCHOR_ID} style={{ scrollMarginTop: "5.5rem" }}>
       <S.ContentSectionHeader>
         <S.ContentSectionTitle>생태계 최신 YouTube</S.ContentSectionTitle>
-        <S.ContentLinkButton
-          href={ECOSYSTEM_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          생태계 링크 보기 →
-        </S.ContentLinkButton>
       </S.ContentSectionHeader>
 
       <S.TabStrip role="tablist" aria-label="유튜브 카테고리">
