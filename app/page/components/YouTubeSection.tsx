@@ -19,6 +19,23 @@ import { ECOSYSTEM_YOUTUBE_ANCHOR_ID } from "@/lib/ecosystem-links";
 import * as S from "../styles";
 
 const PAGE_SIZE = 6;
+const MOBILE_PAGE_SIZE = 4;
+
+/**
+ * 좁은 폭(모바일) 여부 — SSR 기본은 데스크탑(false)이라 하이드레이션 불일치 없음.
+ * 마운트 후 matchMedia 결과로 갱신된다.
+ */
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return mobile;
+}
 
 type TabId = "all" | CuratedCategoryId;
 const TAB_ALL: { id: "all"; label: string } = { id: "all", label: "전체보기" };
@@ -171,6 +188,8 @@ export default function YouTubeSection() {
   const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
   const [activeTab, setActiveTab] = useState<TabId>("all");
+  const isMobile = useIsMobile();
+  const pageSize = isMobile ? MOBILE_PAGE_SIZE : PAGE_SIZE;
 
   useEffect(() => {
     let cancelled = false;
@@ -215,7 +234,6 @@ export default function YouTubeSection() {
         }
         if (!cancelled) {
           setData(json);
-          setVisibleCount(PAGE_SIZE);
           setError(null);
         }
       } catch (err) {
@@ -267,13 +285,13 @@ export default function YouTubeSection() {
     : visibleCurated.length;
   const canLoadMore = visibleForActive < totalForActive;
 
-  /** 탭을 바꾸면 처음 6개부터 다시 보이도록 리셋. */
+  /** 데이터 로드·탭 변경·화면폭(모바일/데스크탑) 변화 시 처음 분량부터 다시 노출. */
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeTab]);
+    setVisibleCount(pageSize);
+  }, [activeTab, pageSize, data]);
 
   const handleLoadMore = () => {
-    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, totalForActive));
+    setVisibleCount((prev) => Math.min(prev + pageSize, totalForActive));
   };
 
   const truncateTitle = (title: string, maxLength = 30) => {
