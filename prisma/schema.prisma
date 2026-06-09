@@ -3,12 +3,12 @@
 // 확장 가능한 골격으로 설계. 자세한 내용은 README / .env.example 참고.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum OrderKind {

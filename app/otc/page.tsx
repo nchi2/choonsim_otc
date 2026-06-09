@@ -399,23 +399,31 @@ function OTCContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Apply modal — open state is driven by URL searchParam so deep links work.
-  const isApplyOpen =
-    !APPLY_COMING_SOON &&
-    searchParams.get(APPLY_QUERY_KEY) === APPLY_QUERY_VALUE;
+  // Apply modal — 로컬 state로 즉시 열고, URL(?apply=1)은 딥링크·공유용으로 동기화.
+  const urlApplyOpen = searchParams.get(APPLY_QUERY_KEY) === APPLY_QUERY_VALUE;
+  const [applyOpen, setApplyOpen] = useState(urlApplyOpen);
   const pushedByOpenRef = useRef(false);
   const [applyComingSoonShown, setApplyComingSoonShown] = useState(false);
 
+  // URL 변경(뒤로가기·직접 방문) 시 state 동기화
+  useEffect(() => {
+    setApplyOpen(urlApplyOpen);
+  }, [urlApplyOpen]);
+
+  const isApplyOpen = !APPLY_COMING_SOON && applyOpen;
+
   const openApplyModal = useCallback(() => {
-    if (isApplyOpen) return;
+    if (applyOpen) return;
+    setApplyOpen(true);
     const params = new URLSearchParams(searchParams.toString());
     params.set(APPLY_QUERY_KEY, APPLY_QUERY_VALUE);
     pushedByOpenRef.current = true;
     router.push(`/otc?${params.toString()}`, { scroll: false });
-  }, [isApplyOpen, router, searchParams]);
+  }, [applyOpen, router, searchParams]);
 
   const closeApplyModal = useCallback(() => {
-    if (!isApplyOpen) return;
+    if (!applyOpen) return;
+    setApplyOpen(false);
     if (pushedByOpenRef.current) {
       pushedByOpenRef.current = false;
       router.back();
@@ -425,7 +433,7 @@ function OTCContent() {
     params.delete(APPLY_QUERY_KEY);
     const qs = params.toString();
     router.replace(qs ? `/otc?${qs}` : "/otc", { scroll: false });
-  }, [isApplyOpen, router, searchParams]);
+  }, [applyOpen, router, searchParams]);
 
   const handleApplyClick = useCallback(() => {
     if (APPLY_COMING_SOON) {

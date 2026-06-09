@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/app/generated/prisma/client";
 import { isAdminRequest } from "@/lib/admin-guard";
 
 export const runtime = "nodejs";

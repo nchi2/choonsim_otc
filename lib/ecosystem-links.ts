@@ -154,17 +154,18 @@ export const ECOSYSTEM_GROUPS: EcosystemGroup[] = [
     title: "거래",
     links: [
       {
-        label: "LBANK",
-        href: "https://www.lbank.com/trade/bmb_usdt",
-        desc: "BMB/USDT 페어 제공",
-      },
-      {
         label: "춘심 OTC",
         href: "/otc",
         desc: "10모의 기적 참여 지원",
         ours: true,
         internal: true,
         iconSrc: "/choonsim_character.png",
+      },
+
+      {
+        label: "LBANK",
+        href: "https://www.lbank.com/trade/bmb_usdt",
+        desc: "BMB/USDT 페어 제공",
       },
       { label: "모빅매니아", href: "https://mobickmania.com/", desc: "P2P" },
       {

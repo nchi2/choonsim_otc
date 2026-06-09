@@ -6,7 +6,7 @@ import {
   AssetType,
   AssetSymbol,
   OrderStatus,
-} from "@prisma/client";
+} from "@/app/generated/prisma/client";
 
 export const runtime = "nodejs";
 

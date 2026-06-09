@@ -10,6 +10,7 @@ import LinksSection from "@/components/sbmb/sections/LinksSection";
 import NoticeSection from "@/components/sbmb/sections/NoticeSection";
 import RoadmapSection from "@/components/sbmb/sections/RoadmapSection";
 import WalletGuideSection from "@/components/sbmb/sections/WalletGuideSection";
+import SbmbNoticeModal from "@/components/sbmb/SbmbNoticeModal";
 import { T } from "@/lib/sbmb/tokens";
 
 const Shell = styled.div`
@@ -37,6 +38,7 @@ const Lower = styled.div`
 export default function SbmbPage() {
   return (
     <Shell>
+      <SbmbNoticeModal />
       <Header />
       <HeroLookupSection />
       <Stretch />
