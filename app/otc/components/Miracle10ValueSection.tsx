@@ -196,11 +196,18 @@ const IconClock = (p: IconProps) => (
   </Icon>
 );
 
-const SKIP_TONE: Record<SkipTone, { label: string; dot: string; box: string }> =
-  {
-    red: { label: C.redLabel, dot: C.redDot, box: C.redBox },
-    green: { label: C.greenLabel, dot: C.greenDot, box: C.greenBox },
-  };
+const SKIP_TONE: Record<
+  SkipTone,
+  { label: string; dot: string; box: string; border: string }
+> = {
+  red: { label: C.redLabel, dot: C.redDot, box: C.redBox, border: C.redDot },
+  green: {
+    label: C.greenLabel,
+    dot: C.greenDot,
+    box: C.greenBox,
+    border: C.greenDot,
+  },
+};
 
 /* ────────────────────────────────────────────────────────────
  * Props
@@ -223,40 +230,45 @@ export default function Miracle10ValueSection({
 }: Miracle10ValueSectionProps) {
   return (
     <Card className={className}>
-      {/* 1. Hero */}
-      <Hero>
-        <HeroSub>복잡한 과정 없이</HeroSub>
-        <HeadlineRow>
-          <HeadStrong>5단계만</HeadStrong>
-          <HeadNormal>하면 돼요</HeadNormal>
-        </HeadlineRow>
-      </Hero>
+      {/* 헤더(고정): 히어로 + 대비 스트립 */}
+      <HeaderBlock>
+        {/* 1. Hero */}
+        <Hero>
+          <HeroSub>복잡한 과정 없이</HeroSub>
+          <HeadlineRow>
+            <HeadStrong>5단계만</HeadStrong>
+            <HeadNormal>하면 돼요</HeadNormal>
+          </HeadlineRow>
+        </Hero>
 
-      {/* 2. Contrast Strip */}
-      <Strip>
-        <StripCol $w={119}>
-          <GrayPill>
-            <IconUser size={12} color={C.grayText} />
-            <PillTextGray>혼자 하면</PillTextGray>
-          </GrayPill>
-          <NumGray>13단계</NumGray>
-        </StripCol>
+        {/* 2. Contrast Strip */}
+        <Strip>
+          <StripCol $w={119}>
+            <GrayPill>
+              <IconUser size={12} color={C.grayText} />
+              <PillTextGray>혼자 하면</PillTextGray>
+            </GrayPill>
+            <NumGray>13단계</NumGray>
+          </StripCol>
 
-        <IconArrowRight width={24} height={18} color={C.arrow} />
+          <IconArrowRight width={24} height={18} color={C.arrow} />
 
-        <StripCol $w={133}>
-          <PurplePill>
-            <IconSparkles size={12} color={C.white} />
-            <PillTextWhite>춘심 올인원</PillTextWhite>
-          </PurplePill>
-          <NumBrand>5단계</NumBrand>
-        </StripCol>
-      </Strip>
+          <StripCol $w={133}>
+            <PurplePill>
+              <IconSparkles size={12} color={C.white} />
+              <PillTextWhite>춘심 올인원</PillTextWhite>
+            </PurplePill>
+            <NumBrand>5단계</NumBrand>
+          </StripCol>
+        </Strip>
+      </HeaderBlock>
 
-      <Divider />
+      {/* 본문(스크롤 영역) */}
+      <ScrollArea>
+        <Divider />
 
-      {/* 3. Skip Section */}
-      <SkipSection>
+        {/* 3. Skip Section */}
+        <SkipSection>
         <SectionHeader>
           <IconCircleSlash size={14} color={C.brand} />
           <SectionTitle>현장에서 같이 진행해요</SectionTitle>
@@ -270,7 +282,7 @@ export default function Miracle10ValueSection({
                 <SkipDot $color={tone.dot} aria-hidden />
                 <SkipLabel $color={tone.label}>{g.label}</SkipLabel>
               </LabelRow>
-              <SkipBox $bg={tone.box}>
+              <SkipBox $bg={tone.box} $border={tone.border}>
                 {g.items.map((item) => (
                   <SkipItem key={item}>
                     <SkipItemIcon aria-hidden>
@@ -313,9 +325,10 @@ export default function Miracle10ValueSection({
         <StepFootnote>
           참여 이후 사용법 학습은 반드시 권장드립니다.
         </StepFootnote>
-      </StepsSection>
+        </StepsSection>
+      </ScrollArea>
 
-      {/* 5. Footer — 스크롤과 무관하게 하단 고정 */}
+      {/* 푸터(고정) — 스크롤과 무관하게 하단 고정 */}
       <Footer>
         {startHref ? (
           <Cta as="a" href={startHref}>
@@ -349,8 +362,8 @@ export default function Miracle10ValueSection({
  * ──────────────────────────────────────────────────────────── */
 const Card = styled.div`
   width: 100%;
-  max-width: 460px;
-  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: ${C.white};
@@ -359,15 +372,31 @@ const Card = styled.div`
   -webkit-font-smoothing: antialiased;
 `;
 
+/* 헤더(고정) — 히어로 + 대비 스트립 */
+const HeaderBlock = styled.div`
+  flex-shrink: 0;
+`;
+
+/* 본문(스크롤 영역) */
+const ScrollArea = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
 /* 1. Hero */
 const Hero = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 28px 24px 20px;
-  border-radius: 16px 16px 0 0;
+  gap: 10px;
+  padding: 28px 20px 24px;
   background: ${C.heroBg};
+
+  @media (min-width: 768px) {
+    padding: 28px 32px 24px;
+  }
 `;
 
 const HeroSub = styled.p`
@@ -401,9 +430,15 @@ const HeadNormal = styled.span`
 const Strip = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 24px 22px;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 20px 28px;
   background: ${C.heroBg};
+
+  @media (min-width: 768px) {
+    gap: 24px;
+    padding: 8px 32px 28px;
+  }
 `;
 
 const StripCol = styled.div<{ $w: number }>`
@@ -483,14 +518,18 @@ const SectionTitle = styled.span`
 const SkipSection = styled.section`
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px 20px 16px;
+  gap: 16px;
+  padding: 22px 20px;
+
+  @media (min-width: 768px) {
+    padding: 22px 32px;
+  }
 `;
 
 const SkipGroupRow = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 `;
 
 const LabelRow = styled.div`
@@ -508,18 +547,19 @@ const SkipDot = styled.span<{ $color: string }>`
 `;
 
 const SkipLabel = styled.span<{ $color: string }>`
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: ${(p) => p.$color};
 `;
 
-const SkipBox = styled.div<{ $bg: string }>`
+const SkipBox = styled.div<{ $bg: string; $border: string }>`
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  gap: 7px;
+  padding: 12px 14px;
+  border-radius: 10px;
   background: ${(p) => p.$bg};
+  border: 1px solid ${(p) => p.$border};
 `;
 
 const SkipItem = styled.div`
@@ -536,9 +576,9 @@ const SkipItemIcon = styled.span`
 `;
 
 const SkipItemText = styled.span`
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.45;
+  line-height: 1.5;
   color: ${C.itemText};
 `;
 
@@ -546,8 +586,12 @@ const SkipItemText = styled.span`
 const StepsSection = styled.section`
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px 20px 20px;
+  gap: 14px;
+  padding: 22px 20px;
+
+  @media (min-width: 768px) {
+    padding: 22px 32px;
+  }
 `;
 
 const StepsHeader = styled.div`
@@ -579,8 +623,8 @@ const StepList = styled.ol`
 const StepRow = styled.li`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 0;
+  gap: 14px;
+  padding: 12px 0;
 
   &:not(:last-child) {
     border-bottom: 1px solid ${C.divider};
@@ -589,20 +633,20 @@ const StepRow = styled.li`
 
 const StepNum = styled.span<{ $active: boolean }>`
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 11px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   background: ${(p) => (p.$active ? C.numBgActive : C.numBgIdle)};
   color: ${(p) => (p.$active ? C.white : C.numTextIdle)};
 `;
 
 const StepText = styled.span`
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: ${C.ink};
 `;
@@ -617,10 +661,17 @@ const StepFootnote = styled.p`
 
 /* 5. Footer */
 const Footer = styled.div`
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 24px 32px;
+  gap: 14px;
+  padding: 16px 20px max(20px, env(safe-area-inset-bottom));
+  background: ${C.white};
+  border-top: 1px solid ${C.divider};
+
+  @media (min-width: 768px) {
+    padding: 16px 32px max(24px, env(safe-area-inset-bottom));
+  }
 `;
 
 const Cta = styled.button`

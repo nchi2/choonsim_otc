@@ -1,7 +1,8 @@
 /**
  * Admin 세션 — SESSION_SECRET(HMAC-SHA256)로 서명한 경량 쿠키.
  * Web Crypto(globalThis.crypto.subtle)만 사용해 Edge 미들웨어와 Node 라우트 양쪽에서 동작.
- * 토큰 형식: base64url(payload).base64url(hmac)  payload = { sub:"admin", exp:<unix초> }
+ * 토큰 형식: base64url(payload).base64url(hmac)
+ * payload = { sub:"admin", uid:<adminUserId>, username, displayName, exp:<unix초> }
  */
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
@@ -28,7 +29,6 @@ function bytesFromB64url(s: string): Uint8Array {
   return out;
 }
 
-// Web Crypto의 BufferSource는 ArrayBuffer 기반을 요구 — 항상 새 ArrayBuffer로 복사해 타입/런타임 안전 확보.
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const ab = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(ab).set(bytes);
@@ -45,16 +45,30 @@ async function getKey(secret: string): Promise<CryptoKey> {
   );
 }
 
-interface SessionPayload {
-  sub: string;
+export interface AdminSessionPayload {
+  sub: "admin";
+  uid: number;
+  username: string;
+  displayName: string;
   exp: number;
 }
 
-export async function createSessionToken(): Promise<string> {
+export interface AdminSessionUser {
+  adminUserId: number;
+  username: string;
+  displayName: string;
+}
+
+export async function createSessionToken(
+  user: AdminSessionUser,
+): Promise<string> {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error("SESSION_SECRET is not set");
-  const payload: SessionPayload = {
+  const payload: AdminSessionPayload = {
     sub: "admin",
+    uid: user.adminUserId,
+    username: user.username,
+    displayName: user.displayName,
     exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SEC,
   };
   const payloadB64 = b64urlFromString(JSON.stringify(payload));
@@ -65,14 +79,14 @@ export async function createSessionToken(): Promise<string> {
   return `${payloadB64}.${b64urlFromBytes(sig)}`;
 }
 
-export async function verifySessionToken(
+export async function parseSessionToken(
   token: string | undefined | null,
-): Promise<boolean> {
-  if (!token) return false;
+): Promise<AdminSessionPayload | null> {
+  if (!token) return null;
   const secret = process.env.SESSION_SECRET;
-  if (!secret) return false;
+  if (!secret) return null;
   const parts = token.split(".");
-  if (parts.length !== 2) return false;
+  if (parts.length !== 2) return null;
   const [payloadB64, sigB64] = parts;
   try {
     const key = await getKey(secret);
@@ -82,14 +96,42 @@ export async function verifySessionToken(
       toArrayBuffer(bytesFromB64url(sigB64)),
       toArrayBuffer(enc.encode(payloadB64)),
     );
-    if (!ok) return false;
+    if (!ok) return null;
     const payload = JSON.parse(
       dec.decode(bytesFromB64url(payloadB64)),
-    ) as SessionPayload;
-    if (typeof payload?.exp !== "number") return false;
-    if (payload.exp < Math.floor(Date.now() / 1000)) return false;
-    return payload.sub === "admin";
+    ) as AdminSessionPayload;
+    if (payload?.sub !== "admin") return null;
+    if (typeof payload.exp !== "number") return null;
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** @deprecated parseSessionToken 사용 권장 */
+export async function verifySessionToken(
+  token: string | undefined | null,
+): Promise<boolean> {
+  const payload = await parseSessionToken(token);
+  return payload !== null;
+}
+
+export async function getSessionUser(
+  token: string | undefined | null,
+): Promise<AdminSessionUser | null> {
+  const payload = await parseSessionToken(token);
+  if (!payload) return null;
+  if (
+    typeof payload.uid !== "number" ||
+    typeof payload.username !== "string" ||
+    typeof payload.displayName !== "string"
+  ) {
+    return null;
+  }
+  return {
+    adminUserId: payload.uid,
+    username: payload.username,
+    displayName: payload.displayName,
+  };
 }

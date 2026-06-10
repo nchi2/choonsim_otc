@@ -14,6 +14,10 @@ export const NAVER_MAP_URL =
 export const KAKAO_MAP_URL =
   "https://map.kakao.com/?q=" + encodeURIComponent("서울 서초구 사임당로 149-5");
 
+// 구글맵 임베드(접수 완료 화면). output=embed로 iframe 직접 삽입.
+export const OFFICE_MAP_IFRAME_URL =
+  "https://maps.google.com/maps?q=37.4921191,127.0246296&z=17&output=embed";
+
 // 모 단위를 WBMB로 환산하는 비율(현재 1:1).
 export const MO_TO_WBMB = 1;
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
 import {
   ADMIN_SESSION_COOKIE,
   SESSION_MAX_AGE_SEC,
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const username = typeof body.username === "string" ? body.username : "";
+  const username = typeof body.username === "string" ? body.username.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
 
   if (!username || !password) {
@@ -29,34 +31,66 @@ export async function POST(request: Request) {
     );
   }
 
-  const adminUsername = process.env.ADMIN_USERNAME;
-  const adminPassword = process.env.ADMIN_PASSWORD;
   const secret = process.env.SESSION_SECRET;
-
-  if (!adminUsername || !adminPassword || !secret) {
-    console.error("[admin/login] ADMIN_USERNAME/ADMIN_PASSWORD/SESSION_SECRET not set");
+  if (!secret) {
+    console.error("[admin/login] SESSION_SECRET not set");
     return NextResponse.json(
       { error: "서버 설정 오류가 발생했습니다." },
       { status: 500 },
     );
   }
 
-  if (username !== adminUsername || password !== adminPassword) {
+  try {
+    const user = await prisma.adminUser.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        username: true,
+        passwordHash: true,
+        displayName: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "사용자명 또는 비밀번호가 올바르지 않습니다." },
+        { status: 401 },
+      );
+    }
+
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "사용자명 또는 비밀번호가 올바르지 않습니다." },
+        { status: 401 },
+      );
+    }
+
+    const token = await createSessionToken({
+      adminUserId: user.id,
+      username: user.username,
+      displayName: user.displayName,
+    });
+
+    const cookieStore = await cookies();
+    cookieStore.set(ADMIN_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: SESSION_MAX_AGE_SEC,
+      path: "/",
+    });
+
+    return NextResponse.json({
+      success: true,
+      displayName: user.displayName,
+    });
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? "unknown";
+    console.error("[admin/login] failed", code);
     return NextResponse.json(
-      { error: "사용자명 또는 비밀번호가 올바르지 않습니다." },
-      { status: 401 },
+      { error: "로그인 처리 중 오류가 발생했습니다." },
+      { status: 500 },
     );
   }
-
-  const token = await createSessionToken();
-  const cookieStore = await cookies();
-  cookieStore.set(ADMIN_SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_MAX_AGE_SEC,
-    path: "/",
-  });
-
-  return NextResponse.json({ success: true }, { status: 200 });
 }

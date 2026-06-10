@@ -133,8 +133,8 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // 로그인 성공 시 어드민 페이지로 리다이렉트
-      router.push("/admin/miracle10");
+      // 로그인 성공 시 대시보드 허브로 이동
+      router.push("/admin");
       router.refresh();
     } catch (err) {
       console.error("Login error:", err);

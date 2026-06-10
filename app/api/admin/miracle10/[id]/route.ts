@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/app/generated/prisma/client";
-import { isAdminRequest } from "@/lib/admin-guard";
+import {
+  editorFieldsFromSession,
+  getAdminUser,
+} from "@/lib/admin-guard";
 
 export const runtime = "nodejs";
 
@@ -17,7 +20,7 @@ export async function GET(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminRequest())) {
+  if (!(await getAdminUser())) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -50,7 +53,8 @@ export async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminRequest())) {
+  const admin = await getAdminUser();
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -74,7 +78,10 @@ export async function PATCH(
   try {
     const order = await prisma.otcOrder.update({
       where: { id },
-      data: { status: status as OrderStatus },
+      data: {
+        status: status as OrderStatus,
+        ...editorFieldsFromSession(admin),
+      },
       select: { id: true, status: true, customerId: true },
     });
 

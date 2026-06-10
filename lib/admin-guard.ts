@@ -1,13 +1,36 @@
 import { cookies } from "next/headers";
-import { ADMIN_SESSION_COOKIE, verifySessionToken } from "@/lib/admin-session";
+import {
+  ADMIN_SESSION_COOKIE,
+  getSessionUser,
+  type AdminSessionUser,
+} from "@/lib/admin-session";
 
 /**
  * 미들웨어 보호와 별개로, admin API 라우트 핸들러가 서버단에서 직접 세션을 재검증한다(심층 방어).
  */
 export async function isAdminRequest(): Promise<boolean> {
+  const user = await getAdminUser();
+  return user !== null;
+}
+
+/** 현재 로그인한 운영자 정보. 미인증 시 null. */
+export async function getAdminUser(): Promise<AdminSessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
-  return verifySessionToken(token);
+  return getSessionUser(token);
+}
+
+/** OtcOrder 수정 시 lastEdited* 필드에 넣을 데이터 — 반드시 서버 세션에서만 생성. */
+export function editorFieldsFromSession(user: AdminSessionUser): {
+  lastEditedBy: string;
+  lastEditedByName: string;
+  lastEditedAt: Date;
+} {
+  return {
+    lastEditedBy: user.username,
+    lastEditedByName: user.displayName,
+    lastEditedAt: new Date(),
+  };
 }
 
 /** 연락처 마스킹 — 목록 화면 등 식별 최소화용. */

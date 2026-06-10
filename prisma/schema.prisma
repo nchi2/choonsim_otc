@@ -47,6 +47,17 @@ enum OrderStatus {
   CANCELED
 }
 
+// 어드민 콘솔 운영자 계정. 비밀번호는 bcrypt 해시로만 저장(평문 금지).
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  role         String   @default("operator")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Customer {
   id        Int      @id @default(autoincrement())
   name      String
@@ -100,6 +111,11 @@ model OtcOrder {
   agreePrivacy Boolean @default(false)
   agreeRisk    Boolean @default(false)
   agreeP2p     Boolean @default(false)
+
+  // 최종 수정자 추적 — 어드민이 상태/내용 변경 시 서버 세션 기준으로 기록.
+  lastEditedBy     String? // 수정한 운영자 username(adminUserId)
+  lastEditedByName String? // 표시용 이름 스냅샷
+  lastEditedAt     DateTime?
 
   customerId Int
   customer   Customer @relation(fields: [customerId], references: [id])

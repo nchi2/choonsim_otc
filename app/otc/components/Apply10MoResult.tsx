@@ -8,6 +8,7 @@ import {
   MO_TO_WBMB,
   NAVER_MAP_URL,
   OFFICE_ADDRESS,
+  OFFICE_MAP_IFRAME_URL,
   formatVisitDateLong,
 } from "./apply10mo.constants";
 
@@ -127,13 +128,6 @@ const IconMail = ({ size, stroke }: { size: number; stroke: string }) => (
     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </Svg>
 );
-const IconInfo = ({ size, stroke }: { size: number; stroke: string }) => (
-  <Svg size={size} stroke={stroke}>
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 16v-4" />
-    <path d="M12 8h.01" />
-  </Svg>
-);
 const IconArrowLeft = ({ size, stroke }: { size: number; stroke: string }) => (
   <Svg size={size} stroke={stroke}>
     <path d="m12 19-7-7 7-7" />
@@ -149,13 +143,14 @@ export interface Apply10MoResultData {
 
 interface Apply10MoResultProps {
   submitted: Apply10MoResultData;
-  onShowValue: () => void;
+  /** 표시용 신청번호("M10-2026-0042"). 없으면 번호 pill 숨김. */
+  applicationNo?: string | null;
   onRestart: () => void;
 }
 
 export default function Apply10MoResult({
   submitted,
-  onShowValue,
+  applicationNo,
   onRestart,
 }: Apply10MoResultProps) {
   const [copied, setCopied] = useState(false);
@@ -194,6 +189,9 @@ export default function Apply10MoResult({
         </IconRing>
         <HeaderText>
           <SuccessTitle>신청이 접수되었습니다</SuccessTitle>
+          {applicationNo ? (
+            <AppNoPill>#{applicationNo}</AppNoPill>
+          ) : null}
           <SuccessSub>곧 연락드려 방문 일정을 확정해 드릴게요.</SuccessSub>
         </HeaderText>
       </Header>
@@ -266,6 +264,14 @@ export default function Apply10MoResult({
               <span>{copied ? "복사됨" : "주소 복사"}</span>
             </CopyRow>
           </AddressCard>
+          <MapEmbed>
+            <iframe
+              src={OFFICE_MAP_IFRAME_URL}
+              title="방문 위치 지도"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </MapEmbed>
           <MapRow>
             <MapButton
               href={NAVER_MAP_URL}
@@ -296,10 +302,6 @@ export default function Apply10MoResult({
             <IconMail size={14} stroke={C.brand} />
             <span>이메일 문의</span>
           </AuxLink>
-          <AuxButton type="button" onClick={onShowValue}>
-            <IconInfo size={14} stroke={C.brand} />
-            <span>10모의 기적이란?</span>
-          </AuxButton>
         </AuxRow>
         <HomeButton type="button" onClick={onRestart}>
           <IconArrowLeft size={15} stroke={C.homeIcon} />
@@ -313,12 +315,12 @@ export default function Apply10MoResult({
 /* ───────────── styled ───────────── */
 
 const Card = styled.div`
+  /* 모달(Apply10MoModal)의 flush Body를 채우는 flex 컬럼.
+     헤더(고정) / 본문(스크롤) / 푸터(고정) 3단 구조. */
   width: 100%;
-  max-width: 460px;
-  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
   background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 12px 48px 0 rgba(26, 26, 46, 0.1);
   display: flex;
   flex-direction: column;
   font-family: ${FONT};
@@ -326,14 +328,18 @@ const Card = styled.div`
 `;
 
 const Header = styled.div`
+  flex-shrink: 0;
   background: ${C.successBg};
-  border-radius: 20px 20px 0 0;
   padding: 40px 24px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
+
+  @media (min-width: 768px) {
+    padding: 40px 32px 32px;
+  }
 `;
 
 const IconRing = styled.div`
@@ -363,6 +369,19 @@ const SuccessTitle = styled.h2`
   line-height: 1.4;
 `;
 
+const AppNoPill = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  color: ${C.successTitle};
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+`;
+
 const SuccessSub = styled.p`
   margin: 0;
   font-size: 14px;
@@ -373,10 +392,18 @@ const SuccessSub = styled.p`
 `;
 
 const Body = styled.div`
-  padding: 24px 24px 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 24px 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+
+  @media (min-width: 768px) {
+    padding: 24px 32px 16px;
+  }
 `;
 
 const Section = styled.div`
@@ -528,6 +555,21 @@ const CopyRow = styled.button`
   }
 `;
 
+const MapEmbed = styled.div`
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid ${C.addrBorder};
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+`;
+
 const MapRow = styled.div`
   display: flex;
   width: 100%;
@@ -559,10 +601,17 @@ const MapButton = styled.a<{ $variant: "naver" | "kakao" }>`
 `;
 
 const Footer = styled.div`
-  padding: 16px 24px 28px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-top: 1px solid #f0eff8;
+  padding: 16px 24px max(28px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 10px;
+
+  @media (min-width: 768px) {
+    padding: 16px 32px max(28px, env(safe-area-inset-bottom));
+  }
 `;
 
 const AuxRow = styled.div`
@@ -573,8 +622,9 @@ const AuxRow = styled.div`
   align-items: center;
 `;
 
-const auxStyles = `
-  flex: 1;
+const AuxLink = styled.a`
+  flex: 0 1 auto;
+  min-width: 200px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -594,14 +644,6 @@ const auxStyles = `
   &:hover {
     background: #faf9ff;
   }
-`;
-
-const AuxLink = styled.a`
-  ${auxStyles}
-`;
-
-const AuxButton = styled.button`
-  ${auxStyles}
 `;
 
 const HomeButton = styled.button`

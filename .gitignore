@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 ai-workflow-otc.md
+# 비공개 프로젝트 구조 문서(나만 봄)
+PROJECT_STRUCTURE.local.md
+*.local.md
 
 # debug
 npm-debug.log*

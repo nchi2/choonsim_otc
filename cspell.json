@@ -6,16 +6,20 @@
     "ACLF",
     // B
     "Basac",
+    "BASESCAN",
     "Binance",
     "BKRS",
     "binance",
     "Bithumb",
     "bithumb",
+    "bmbswap",
+    "BTCMBK",
     "BTCUSDT",
     "BNBUSDT",
     "btcmobick",
     "BTCMobick",
     "btcmobickerjay",
+    "btcmobickers",
     // C
     "Csvg",
     "Cpath",
@@ -31,27 +35,37 @@
 
     // D
     "defi",
+    "DMMF",
+    "dont",
+    "Dont",
     "DOGEUSDT",
     "Dogecoin",
     // E
     "epgm",
     "ETHUSDT",
     // F
+    "facetime",
     "FEAFMU",
+    "focusables",
     "futureman77777",
     // G
     "Gcmr",
     "ggpht",
+    "GITBOOK",
+    "gitbook",
     "googleusercontent",
     // H
+    "HREFS",
     "hoguhogu",
     "Hwallets",
     "hwallets",
     // I
+    "innertube",
     "IPFS",
     // J
     "Jpvk",
     // K
+    "KHTML",
     "Kfzn",
     "Klines",
     "klines",
@@ -60,6 +74,7 @@
     "linktr",
     // L
     "lbank",
+    "lidari",
     "LBANK",
     "LDTSTAKE",
     "linktree",
@@ -83,7 +98,9 @@
     "movn",
     "MOVN",
     "MOVEN",
+    "maxage",
     "MQMKQ",
+    "mults",
     // N
     "Nyekv",
     // O
@@ -92,6 +109,7 @@
     "otaverse",
     "oceanpage",
     // P
+    "Pretendard",
     "PRR",
     "PlanetScale",
     "planetscale",
@@ -106,10 +124,15 @@
     "Solana",
     "SOLUSDT",
     "stablebmb",
+    "sqlcommenter",
+    "sqltag",
     "swgv",
 
     // T
+    "tele",
     "Tfcn",
+    "toolbelt",
+    "truedepth",
     "TRXUSDT",
     // U
     "Uaygj",
@@ -121,6 +144,8 @@
     "Vercel",
     "vivikim2029",
     "Vivi",
+    "VWAP",
+    "vwap",
 
     // W
     "WBMB",
@@ -130,7 +155,8 @@
     "XRPUSDT",
     // Y
     "youtu",
-    "ytimg"
+    "ytimg",
     // Z
+    "zxing"
   ]
 }

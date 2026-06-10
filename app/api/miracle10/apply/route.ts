@@ -10,9 +10,6 @@ import {
 
 export const runtime = "nodejs";
 
-// 같은 연락처로 처리 대기(PENDING) 중인 신청이 이 수를 넘으면 거절(중복/남용 방지).
-const MAX_PENDING_PER_CONTACT = 3;
-
 function bad(error: string, status = 400) {
   return NextResponse.json({ ok: false, error }, { status });
 }
@@ -52,7 +49,8 @@ export async function POST(request: Request) {
   const agreeP2p = body.agreeP2p === true;
 
   if (!name) return bad("이름을 입력해 주세요.");
-  if (!contact) return bad("연락처(카카오톡 ID 또는 전화번호)를 입력해 주세요.");
+  if (!contact)
+    return bad("연락처(카카오톡 ID 또는 전화번호)를 입력해 주세요.");
   if (!Number.isInteger(quantity) || quantity <= 0 || quantity % 10 !== 0) {
     return bad("수량은 10 단위의 양수여야 합니다.");
   }
@@ -82,23 +80,8 @@ export async function POST(request: Request) {
   const memo = asTrimmed(body.memo);
 
   try {
-    const existing = await prisma.customer.findUnique({
-      where: { contact },
-      select: { id: true },
-    });
-
-    if (existing) {
-      const pendingCount = await prisma.otcOrder.count({
-        where: { customerId: existing.id, status: OrderStatus.PENDING },
-      });
-      if (pendingCount >= MAX_PENDING_PER_CONTACT) {
-        return bad(
-          "이미 접수된 신청이 처리 대기 중입니다. 기존 신청 안내를 기다려 주세요.",
-          429,
-        );
-      }
-    }
-
+    // 같은 연락처는 한 Customer로 묶되(upsert), 신청(OtcOrder)은 매번 새 행으로
+    // 생성한다 → 동일인의 반복 신청을 정상 허용. 중복 차단/거부 로직 없음.
     const customer = await prisma.customer.upsert({
       where: { contact },
       update: { name },
@@ -128,16 +111,25 @@ export async function POST(request: Request) {
         agreeP2p,
         customerId: customer.id,
       },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
 
-    return NextResponse.json({ ok: true, id: order.id });
+    // 표시용 신청번호 — 접수 연도 + 레코드 id(불변·고유)로 결정론적으로 구성.
+    // 별도 DB 컬럼 없이 id/createdAt에서 언제든 재구성 가능.
+    const applicationNo = `M10-${order.createdAt.getFullYear()}-${String(
+      order.id,
+    ).padStart(4, "0")}`;
+
+    return NextResponse.json({ ok: true, id: order.id, applicationNo });
   } catch (err) {
     // 개인정보 유출 방지: 입력값/에러 원문은 로깅하지 않고 Prisma 에러 코드만 남긴다.
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[miracle10/apply] failed", code);
     return NextResponse.json(
-      { ok: false, error: "신청 접수에 실패했습니다. 잠시 후 다시 시도해 주세요." },
+      {
+        ok: false,
+        error: "신청 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      },
       { status: 500 },
     );
   }

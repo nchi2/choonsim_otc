@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
+import AdminTopBar from "@/components/admin/AdminTopBar";
 import {
   MIRACLE10_STATUSES,
   STATUS_COLORS,
@@ -15,34 +16,6 @@ const Page = styled.div`
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
-`;
-
-const TopBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-`;
-
-const Title = styled.h1`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #111827;
-  margin: 0;
-`;
-
-const LogoutButton = styled.button`
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  &:hover {
-    background: #f9fafb;
-  }
 `;
 
 const Tabs = styled.div`
@@ -72,7 +45,7 @@ const Table = styled.div`
 
 const HeadRow = styled.div`
   display: grid;
-  grid-template-columns: 64px 1fr 1fr 80px 110px 120px;
+  grid-template-columns: 64px 1fr 1fr 80px 110px 140px 120px;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: #f9fafb;
@@ -86,7 +59,7 @@ const HeadRow = styled.div`
 
 const Row = styled(Link)`
   display: grid;
-  grid-template-columns: 64px 1fr 1fr 80px 110px 120px;
+  grid-template-columns: 64px 1fr 1fr 80px 110px 140px 120px;
   gap: 0.5rem;
   padding: 0.85rem 1rem;
   border-top: 1px solid #f1f5f9;
@@ -133,6 +106,9 @@ interface Item {
   visitType: string | null;
   visitDate: string | null;
   isSbmbMember: boolean;
+  lastEditedBy: string | null;
+  lastEditedByName: string | null;
+  lastEditedAt: string | null;
   nameMasked: string;
   contactMasked: string;
 }
@@ -142,8 +118,22 @@ export default function Miracle10AdminPage() {
   const [filter, setFilter] = useState<"ALL" | Miracle10Status>("ALL");
   const [items, setItems] = useState<Item[]>([]);
   const [total, setTotal] = useState(0);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/auth/me")
+      .then(async (res) => {
+        if (res.status === 401) {
+          router.push("/admin/login");
+          return;
+        }
+        const json = await res.json();
+        if (json.ok) setDisplayName(json.displayName);
+      })
+      .catch(() => {});
+  }, [router]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,18 +162,12 @@ export default function Miracle10AdminPage() {
     load();
   }, [load]);
 
-  const handleLogout = async () => {
-    await fetch("/api/admin/auth/logout", { method: "POST" });
-    router.push("/admin/login");
-    router.refresh();
-  };
-
   return (
     <Page>
-      <TopBar>
-        <Title>10모의 기적 신청 관리</Title>
-        <LogoutButton onClick={handleLogout}>로그아웃</LogoutButton>
-      </TopBar>
+      <AdminTopBar
+        title="10모의 기적 신청 관리"
+        displayName={displayName}
+      />
 
       <Tabs>
         <Tab $active={filter === "ALL"} onClick={() => setFilter("ALL")}>
@@ -211,6 +195,7 @@ export default function Miracle10AdminPage() {
               <Hide>연락처</Hide>
               <span>수량</span>
               <Hide>접수일</Hide>
+              <Hide>최종 수정</Hide>
               <span>상태</span>
             </HeadRow>
             {items.length === 0 ? (
@@ -227,6 +212,11 @@ export default function Miracle10AdminPage() {
                   <span>{it.quantity}모</span>
                   <Hide>
                     {new Date(it.createdAt).toLocaleDateString("ko-KR")}
+                  </Hide>
+                  <Hide style={{ fontSize: 12, color: "#6b7280" }}>
+                    {it.lastEditedByName && it.lastEditedAt
+                      ? `${it.lastEditedByName} · ${new Date(it.lastEditedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+                      : "-"}
                   </Hide>
                   <span>
                     <Badge $color={STATUS_COLORS[it.status]}>

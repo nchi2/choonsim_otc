@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import styled, { keyframes } from "styled-components";
 import { T } from "@/lib/sbmb/tokens";
 
@@ -29,20 +35,48 @@ function isHiddenNow(): boolean {
   }
 }
 
+/* ────────────────────────────────────────────────────────────
+ * "노출 가능 여부"를 외부 스토어(localStorage)에서 읽는다.
+ * useSyncExternalStore 사용 → effect 내 setState 없이 파생 렌더,
+ * 서버 스냅샷은 항상 false(숨김)라 SSR/하이드레이션 불일치도 방지.
+ * ──────────────────────────────────────────────────────────── */
+function subscribeStorage(callback: () => void): () => void {
+  // 다른 탭에서의 변경(storage 이벤트)만 반영하면 충분.
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getCanShowSnapshot(): boolean {
+  return !isHiddenNow();
+}
+
+// SSR/하이드레이션 시점엔 항상 숨김(false) → 마운트 전 렌더 가드.
+function getCanShowServerSnapshot(): boolean {
+  return false;
+}
+
 export default function SbmbNoticeModal() {
-  // SSR/하이드레이션 불일치·깜빡임 방지를 위해 초기값은 false.
-  const [open, setOpen] = useState(false);
+  // localStorage 기반 "노출 가능 여부"는 외부 스토어에서 파생(effect setState 없음).
+  const canShow = useSyncExternalStore(
+    subscribeStorage,
+    getCanShowSnapshot,
+    getCanShowServerSnapshot,
+  );
+  // 이번 세션에서 사용자가 닫았는지(이벤트 핸들러에서만 갱신).
+  const [closedThisSession, setClosedThisSession] = useState(false);
   const [dontShowToday, setDontShowToday] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
 
-  // 마운트 후에만 localStorage 확인 → 표시 여부 결정.
+  // 최종 노출 여부 — 파생값. 서버/마운트 전엔 canShow=false라 null 렌더.
+  const open = canShow && !closedThisSession;
+
+  // 열릴 때 본문 스크롤을 항상 최상단으로 리셋.
   useEffect(() => {
-    if (!isHiddenNow()) {
-      setOpen(true);
-    }
-  }, []);
+    if (open) bodyRef.current?.scrollTo({ top: 0 });
+  }, [open]);
 
   const handleClose = useCallback(() => {
     if (dontShowToday) {
@@ -52,7 +86,7 @@ export default function SbmbNoticeModal() {
         // 시크릿 모드 등 차단 — 이번 세션만 닫힘.
       }
     }
-    setOpen(false);
+    setClosedThisSession(true);
   }, [dontShowToday]);
 
   // body 스크롤 잠금 + 포커스 이동/복원.
@@ -112,7 +146,7 @@ export default function SbmbNoticeModal() {
   }, [open, handleClose]);
 
   const handleApply = useCallback(() => {
-    setOpen(false);
+    setClosedThisSession(true);
     const el = document.getElementById(APPLY_ANCHOR_ID);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -152,53 +186,44 @@ export default function SbmbNoticeModal() {
           </svg>
         </CloseButton>
 
-        <HeaderArea>
-          {/* <IconBadge aria-hidden>
-            <svg
-              width={24}
-              height={24}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={T.white}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          </IconBadge> */}
-          <Title id="sbmb-notice-title">SBMB 추가 접수가 시작되었습니다</Title>
-        </HeaderArea>
+        <ScrollBody ref={bodyRef}>
+          <HeaderArea>
+            <Title id="sbmb-notice-title">
+              SBMB 추가 접수가 시작되었습니다
+            </Title>
+          </HeaderArea>
 
-        <Body>
-          지금 SBMB 신규 참여 신청을 받고 있습니다.
-          <br />
-          신청은 참여 가능 물량 소진 시 마감되며,
-          <br />
-          다시 열릴 때 안내 문자를 보내드립니다.
-          <br />
-          <br />
-          아래 버튼에서 바로 신청하실 수 있습니다.
-        </Body>
+          <Body>
+            지금 SBMB 신규 참여 신청을 받고 있습니다.
+            <br />
+            신청은 참여 가능 물량 소진 시 마감되며,
+            <br />
+            다시 열릴 때 안내 문자를 보내드립니다.
+            <br />
+            <br />
+            아래 버튼에서 바로 신청하실 수 있습니다.
+          </Body>
+        </ScrollBody>
 
-        <PrimaryButton type="button" onClick={handleApply}>
-          신규 참여 신청하기 →
-        </PrimaryButton>
+        <Footer>
+          <PrimaryButton type="button" onClick={handleApply}>
+            신규 참여 신청하기 →
+          </PrimaryButton>
 
-        <FooterRow>
-          <CheckLabel>
-            <input
-              type="checkbox"
-              checked={dontShowToday}
-              onChange={(e) => setDontShowToday(e.target.checked)}
-            />
-            오늘 하루 보지 않기
-          </CheckLabel>
-          <TextCloseButton type="button" onClick={handleClose}>
-            닫기
-          </TextCloseButton>
-        </FooterRow>
+          <FooterRow>
+            <CheckLabel>
+              <input
+                type="checkbox"
+                checked={dontShowToday}
+                onChange={(e) => setDontShowToday(e.target.checked)}
+              />
+              오늘 하루 보지 않기
+            </CheckLabel>
+            <TextCloseButton type="button" onClick={handleClose}>
+              닫기
+            </TextCloseButton>
+          </FooterRow>
+        </Footer>
       </Card>
     </Dim>
   );
@@ -235,19 +260,57 @@ const Card = styled.div`
   position: relative;
   width: 100%;
   max-width: 400px;
+  /* 모바일 홈바/주소창에서도 잘리지 않도록 dvh 기준 + 절대 상한. */
+  max-height: min(90dvh, 760px);
   background: ${T.white};
   border-radius: 18px;
   box-shadow: 0 20px 60px rgba(15, 15, 28, 0.3);
-  padding: 28px 24px 22px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 14px;
   font-family: Pretendard, Inter, system-ui, sans-serif;
   animation: ${popIn} 0.2s ease;
   outline: none;
 
+  /* 데스크탑: 신청 폼 모달과 동일 폭(720)으로 통일. */
+  @media (min-width: 768px) {
+    max-width: 720px;
+    border-radius: 16px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     animation: none;
+  }
+`;
+
+/* 본문(스크롤 영역) */
+const ScrollBody = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 24px 16px;
+
+  @media (min-width: 768px) {
+    padding: 36px 32px 20px;
+  }
+`;
+
+/* 푸터(고정) — CTA + 보조 액션. 스크롤과 무관하게 항상 보임. */
+const Footer = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px max(22px, env(safe-area-inset-bottom));
+  background: ${T.white};
+  border-top: 1px solid #f0eff8;
+
+  @media (min-width: 768px) {
+    padding: 16px 32px max(28px, env(safe-area-inset-bottom));
   }
 `;
 
@@ -286,16 +349,6 @@ const HeaderArea = styled.div`
   text-align: center;
 `;
 
-const IconBadge = styled.div`
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${T.primary};
-`;
-
 const Title = styled.h2`
   margin: 0;
   font-size: 18px;
@@ -316,7 +369,6 @@ const Body = styled.p`
 const PrimaryButton = styled.button`
   width: 100%;
   height: 50px;
-  margin-top: 4px;
   border: none;
   border-radius: 12px;
   background: ${T.primary};

@@ -111,6 +111,9 @@ interface Detail {
   id: number;
   createdAt: string;
   updatedAt: string;
+  lastEditedBy: string | null;
+  lastEditedByName: string | null;
+  lastEditedAt: string | null;
   status: Miracle10Status;
   quantity: number;
   asset: string | null;
@@ -314,6 +317,14 @@ export default function Miracle10DetailPage({
         <Field>
           <Key>최근 변경</Key>
           <Val>{new Date(data.updatedAt).toLocaleString("ko-KR")}</Val>
+        </Field>
+        <Field>
+          <Key>최종 수정</Key>
+          <Val>
+            {data.lastEditedByName && data.lastEditedAt
+              ? `${data.lastEditedByName} · ${new Date(data.lastEditedAt).toLocaleString("ko-KR")}`
+              : "-"}
+          </Val>
         </Field>
       </Card>
     </Page>

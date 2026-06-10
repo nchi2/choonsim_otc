@@ -132,7 +132,14 @@ function getQuantity(form: FormState): number | null {
 }
 
 // 신청 접수 — 공개 API(POST /api/miracle10/apply) 호출. 성공 시 접수 id 반환.
-async function submitApplication(payload: SubmissionPayload): Promise<number> {
+interface SubmitResult {
+  id: number;
+  applicationNo: string | null;
+}
+
+async function submitApplication(
+  payload: SubmissionPayload,
+): Promise<SubmitResult> {
   const res = await fetch("/api/miracle10/apply", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -154,25 +161,37 @@ async function submitApplication(payload: SubmissionPayload): Promise<number> {
   if (!res.ok || !data?.ok) {
     throw new Error(data?.error || "신청 접수에 실패했습니다.");
   }
-  return data.id as number;
+  return {
+    id: data.id as number,
+    applicationNo:
+      typeof data.applicationNo === "string" ? data.applicationNo : null,
+  };
 }
 
 export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
   const [step, setStep] = useState<"value" | "form" | "done">("value");
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState<SubmissionPayload | null>(null);
+  const [applicationNo, setApplicationNo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
       setStep("value");
       setForm(INITIAL_FORM);
       setSubmitted(null);
+      setApplicationNo(null);
       setSubmitting(false);
       setError(null);
     }
   }, [open]);
+
+  // 모달 열림/단계 전환 시 본문 스크롤을 항상 최상단으로 리셋.
+  useEffect(() => {
+    if (open) bodyRef.current?.scrollTo({ top: 0 });
+  }, [open, step]);
 
   useEffect(() => {
     if (!open) return;
@@ -227,8 +246,8 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
           return;
         }
       }
-      if (!form.agreePrivacy || !form.agreeRisk || !form.agreeP2p) {
-        setError("필수 동의 항목에 모두 동의해 주세요.");
+      if (!form.agreePrivacy) {
+        setError("개인정보 수집·이용 동의가 필요합니다.");
         return;
       }
 
@@ -245,13 +264,15 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         isExistingSbmb: form.isExistingSbmb,
         memo: form.memo.trim() || null,
         agreePrivacy: form.agreePrivacy,
-        agreeRisk: form.agreeRisk,
-        agreeP2p: form.agreeP2p,
+        // 위험·P2P 고지는 안내문(FootNotes)으로 대체. API 호환을 위해 동의로 전송.
+        agreeRisk: true,
+        agreeP2p: true,
       };
 
       try {
-        await submitApplication(payload);
+        const result = await submitApplication(payload);
         setSubmitted(payload);
+        setApplicationNo(result.applicationNo);
         setStep("done");
       } catch (err) {
         setError(
@@ -274,7 +295,7 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         <CloseButton type="button" aria-label="닫기" onClick={onClose}>
           ×
         </CloseButton>
-        <Body>
+        <Body ref={bodyRef} $flush={step === "value" || step === "done"}>
           {step === "value" ? (
             <Miracle10ValueSection onStart={() => setStep("form")} />
           ) : step === "form" ? (
@@ -292,10 +313,11 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
                 contact: submitted.contact,
                 visitDate: submitted.visitDate,
               }}
-              onShowValue={() => setStep("value")}
+              applicationNo={applicationNo}
               onRestart={() => {
                 setForm(INITIAL_FORM);
                 setSubmitted(null);
+                setApplicationNo(null);
                 setError(null);
                 setStep("form");
               }}
@@ -627,7 +649,8 @@ function FormView({
                 </EstimateRow>
                 <EstimateNote>
                   {new Date(estimate.asOf).toLocaleString("ko-KR")} 기준 · 실제
-                  단가는 방문 시점에 확정됩니다.
+                  단가는 <EstimateNoteStrong>방문 시점에 확정</EstimateNoteStrong>
+                  됩니다.
                 </EstimateNote>
               </>
             ) : (
@@ -772,30 +795,6 @@ function FormView({
               <Required>*</Required>
             </CheckboxLabel>
           </CheckboxField>
-          <CheckboxField>
-            <input
-              type="checkbox"
-              id="agree-risk"
-              checked={form.agreeRisk}
-              onChange={(e) => updateField("agreeRisk", e.target.checked)}
-            />
-            <CheckboxLabel htmlFor="agree-risk">
-              가상자산 가격 변동·투자 위험을 이해했습니다.{" "}
-              <Required>*</Required>
-            </CheckboxLabel>
-          </CheckboxField>
-          <CheckboxField>
-            <input
-              type="checkbox"
-              id="agree-p2p"
-              checked={form.agreeP2p}
-              onChange={(e) => updateField("agreeP2p", e.target.checked)}
-            />
-            <CheckboxLabel htmlFor="agree-p2p">
-              개인 간(P2P) 거래 지원 방식임을 이해했습니다.{" "}
-              <Required>*</Required>
-            </CheckboxLabel>
-          </CheckboxField>
         </AgreeGroup>
       </FieldGroup>
 
@@ -828,12 +827,11 @@ const Overlay = styled.div`
   z-index: 1000;
   display: flex;
   justify-content: center;
-  align-items: stretch;
+  align-items: center;
   padding: 0;
 
   @media (min-width: 768px) {
     padding: 32px 16px;
-    align-items: flex-start;
   }
 `;
 
@@ -844,12 +842,12 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: 100vh;
+  /* 모바일 홈바/주소창에서도 잘리지 않도록 dvh 기준 + 절대 상한. */
+  max-height: min(90dvh, 760px);
 
   @media (min-width: 768px) {
     max-width: 720px;
     border-radius: 16px;
-    max-height: calc(100vh - 64px);
     box-shadow: 0 20px 60px rgba(15, 15, 28, 0.35);
   }
 `;
@@ -886,16 +884,28 @@ const CloseButton = styled.button`
   }
 `;
 
-const Body = styled.div`
+const Body = styled.div<{ $flush?: boolean }>`
   width: 100%;
   flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 24px 20px 32px;
+  min-height: 0;
 
-  @media (min-width: 768px) {
-    padding: 32px 32px 40px;
-  }
+  ${(p) =>
+    p.$flush
+      ? `
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+  `
+      : `
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 24px 20px max(32px, env(safe-area-inset-bottom));
+
+    @media (min-width: 768px) {
+      padding: 32px 32px 40px;
+    }
+  `}
 `;
 
 const FormWrapper = styled.form`
@@ -1163,9 +1173,15 @@ const EstimateValue = styled.span<{ $strong?: boolean }>`
 
 const EstimateNote = styled.p`
   margin: 2px 0 0;
-  font-size: 0.72rem;
-  color: #14857a;
-  line-height: 1.45;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f766e;
+  line-height: 1.5;
+`;
+
+const EstimateNoteStrong = styled.strong`
+  font-weight: 700;
+  color: #c0392b;
 `;
 
 const EstimateMuted = styled.p`

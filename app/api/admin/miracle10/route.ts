@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderKind, OrderStatus, Prisma } from "@/app/generated/prisma/client";
-import { isAdminRequest, maskContact, maskName } from "@/lib/admin-guard";
+import { getAdminUser, maskContact, maskName } from "@/lib/admin-guard";
 
 export const runtime = "nodejs";
 
 const VALID_STATUS = new Set(Object.values(OrderStatus));
 
 export async function GET(request: Request) {
-  if (!(await isAdminRequest())) {
+  if (!(await getAdminUser())) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -38,6 +38,9 @@ export async function GET(request: Request) {
           visitType: true,
           visitDate: true,
           isSbmbMember: true,
+          lastEditedBy: true,
+          lastEditedByName: true,
+          lastEditedAt: true,
           customer: { select: { name: true, contact: true } },
         },
       }),
@@ -52,6 +55,9 @@ export async function GET(request: Request) {
       visitType: o.visitType,
       visitDate: o.visitDate,
       isSbmbMember: o.isSbmbMember,
+      lastEditedBy: o.lastEditedBy,
+      lastEditedByName: o.lastEditedByName,
+      lastEditedAt: o.lastEditedAt,
       nameMasked: maskName(o.customer.name),
       contactMasked: maskContact(o.customer.contact),
     }));
