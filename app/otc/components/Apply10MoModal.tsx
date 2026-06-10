@@ -521,41 +521,13 @@ function FormView({
   return (
     <FormWrapper onSubmit={onSubmit} noValidate>
       <FormHeader>
-        <FormHeaderTitle>10모의 기적 참여 지원</FormHeaderTitle>
+        <FormHeaderTitle>10모의 기적 All-in-One</FormHeaderTitle>
         <FormHeaderSubtitle>
           구매부터 전송까지, 어렵지 않게 도와드려요.
         </FormHeaderSubtitle>
       </FormHeader>
 
-      <InfoBox>
-        <InfoBoxTitle>이렇게 도와드려요</InfoBoxTitle>
-        <InfoBoxList>
-          <li>USDT 구매와 해외거래소 송금을 함께 도와드립니다.</li>
-          <li>WBMB로의 스왑 · 필요한 가스비 준비를 도와드립니다.</li>
-          <li>종이지갑 발급과 안전한 BMB 전송을 도와드립니다.</li>
-          <li>트러스트월렛 사용법을 옆에서 안내해 드립니다.</li>
-        </InfoBoxList>
-      </InfoBox>
-
-      <StepsPreview>
-        <StepItem>
-          <StepNo>1</StepNo>
-          <StepLabel>신청</StepLabel>
-        </StepItem>
-        <StepArrow aria-hidden="true">›</StepArrow>
-        <StepItem>
-          <StepNo>2</StepNo>
-          <StepLabel>
-            방문·인증
-            <br />({OFFICE_LOCATION_LABEL})
-          </StepLabel>
-        </StepItem>
-        <StepArrow aria-hidden="true">›</StepArrow>
-        <StepItem>
-          <StepNo>3</StepNo>
-          <StepLabel>수령</StepLabel>
-        </StepItem>
-      </StepsPreview>
+      <HeaderDivider />
 
       <FieldGroup>
         <Field>
@@ -765,7 +737,7 @@ function FormView({
             onChange={(e) => updateField("isExistingSbmb", e.target.checked)}
           />
           <CheckboxLabel htmlFor="apply-sbmb">
-            기존 SBMB 참여자입니다 (면대면 인증 면제 · 운영자 확인)
+            기존 SBMB 참여자입니다
           </CheckboxLabel>
         </CheckboxField>
 
@@ -945,98 +917,12 @@ const FormHeaderSubtitle = styled.p`
   }
 `;
 
-const InfoBox = styled.section`
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
-  border-radius: 12px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const InfoBoxTitle = styled.h3`
+const HeaderDivider = styled.hr`
+  width: 100%;
+  height: 1px;
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: #312e81;
-`;
-
-const InfoBoxList = styled.ul`
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-
-  li {
-    font-size: 0.85rem;
-    color: #4338ca;
-    line-height: 1.55;
-  }
-`;
-
-const StepsPreview = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  background: #fafaff;
-  border: 1px solid #f0eef9;
-  border-radius: 12px;
-  padding: 12px 10px;
-
-  @media (min-width: 768px) {
-    padding: 14px 18px;
-    gap: 8px;
-  }
-`;
-
-const StepItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-`;
-
-const StepNo = styled.span`
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #434392;
-  color: #ffffff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  @media (min-width: 768px) {
-    width: 28px;
-    height: 28px;
-    font-size: 0.8rem;
-  }
-`;
-
-const StepLabel = styled.span`
-  font-size: 0.78rem;
-  color: #1f2937;
-  font-weight: 600;
-  text-align: center;
-  line-height: 1.3;
-
-  @media (min-width: 768px) {
-    font-size: 0.85rem;
-  }
-`;
-
-const StepArrow = styled.span`
-  color: #9ca3af;
-  font-size: 1.1rem;
-  font-weight: 700;
-  flex: 0 0 auto;
+  border: none;
+  background: #e5e7eb;
 `;
 
 const FieldGroup = styled.div`

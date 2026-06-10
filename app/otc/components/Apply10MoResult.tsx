@@ -3,7 +3,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import styled from "styled-components";
 import {
-  KAKAO_INQUIRY_URL,
+  CONTACT_EMAIL,
   KAKAO_MAP_URL,
   MO_TO_WBMB,
   NAVER_MAP_URL,
@@ -154,14 +154,15 @@ export default function Apply10MoResult({
   onRestart,
 }: Apply10MoResultProps) {
   const [copied, setCopied] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
 
-  const copyAddress = useCallback(async () => {
+  const copyText = useCallback(async (text: string): Promise<boolean> => {
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(OFFICE_ADDRESS);
+        await navigator.clipboard.writeText(text);
       } else {
         const ta = document.createElement("textarea");
-        ta.value = OFFICE_ADDRESS;
+        ta.value = text;
         ta.setAttribute("readonly", "");
         ta.style.position = "absolute";
         ta.style.left = "-9999px";
@@ -170,34 +171,55 @@ export default function Apply10MoResult({
         document.execCommand("copy");
         document.body.removeChild(ta);
       }
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
+      return true;
     } catch (err) {
-      console.error("[Apply10Mo] address copy failed:", err);
+      console.error("[Apply10Mo] copy failed:", err);
+      return false;
     }
   }, []);
+
+  const copyAddress = useCallback(async () => {
+    if (await copyText(OFFICE_ADDRESS)) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }
+  }, [copyText]);
+
+  const copyEmail = useCallback(async () => {
+    if (await copyText(CONTACT_EMAIL)) {
+      setEmailCopied(true);
+      window.setTimeout(() => setEmailCopied(false), 1800);
+    }
+  }, [copyText]);
 
   const wbmb = (submitted.quantity * MO_TO_WBMB).toLocaleString("ko-KR");
   const visitLabel = formatVisitDateLong(submitted.visitDate) ?? "방문 시 조율";
 
+  // 신청번호는 끝자리 일련번호만 4자리로 표시 (예: "M10-2026-42" → "0042").
+  const shortApplicationNo = (() => {
+    if (!applicationNo) return null;
+    const digits = applicationNo.replace(/\D/g, "");
+    if (!digits) return null;
+    return digits.slice(-4).padStart(4, "0");
+  })();
+
   return (
     <Card>
-      {/* ① 성공 헤더 */}
-      <Header>
-        <IconRing aria-hidden="true">
-          <IconCircleCheckBig size={32} stroke={C.iconStroke} />
-        </IconRing>
-        <HeaderText>
-          <SuccessTitle>신청이 접수되었습니다</SuccessTitle>
-          {applicationNo ? (
-            <AppNoPill>#{applicationNo}</AppNoPill>
-          ) : null}
-          <SuccessSub>곧 연락드려 방문 일정을 확정해 드릴게요.</SuccessSub>
-        </HeaderText>
-      </Header>
-
-      {/* ② 바디 */}
+      {/* ① 성공 헤더 + ② 바디 (함께 스크롤, 하단 푸터만 고정) */}
       <Body>
+        <Header>
+          <IconRing aria-hidden="true">
+            <IconCircleCheckBig size={32} stroke={C.iconStroke} />
+          </IconRing>
+          <HeaderText>
+            <SuccessTitle>신청이 접수되었습니다</SuccessTitle>
+            {shortApplicationNo ? (
+              <AppNoPill>#{shortApplicationNo}</AppNoPill>
+            ) : null}
+            <SuccessSub>곧 연락드려 방문 일정을 확정해 드릴게요.</SuccessSub>
+          </HeaderText>
+        </Header>
+
         {/* 접수 요약 */}
         <SummaryBox>
           <SectionHead>
@@ -293,16 +315,21 @@ export default function Apply10MoResult({
             </MapButton>
           </MapRow>
         </Section>
+
+        {/* 이메일 문의 — 텍스트 표시, 클릭 시 주소 복사 */}
+        <AuxRow>
+          <EmailInquiry type="button" onClick={copyEmail}>
+            <IconMail size={14} stroke={C.brand} />
+            <span>
+              이메일 문의 : {CONTACT_EMAIL}
+              {emailCopied ? " (복사됨)" : ""}
+            </span>
+          </EmailInquiry>
+        </AuxRow>
       </Body>
 
-      {/* ③ 푸터 */}
+      {/* ③ 푸터 — 처음으로 버튼만 고정 */}
       <Footer>
-        <AuxRow>
-          <AuxLink href={KAKAO_INQUIRY_URL}>
-            <IconMail size={14} stroke={C.brand} />
-            <span>이메일 문의</span>
-          </AuxLink>
-        </AuxRow>
         <HomeButton type="button" onClick={onRestart}>
           <IconArrowLeft size={15} stroke={C.homeIcon} />
           <span>처음으로</span>
@@ -329,23 +356,27 @@ const Card = styled.div`
 
 const Header = styled.div`
   flex-shrink: 0;
+  /* Body 패딩을 상쇄해 배경이 모달 가장자리까지 닿도록 함 */
+  margin: -24px -24px 0;
   background: ${C.successBg};
-  padding: 40px 24px 32px;
+  padding: 24px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 16px;
 
   @media (min-width: 768px) {
-    padding: 40px 32px 32px;
+    margin: -24px -32px 0;
+    padding: 24px 32px;
   }
 `;
 
 const IconRing = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
   background: ${C.iconRingBg};
   display: inline-flex;
   align-items: center;
@@ -353,11 +384,12 @@ const IconRing = styled.div`
 `;
 
 const HeaderText = styled.div`
-  width: 100%;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 6px;
 `;
 
 const SuccessTitle = styled.h2`
@@ -365,7 +397,7 @@ const SuccessTitle = styled.h2`
   font-size: 20px;
   font-weight: 700;
   color: ${C.successTitle};
-  text-align: center;
+  text-align: left;
   line-height: 1.4;
 `;
 
@@ -387,7 +419,7 @@ const SuccessSub = styled.p`
   font-size: 14px;
   font-weight: 400;
   color: ${C.successSub};
-  text-align: center;
+  text-align: left;
   line-height: 1.5;
 `;
 
@@ -618,31 +650,26 @@ const AuxRow = styled.div`
   display: flex;
   width: 100%;
   gap: 10px;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
 `;
 
-const AuxLink = styled.a`
-  flex: 0 1 auto;
-  min-width: 200px;
+const EmailInquiry = styled.button`
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 10px 16px;
-  border-radius: 10px;
+  padding: 0;
   background: none;
-  border: 1px solid ${C.emailBorder};
-  text-decoration: none;
+  border: none;
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   color: ${C.brand};
-  transition: background-color 0.12s ease;
+  transition: opacity 0.12s ease;
 
   &:hover {
-    background: #faf9ff;
+    opacity: 0.85;
   }
 `;
 

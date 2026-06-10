@@ -230,8 +230,8 @@ export default function Miracle10ValueSection({
 }: Miracle10ValueSectionProps) {
   return (
     <Card className={className}>
-      {/* 헤더(고정): 히어로 + 대비 스트립 */}
-      <HeaderBlock>
+      {/* 본문(스크롤 영역) — 히어로/대비 스트립 포함, 하단 푸터만 고정 */}
+      <ScrollArea>
         {/* 1. Hero */}
         <Hero>
           <HeroSub>복잡한 과정 없이</HeroSub>
@@ -261,10 +261,7 @@ export default function Miracle10ValueSection({
             <NumBrand>5단계</NumBrand>
           </StripCol>
         </Strip>
-      </HeaderBlock>
 
-      {/* 본문(스크롤 영역) */}
-      <ScrollArea>
         <Divider />
 
         {/* 3. Skip Section */}
@@ -372,12 +369,7 @@ const Card = styled.div`
   -webkit-font-smoothing: antialiased;
 `;
 
-/* 헤더(고정) — 히어로 + 대비 스트립 */
-const HeaderBlock = styled.div`
-  flex-shrink: 0;
-`;
-
-/* 본문(스크롤 영역) */
+/* 본문(스크롤 영역) — 히어로/대비 스트립 포함 */
 const ScrollArea = styled.div`
   flex: 1;
   min-height: 0;

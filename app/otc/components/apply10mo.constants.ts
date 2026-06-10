@@ -1,11 +1,12 @@
 // 10모의 기적 신청 플로우(가치 / 신청 폼 / 접수 완료) 공유 상수.
 // 세 화면이 같은 URL·주소·환산·문구를 단일 소스에서 가져온다.
 
-// 문의는 이메일(mailto)로 받는다.
-export const KAKAO_INQUIRY_URL = "mailto:contact@choonsim.com";
+// 문의는 이메일로 받는다.
+export const CONTACT_EMAIL = "contact@choonsim.com";
+export const KAKAO_INQUIRY_URL = `mailto:${CONTACT_EMAIL}`;
 
 // 방문지 주소(복사·표시용 전체 주소).
-export const OFFICE_ADDRESS = "서울 서초구 사임당로 149-5 지하층 (서초 모빅회관 내)";
+export const OFFICE_ADDRESS = "서울 서초구 사임당로 149-5 지하층";
 
 // 지도 길찾기 — 주소 검색 기반(장소 ID 확보 시 정밀 링크로 교체).
 export const NAVER_MAP_URL =
