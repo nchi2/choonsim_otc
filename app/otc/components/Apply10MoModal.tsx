@@ -387,6 +387,8 @@ function InlineCalendar({
     cells.push(new Date(view.y, view.m, d));
 
   const inRange = (d: Date) => {
+    // 일요일(0)은 방문 불가 — 비활성화.
+    if (d.getDay() === 0) return false;
     const t = startOfDay(d).getTime();
     return t >= minTime && t <= maxTime;
   };
@@ -564,6 +566,18 @@ function FormView({
           />
         </Field>
 
+        <CheckboxField>
+          <input
+            type="checkbox"
+            id="apply-sbmb"
+            checked={form.isExistingSbmb}
+            onChange={(e) => updateField("isExistingSbmb", e.target.checked)}
+          />
+          <CheckboxLabel htmlFor="apply-sbmb">
+            기존 SBMB 참여자입니다
+          </CheckboxLabel>
+        </CheckboxField>
+
         <Field>
           <Label>
             신청 수량 (10모 단위) <Required>*</Required>
@@ -728,18 +742,6 @@ function FormView({
             겹치면 잠시 기다리셔야 할 수 있어요.
           </WalkInNote>
         )}
-
-        <CheckboxField>
-          <input
-            type="checkbox"
-            id="apply-sbmb"
-            checked={form.isExistingSbmb}
-            onChange={(e) => updateField("isExistingSbmb", e.target.checked)}
-          />
-          <CheckboxLabel htmlFor="apply-sbmb">
-            기존 SBMB 참여자입니다
-          </CheckboxLabel>
-        </CheckboxField>
 
         <Field>
           <Label htmlFor="apply-memo">

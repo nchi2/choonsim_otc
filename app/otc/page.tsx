@@ -624,9 +624,9 @@ function OTCContent() {
         actionSlot={
           <ApplyCard>
             <ApplyCardBadge>NEW · 참여 모집중</ApplyCardBadge>
-            <ApplyCardTitle>10모의 기적 참여 지원</ApplyCardTitle>
+            <ApplyCardTitle>10모의 기적 All-in-One</ApplyCardTitle>
             <ApplyCardSubtitle>
-              구매부터 전송까지, 어렵지 않게 도와드려요.
+              복잡한 과정 없이 바로 시작하기
             </ApplyCardSubtitle>
             <ApplyCardButton type="button" onClick={handleApplyClick}>
               참여 신청하기
