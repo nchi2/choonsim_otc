@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-guard";
 import {
   fetchAsks,
+  fetchBids,
   fetchTickerPrice,
   fetchUsdtKrw,
   vwapForQuantity,
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const quantity = Number(searchParams.get("quantity") ?? "10");
+  const direction = searchParams.get("direction") === "sell" ? "sell" : "buy";
 
   if (!Number.isInteger(quantity) || quantity <= 0) {
     return NextResponse.json(
@@ -31,28 +33,31 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [asks, usdtKrw] = await Promise.all([fetchAsks(), fetchUsdtKrw()]);
+    const [book, usdtKrw, lastPrice] = await Promise.all([
+      direction === "sell" ? fetchBids() : fetchAsks(),
+      fetchUsdtKrw(),
+      fetchTickerPrice(),
+    ]);
 
     let vwap: number;
     let totalUsdt: number;
     let levels: { price: number; size: number; filledQty: number }[] = [];
     let source: "orderbook" | "ticker" = "orderbook";
 
-    if (asks && asks.length) {
-      const result = vwapForQuantity(asks, quantity);
+    if (book && book.length) {
+      const result = vwapForQuantity(book, quantity);
       vwap = result.vwap;
       totalUsdt = result.totalUsdt;
       levels = result.levels;
     } else {
-      const ticker = await fetchTickerPrice();
-      if (ticker == null) {
+      if (lastPrice == null) {
         return NextResponse.json(
           { ok: false, error: "호가 데이터를 불러올 수 없습니다." },
           { status: 503 },
         );
       }
-      vwap = ticker;
-      totalUsdt = ticker * quantity;
+      vwap = lastPrice;
+      totalUsdt = lastPrice * quantity;
       source = "ticker";
     }
 
@@ -66,12 +71,15 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       quantity,
+      direction,
       levels,
       vwap,
       totalUsdt,
       usdtKrw,
       totalKrw: Math.round(totalUsdt * usdtKrw),
       vwapKrw: Math.round(vwap * usdtKrw),
+      lastPrice,
+      lastPriceKrw: lastPrice != null ? Math.round(lastPrice * usdtKrw) : null,
       source,
       asOf: new Date().toISOString(),
     });

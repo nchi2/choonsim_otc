@@ -19,7 +19,23 @@ export interface VwapResult {
   levels: OrderbookLevel[];
 }
 
-export async function fetchAsks(): Promise<AskLevel[] | null> {
+function parseSide(arr: unknown): AskLevel[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((a: unknown[]) => [Number(a?.[0]), Number(a?.[1])] as AskLevel)
+    .filter(
+      ([p, q]) => Number.isFinite(p) && Number.isFinite(q) && p > 0 && q > 0,
+    );
+}
+
+/**
+ * LBANK depth.do는 asks(매도호가)와 bids(매수호가)를 한 번에 반환한다.
+ * asks: 오름차순(낮은 가격 먼저), bids: 내림차순(높은 가격 먼저)으로 정렬해 돌려준다.
+ */
+export async function fetchDepth(): Promise<{
+  asks: AskLevel[];
+  bids: AskLevel[];
+} | null> {
   try {
     const res = await fetch(
       "https://api.lbkex.com/v2/depth.do?symbol=bmb_usdt&size=200",
@@ -32,18 +48,24 @@ export async function fetchAsks(): Promise<AskLevel[] | null> {
       data?.result === false ||
       (data?.error_code != null && data.error_code !== 0);
     if (unsupported) return null;
-    const asks = data?.data?.asks;
-    if (!Array.isArray(asks)) return null;
-    const parsed: AskLevel[] = asks
-      .map((a: unknown[]) => [Number(a?.[0]), Number(a?.[1])] as AskLevel)
-      .filter(
-        ([p, q]) => Number.isFinite(p) && Number.isFinite(q) && p > 0 && q > 0,
-      );
-    parsed.sort((a, b) => a[0] - b[0]);
-    return parsed.length ? parsed : null;
+    const asks = parseSide(data?.data?.asks).sort((a, b) => a[0] - b[0]);
+    const bids = parseSide(data?.data?.bids).sort((a, b) => b[0] - a[0]);
+    return { asks, bids };
   } catch {
     return null;
   }
+}
+
+export async function fetchAsks(): Promise<AskLevel[] | null> {
+  const depth = await fetchDepth();
+  if (!depth || !depth.asks.length) return null;
+  return depth.asks;
+}
+
+export async function fetchBids(): Promise<AskLevel[] | null> {
+  const depth = await fetchDepth();
+  if (!depth || !depth.bids.length) return null;
+  return depth.bids;
 }
 
 export async function fetchTickerPrice(): Promise<number | null> {
