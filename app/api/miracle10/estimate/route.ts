@@ -27,13 +27,19 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [asks, usdtKrw] = await Promise.all([fetchAsks(), fetchUsdtKrw()]);
+    const [asks, usdtKrw, ticker] = await Promise.all([
+      fetchAsks(),
+      fetchUsdtKrw(),
+      fetchTickerPrice().catch(() => null),
+    ]);
 
     let baseUsdt: number | null = null;
+    let usedAsks = false;
     if (asks && asks.length) {
       baseUsdt = vwapForQuantity(asks, quantity).vwap;
+      usedAsks = true;
     } else {
-      baseUsdt = await fetchTickerPrice();
+      baseUsdt = ticker;
     }
 
     if (baseUsdt == null || usdtKrw == null) {
@@ -46,6 +52,13 @@ export async function GET(request: Request) {
       );
     }
 
+    // VWAP(체결가)이 현재가 대비 얼마나 괴리됐는지(호가 얇음 감지용).
+    //  호가를 긁어 VWAP을 쓴 경우에만 의미가 있다.
+    const deviationPct =
+      usedAsks && ticker != null && ticker > 0
+        ? Math.round(((baseUsdt - ticker) / ticker) * 1000) / 10
+        : null;
+
     // 운영 마진 반영(마진율 자체는 응답에 노출하지 않음).
     const perMoUsdt = baseUsdt * (1 + getMarginRate());
     const perMoKrw = Math.round(perMoUsdt * usdtKrw);
@@ -56,6 +69,7 @@ export async function GET(request: Request) {
       quantity,
       pricePerMoKrw: perMoKrw,
       totalKrw,
+      deviationPct,
       asOf: new Date().toISOString(),
     });
   } catch (err) {

@@ -130,12 +130,16 @@ export async function fetchUsdtKrw(): Promise<number | null> {
   return null;
 }
 
-/** 요청 수량을 채우는 매도호가 가중평균(VWAP) + 호가별 체결수량. 깊이 부족 시 마지막 호가로 잔량 채움. */
+/**
+ * 요청 수량을 채우는 호가 가중평균(호가 평단가) + 호가별 체결수량.
+ * 깊이 부족 시 마지막 체결 호가 가격으로 잔량을 가정해 채움(시각화·VWAP 산식 동일).
+ */
 export function vwapForQuantity(asks: AskLevel[], qty: number): VwapResult {
   let remaining = qty;
   let cost = 0;
   let filled = 0;
   const levels: OrderbookLevel[] = [];
+  let lastTouchedIdx = -1;
 
   for (const [price, available] of asks) {
     if (remaining <= 0) {
@@ -147,14 +151,17 @@ export function vwapForQuantity(asks: AskLevel[], qty: number): VwapResult {
     filled += take;
     remaining -= take;
     levels.push({ price, size: available, filledQty: take });
+    if (take > 0) lastTouchedIdx = levels.length - 1;
   }
 
   if (remaining > 0 && asks.length > 0) {
     const lastPrice = asks[asks.length - 1][0];
     cost += remaining * lastPrice;
     filled += remaining;
-    const last = levels[levels.length - 1];
-    if (last) last.filledQty += remaining;
+    // 잔량은 호가창 최심가가 아니라 마지막으로 실제 체결한 호가에 귀속.
+    const target =
+      lastTouchedIdx >= 0 ? levels[lastTouchedIdx] : levels[levels.length - 1];
+    if (target) target.filledQty += remaining;
     remaining = 0;
   }
 

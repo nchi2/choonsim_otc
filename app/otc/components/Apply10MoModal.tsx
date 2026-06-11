@@ -20,6 +20,11 @@ const OFFICE_HOURS_LABEL = "월·수·금 13:00–17:00";
 const QTY_CHIPS = [10, 20, 30] as const;
 type QtyChip = (typeof QTY_CHIPS)[number] | "custom";
 
+// 대량 신청 임계 — 이 수량 이상이면 예상 단가를 숨기고 현장 안내로 대체.
+const LARGE_QTY_THRESHOLD = 50;
+// 호가 괴리 임계(%) — VWAP이 현재가 대비 이만큼 벌어지면(호가 얇음) 예상 단가 숨김.
+const VWAP_DEVIATION_THRESHOLD_PCT = 20;
+
 const VISIT_TYPES = [
   { value: "RESERVED", label: "직접 방문 (예약일 지정)" },
   { value: "WALK_IN", label: "예약 없이 방문 (예약자 우선 · 대기 가능)" },
@@ -340,6 +345,7 @@ interface FormViewProps {
 interface EstimateResult {
   pricePerMoKrw: number;
   totalKrw: number;
+  deviationPct: number | null;
   asOf: string;
 }
 
@@ -481,8 +487,17 @@ function FormView({
     return () => document.removeEventListener("mousedown", onDown);
   }, [calendarOpen]);
 
+  const isLargeQty = qty != null && qty >= LARGE_QTY_THRESHOLD;
+
   useEffect(() => {
     if (qty == null || qty <= 0 || qty % 10 !== 0) {
+      setEstimate(null);
+      setEstError(null);
+      setEstLoading(false);
+      return;
+    }
+    // 대량 신청은 예상 단가를 표시하지 않으므로 호출도 생략(현장 안내로 대체).
+    if (qty >= LARGE_QTY_THRESHOLD) {
       setEstimate(null);
       setEstError(null);
       setEstLoading(false);
@@ -502,6 +517,8 @@ function FormView({
         setEstimate({
           pricePerMoKrw: data.pricePerMoKrw,
           totalKrw: data.totalKrw,
+          deviationPct:
+            typeof data.deviationPct === "number" ? data.deviationPct : null,
           asOf: data.asOf,
         });
       } catch (e) {
@@ -612,39 +629,61 @@ function FormView({
               style={{ marginTop: 8 }}
             />
           )}
-          <EstimateBox aria-live="polite">
-            {estLoading ? (
-              <EstimateMuted>예상 단가 계산 중...</EstimateMuted>
-            ) : estError ? (
-              <EstimateMuted>
-                예상 단가를 잠시 후 다시 확인해 주세요.
-              </EstimateMuted>
-            ) : estimate ? (
-              <>
-                <EstimateRow>
-                  <EstimateLabel>예상 단가 (1모)</EstimateLabel>
-                  <EstimateValue>
-                    {estimate.pricePerMoKrw.toLocaleString("ko-KR")}원
-                  </EstimateValue>
-                </EstimateRow>
-                <EstimateRow>
-                  <EstimateLabel>예상 총액</EstimateLabel>
-                  <EstimateValue $strong>
-                    {estimate.totalKrw.toLocaleString("ko-KR")}원
-                  </EstimateValue>
-                </EstimateRow>
-                <EstimateNote>
-                  {new Date(estimate.asOf).toLocaleString("ko-KR")} 기준 · 실제
-                  단가는 <EstimateNoteStrong>방문 시점에 확정</EstimateNoteStrong>
-                  됩니다.
-                </EstimateNote>
-              </>
-            ) : (
-              <EstimateMuted>
-                수량을 선택하면 예상 단가를 보여드려요.
-              </EstimateMuted>
-            )}
-          </EstimateBox>
+          {isLargeQty ? (
+            <GuideBox aria-live="polite">
+              <GuideTitle>대량 신청은 현장에서 안내드려요 😊</GuideTitle>
+              <GuideText>
+                {LARGE_QTY_THRESHOLD}모 이상 대량 신청은 호가 상황에 따라 단가가
+                크게 달라질 수 있어, 방문 시 현장에서 별도 안내드립니다.
+              </GuideText>
+              <GuideText>
+                신청은 정상 접수되며, 정확한 단가는 방문 시 확정됩니다.
+              </GuideText>
+            </GuideBox>
+          ) : (
+            <EstimateBox aria-live="polite">
+              {estLoading ? (
+                <EstimateMuted>예상 단가 계산 중...</EstimateMuted>
+              ) : estError ? (
+                <EstimateMuted>
+                  예상 단가를 잠시 후 다시 확인해 주세요.
+                </EstimateMuted>
+              ) : estimate &&
+                estimate.deviationPct != null &&
+                Math.abs(estimate.deviationPct) >=
+                  VWAP_DEVIATION_THRESHOLD_PCT ? (
+                <GuideText as="div">
+                  현재 호가 상황상 예상 단가가 실제와 다를 수 있어 방문 시
+                  확정됩니다. 신청은 정상 접수됩니다.
+                </GuideText>
+              ) : estimate ? (
+                <>
+                  <EstimateRow>
+                    <EstimateLabel>예상 단가 (1모)</EstimateLabel>
+                    <EstimateValue>
+                      {estimate.pricePerMoKrw.toLocaleString("ko-KR")}원
+                    </EstimateValue>
+                  </EstimateRow>
+                  <EstimateRow>
+                    <EstimateLabel>예상 총액</EstimateLabel>
+                    <EstimateValue $strong>
+                      {estimate.totalKrw.toLocaleString("ko-KR")}원
+                    </EstimateValue>
+                  </EstimateRow>
+                  <EstimateNote>
+                    {new Date(estimate.asOf).toLocaleString("ko-KR")} 기준 · 실제
+                    단가는{" "}
+                    <EstimateNoteStrong>방문 시점에 확정</EstimateNoteStrong>
+                    됩니다.
+                  </EstimateNote>
+                </>
+              ) : (
+                <EstimateMuted>
+                  수량을 선택하면 예상 단가를 보여드려요.
+                </EstimateMuted>
+              )}
+            </EstimateBox>
+          )}
         </Field>
 
         <Field>
@@ -1076,6 +1115,33 @@ const EstimateMuted = styled.p`
   margin: 0;
   font-size: 0.8rem;
   color: #6b7280;
+`;
+
+// 대량/괴리 시 예상 단가 대신 보여주는 친절 안내(경고 아님, 안심 톤).
+const GuideBox = styled.div`
+  margin-top: 10px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const GuideTitle = styled.p`
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #4338ca;
+  line-height: 1.5;
+`;
+
+const GuideText = styled.p`
+  margin: 0;
+  font-size: 0.82rem;
+  color: #4b5563;
+  line-height: 1.55;
 `;
 
 const WalkInNote = styled.p`

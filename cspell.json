@@ -12,6 +12,8 @@
     "binance",
     "Bithumb",
     "bithumb",
+    "Bollinger",
+    "bollinger",
     "bmbswap",
     "BTCMBK",
     "BTCUSDT",
@@ -23,6 +25,7 @@
     // C
     "Csvg",
     "Cpath",
+    "cust",
     "Cusl",
     "CKHSRCB",
     "ccapi",
@@ -121,6 +124,9 @@
     // S
     "SBMB",
     "sbmb",
+    "SBTC",
+    "senv",
+    "sbtc",
     "Solana",
     "SOLUSDT",
     "stablebmb",
@@ -139,6 +145,7 @@
     "upbit",
     "Upbit",
     "USDCUSDT",
+    "USDKRW",
     // V
     "vercel",
     "Vercel",
