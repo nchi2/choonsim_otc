@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import styled from "styled-components";
 import { IconChevronRight } from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionAnchor } from "@/components/sbmb/shared/SectionCard";
@@ -32,20 +32,55 @@ const Grid = styled.div`
   }
 `;
 
-const Card = styled.a`
+// 카드 셸 — 테두리/배경/hover를 담당. 본체 링크 아래에 보조 버튼을 둘 수 있게 컬럼.
+const CardShell = styled.div`
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid ${T.border};
+  background: ${T.white};
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: ${T.mint};
+  }
+`;
+
+// 카드 본체(클릭 = 새 탭 열기). 기존 Card와 동일한 행 레이아웃.
+const CardLink = styled.a`
   display: flex;
   align-items: center;
   gap: 14px;
   min-height: 72px;
   padding: 0 16px;
-  border-radius: 12px;
-  border: 1px solid ${T.border};
-  background: ${T.white};
   text-decoration: none;
-  transition: border-color 0.15s ease;
+`;
+
+// 트러스트월렛에서 열기 — 본체보다 작고 덜 강조된 회색 보조 버튼.
+const TrustWalletBtn = styled.button`
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 16px 12px 68px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid ${T.border};
+  background: #f3f4f6;
+  color: ${T.textSecondary};
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
 
   &:hover {
-    border-color: ${T.mint};
+    background: #e5e7eb;
+  }
+
+  ${mobile} {
+    margin-left: 16px;
   }
 `;
 
@@ -95,9 +130,47 @@ type LinkDef = {
   href: string;
   icon: ReactNode;
   bg: string;
+  /** true면 카드 하단에 "트러스트월렛에서 열기" 보조 버튼 노출(모바일 한정). */
+  trustWallet?: boolean;
 };
 
 const SBMB_LINKTREE_HREF = COMMUNITY_LINKTREE.stablebmb.href;
+
+// 대상 URL을 트러스트월렛 인앱 브라우저로 여는 딥링크. coin_id=60 = EVM(Base 포함).
+function getTrustWalletLink(targetUrl: string): string {
+  return `https://link.trustwallet.com/open_url?coin_id=60&url=${encodeURIComponent(
+    targetUrl,
+  )}`;
+}
+
+// 모바일(좁은 폭 또는 모바일 UA)에서만 딥링크가 의미 있으므로 조건부 노출용.
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      const ua = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      setIsMobile(ua || mq.matches);
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
+function TrustWalletButton({ url }: { url: string }) {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    window.open(getTrustWalletLink(url), "_blank", "noopener,noreferrer");
+  };
+  return (
+    <TrustWalletBtn type="button" onClick={handleClick}>
+      <span aria-hidden="true">📲</span> 트러스트월렛에서 열기
+    </TrustWalletBtn>
+  );
+}
 
 const LINKS: LinkDef[] = [
   {
@@ -142,27 +215,58 @@ const LINKS: LinkDef[] = [
     bg: "transparent",
     icon: <LogoImg src="/Logo_SBMB.svg" alt="StableBMB" />,
   },
+  {
+    title: "LDT ↔ PRR 스왑",
+    sub: "Uniswap에서 교환하기",
+    href: "https://app.uniswap.org/swap?inputCurrency=0x504B262539d3A4194d0649f69Fe3cCA06D5bB24a&outputCurrency=0x7d29E2274212426Ae964cE354F9A5FC9b74BA2d1&chain=base",
+    bg: T.white,
+    trustWallet: true,
+    icon: (
+      <LogoImg
+        src="https://www.google.com/s2/favicons?domain=uniswap.org&sz=64"
+        alt="Uniswap"
+        loading="lazy"
+        decoding="async"
+      />
+    ),
+  },
+  {
+    title: "LDT/PRR 유동성 풀",
+    sub: "Uniswap 풀 현황 보기",
+    href: "https://app.uniswap.org/explore/pools/base/0xe397d9ac97fac140cc56fbba6e33d40bfc375fc7",
+    bg: T.white,
+    trustWallet: true,
+    icon: (
+      <LogoImg
+        src="https://www.google.com/s2/favicons?domain=uniswap.org&sz=64"
+        alt="Uniswap"
+        loading="lazy"
+        decoding="async"
+      />
+    ),
+  },
 ];
 
 export default function LinksSection() {
+  const isMobile = useIsMobile();
   return (
     <SbmbSectionAnchor id="links" aria-labelledby="sbmb-links-heading">
       <Title id="sbmb-links-heading">링크 모음</Title>
       <Grid>
         {LINKS.map((item) => (
-          <Card
-            key={item.href}
-            href={item.href}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <IconWrap $bg={item.bg}>{item.icon}</IconWrap>
-            <TextBlock>
-              <CardTitle>{item.title}</CardTitle>
-              <CardSub>{item.sub}</CardSub>
-            </TextBlock>
-            <IconChevronRight size={16} color="#D1D5DB" />
-          </Card>
+          <CardShell key={item.href}>
+            <CardLink href={item.href} target="_blank" rel="noreferrer">
+              <IconWrap $bg={item.bg}>{item.icon}</IconWrap>
+              <TextBlock>
+                <CardTitle>{item.title}</CardTitle>
+                <CardSub>{item.sub}</CardSub>
+              </TextBlock>
+              <IconChevronRight size={16} color="#D1D5DB" />
+            </CardLink>
+            {item.trustWallet && isMobile ? (
+              <TrustWalletButton url={item.href} />
+            ) : null}
+          </CardShell>
         ))}
       </Grid>
     </SbmbSectionAnchor>
