@@ -40,6 +40,24 @@ const LogoLink = styled(Link)`
   text-decoration: none;
 `;
 
+const LogoRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const LogoMark = styled.img`
+  width: 28px;
+  height: 28px;
+  display: block;
+  flex-shrink: 0;
+
+  @media (min-width: 768px) {
+    width: 32px;
+    height: 32px;
+  }
+`;
+
 const Logo = styled.div<{ $isWhite: boolean }>`
   font-size: 1.25rem;
   font-weight: bold;
@@ -126,7 +144,19 @@ export default function Header() {
     >
       <HeaderContent>
         <LogoLink href="/">
-          <Logo $isWhite={isWhiteText}>Choonsim Hub</Logo>
+          <LogoRow>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <LogoMark
+              src={
+                isWhiteText
+                  ? "/logo_choonsimcom_white.png"
+                  : "/logo_choonsimcom.png"
+              }
+              alt=""
+              aria-hidden="true"
+            />
+            <Logo $isWhite={isWhiteText}>Choonsim Hub</Logo>
+          </LogoRow>
         </LogoLink>
         <Nav>
           <NavLink

@@ -213,6 +213,7 @@ const LINKS: LinkDef[] = [
     sub: "공식 웹사이트",
     href: SBMB_STABLEBMB_URL,
     bg: "transparent",
+    trustWallet: true,
     icon: <LogoImg src="/Logo_SBMB.svg" alt="StableBMB" />,
   },
   {

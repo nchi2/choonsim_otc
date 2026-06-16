@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   title: "Choonsim Hub",
   description:
     "춘심팀 허브 — OTC·고액권 OTC 안내, SBMB 신청 현황 등 Choonsim Hub 서비스를 이용하세요.",
+  icons: {
+    icon: "/public/choonsim_character.png",
+    shortcut: "/public/choonsim_character.png",
+    apple: "/public/choonsim_character.png",
+  },
   openGraph: {
     title: "Choonsim Hub",
     description:
