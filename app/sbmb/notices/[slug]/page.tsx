@@ -112,6 +112,61 @@ const Body = styled.div`
   word-break: break-word;
 `;
 
+const BodyLink = styled.a`
+  color: ${T.mint};
+  text-decoration: underline;
+  word-break: break-all;
+
+  &:hover {
+    color: ${T.mintDark};
+  }
+`;
+
+/**
+ * 본문의 http(s):// URL만 <a>로 치환한다.
+ * - pre-wrap을 유지하므로 줄바꿈·구분선(━)·이모지는 그대로.
+ * - http/https만 매칭 → javascript: 등 위험 스킴 배제(XSS 안전).
+ * - dangerouslySetInnerHTML 미사용(React 엘리먼트로만 렌더).
+ */
+function renderBodyWithLinks(text: string): React.ReactNode {
+  const re = /https?:\/\/[^\s<>"']+/g;
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(text)) !== null) {
+    // 문장 끝 구두점/괄호는 URL에서 제외(자연스러운 링크 경계).
+    let url = match[0];
+    const trailing = url.match(/[.,;:!?)\]}'"]+$/);
+    if (trailing) {
+      url = url.slice(0, url.length - trailing[0].length);
+    }
+    const start = match.index;
+    if (start > lastIndex) {
+      nodes.push(text.slice(lastIndex, start));
+    }
+    nodes.push(
+      <BodyLink
+        key={key++}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {url}
+      </BodyLink>,
+    );
+    lastIndex = start + url.length;
+    re.lastIndex = lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
 const ExtLink = styled.a`
   display: inline-block;
   margin-top: 20px;
@@ -216,7 +271,9 @@ export default function SbmbNoticeDetailPage() {
             </MetaRow>
             <Title>{detail.title}</Title>
             <Divider />
-            <Body>{detail.body || "내용이 없습니다."}</Body>
+            <Body>
+              {detail.body ? renderBodyWithLinks(detail.body) : "내용이 없습니다."}
+            </Body>
             {detail.link ? (
               <ExtLink href={detail.link} target="_blank" rel="noreferrer">
                 관련 링크 바로가기 ↗
