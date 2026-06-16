@@ -187,11 +187,19 @@ export default function OTCSection({
         {showTradeButton && (
           <S.OTCHeroButtonContainer>
             <S.OTCHeroButton href="/otc" aria-label="OTC 거래 페이지로 이동">
-              OTC 거래 페이지로 이동
+              <S.OTCHeroBtnLabelFull>OTC 거래 페이지로 이동</S.OTCHeroBtnLabelFull>
+              <S.OTCHeroBtnLabelShort>OTC 거래</S.OTCHeroBtnLabelShort>
             </S.OTCHeroButton>
             <S.OTCHeroButton href="/sbmb" aria-label="SBMB 현황 페이지로 이동">
-              SBMB 현황보기
+              <S.OTCHeroBtnLabelFull>SBMB 현황보기</S.OTCHeroBtnLabelFull>
+              <S.OTCHeroBtnLabelShort>SBMB 현황</S.OTCHeroBtnLabelShort>
             </S.OTCHeroButton>
+            <S.OTCHeroMiracleButton
+              href="/otc?apply=1"
+              aria-label="10모의 기적 신청하기 (접수 진행중)"
+            >
+              10모의 기적 All-in-One
+            </S.OTCHeroMiracleButton>
           </S.OTCHeroButtonContainer>
         )}
       </S.OTCHeroContent>

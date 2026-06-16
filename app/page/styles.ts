@@ -661,6 +661,7 @@ export const OTCHeroButton = styled(Link)`
   color: #ffffff;
   background-color: #434392;
   text-decoration: none;
+  white-space: nowrap;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -671,8 +672,65 @@ export const OTCHeroButton = styled(Link)`
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
   }
 
+  /* 모바일 1행: [OTC][SBMB] 각 50% (gap 1rem의 절반 보정) */
   @media (max-width: 768px) {
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: 0;
+    padding: 0.95rem 1rem;
+    font-size: 0.95rem;
+  }
+`;
+
+/** 10모의 기적 CTA — /otc "참여 신청하기"와 동일한 틸 그라디언트, 기존 CTA와 라운드·높이·폰트 통일. */
+export const OTCHeroMiracleButton = styled(Link)`
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 2.25rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 22px rgba(13, 148, 136, 0.42);
+    filter: brightness(1.04);
+  }
+
+  /* 데스크탑: 폭이 부족하면 이 버튼만 다음 줄로 내려가 풀폭 차지 */
+  flex: 1 1 auto;
+
+  /* 모바일 2행: 풀폭 */
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
     width: 100%;
+    padding: 0.95rem 1rem;
+    font-size: 0.95rem;
+  }
+`;
+
+/** 데스크탑 전용 라벨(모바일 숨김). */
+export const OTCHeroBtnLabelFull = styled.span`
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+/** 모바일 전용 축약 라벨(데스크탑 숨김). */
+export const OTCHeroBtnLabelShort = styled.span`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: inline;
   }
 `;
 
@@ -684,7 +742,6 @@ export const OTCHeroButtonContainer = styled.div`
   flex-wrap: wrap;
 
   @media (max-width: 768px) {
-    flex-direction: column;
     width: 100%;
   }
 `;

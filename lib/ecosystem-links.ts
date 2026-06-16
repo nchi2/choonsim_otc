@@ -67,6 +67,11 @@ export const ECOSYSTEM_GROUPS: EcosystemGroup[] = [
       },
       // 참여 그룹에서 병합
       { label: "BMBSwap", href: "https://bmbswap.org", desc: "WBMB 스왑" },
+      {
+        label: "Mobick Explorer (구)",
+        href: "https://explorer.mobick.info:444/",
+        desc: "블록 탐색기",
+      },
     ],
   },
   {
