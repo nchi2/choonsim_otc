@@ -162,6 +162,11 @@ export const CURATED: Record<CuratedCategoryId, CuratedVideo[]> = {
   ],
   miracle10: [
     {
+      videoId: "Wgh8yJO45no",
+      title: "비트모빅 'Harvest MOVN — 10모의 기적 무작정 따라하기'[풀버전]",
+      channelTitle: "오션페이지",
+    },
+    {
       videoId: "G7tfc-0fXQE",
       title: "10모의 기적 신청 3단계",
       channelTitle: "BMB NEXUS",
