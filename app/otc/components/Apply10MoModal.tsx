@@ -10,6 +10,17 @@ import {
   type SetStateAction,
 } from "react";
 import styled from "styled-components";
+import MonthCalendar, {
+  defaultCalendarMaxDate,
+} from "@/components/admin/MonthCalendar";
+import {
+  addDaysKstYmd,
+  formatKstYmdLong,
+  monthBoundsKst,
+  slotEndTime,
+  todayKst,
+} from "@/lib/kst";
+import { isBusinessDayKst } from "@/lib/work-schedule";
 import Miracle10ValueSection from "./Miracle10ValueSection";
 import Apply10MoResult from "./Apply10MoResult";
 
@@ -30,22 +41,30 @@ const VISIT_TYPES = [
   { value: "WALK_IN", label: "예약 없이 방문 (예약자 우선 · 대기 가능)" },
 ] as const;
 
-const TIME_SLOTS = [
-  "13:00-14:00",
-  "14:00-15:00",
-  "15:00-16:00",
-  "16:00-17:00",
-] as const;
+interface PublicOffice {
+  id: number;
+  code: string;
+  name: string;
+  address: string | null;
+}
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+interface AvailableSlot {
+  startTime: string;
+  capacity: number;
+  taken: number;
+  remaining: number;
+  available: boolean;
+}
 
 interface FormState {
   name: string;
   contact: string;
   qtyChip: QtyChip;
   customQty: string;
+  officeId: number | null;
   visitType: string;
   visitDate: string;
+  reservedStart: string;
   visitTimeSlot: string;
   isExistingSbmb: boolean;
   memo: string;
@@ -59,8 +78,10 @@ const INITIAL_FORM: FormState = {
   contact: "",
   qtyChip: 10,
   customQty: "",
+  officeId: null,
   visitType: "RESERVED",
   visitDate: "",
+  reservedStart: "",
   visitTimeSlot: "",
   isExistingSbmb: false,
   memo: "",
@@ -73,8 +94,11 @@ interface SubmissionPayload {
   name: string;
   contact: string;
   quantity: number;
+  officeId: number | null;
+  officeName: string | null;
   visitType: string;
   visitDate: string | null;
+  reservedStart: string | null;
   visitTimeSlot: string | null;
   isExistingSbmb: boolean;
   memo: string | null;
@@ -89,38 +113,6 @@ function formatPhone(raw: string): string {
   if (d.length <= 3) return d;
   if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
   return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
-}
-
-// --- 날짜 헬퍼 (로컬 타임존 기준 — apply API 검증과 일치) ---
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function startOfToday(): Date {
-  return startOfDay(new Date());
-}
-function addDays(d: Date, n: number): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-function fmtLocal(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function parseLocal(s: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-  const [y, m, d] = s.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  return Number.isNaN(dt.getTime()) ? null : dt;
-}
-function formatDisplayDate(s: string): string {
-  const d = parseLocal(s);
-  if (!d) return "날짜 선택";
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 }
 
 interface Apply10MoModalProps {
@@ -152,8 +144,10 @@ async function submitApplication(
       name: payload.name,
       contact: payload.contact,
       quantity: payload.quantity,
+      officeId: payload.officeId,
       visitType: payload.visitType,
       visitDate: payload.visitDate,
+      reservedStart: payload.reservedStart,
       visitTimeSlot: payload.visitTimeSlot,
       isSbmbMember: payload.isExistingSbmb,
       memo: payload.memo,
@@ -180,7 +174,20 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
   const [applicationNo, setApplicationNo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offices, setOffices] = useState<PublicOffice[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/miracle10/offices")
+      .then(async (res) => {
+        const json = await res.json();
+        if (res.ok && json.ok) {
+          setOffices(json.offices as PublicOffice[]);
+        }
+      })
+      .catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -242,12 +249,16 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         return;
       }
       if (form.visitType === "RESERVED") {
+        if (form.officeId == null) {
+          setError("방문 사무실을 선택해 주세요.");
+          return;
+        }
         if (!form.visitDate) {
           setError("예약 희망일을 선택해 주세요.");
           return;
         }
-        if (!form.visitTimeSlot) {
-          setError("방문 시간대를 선택해 주세요.");
+        if (!form.reservedStart) {
+          setError("방문 시간을 선택해 주세요.");
           return;
         }
       }
@@ -259,17 +270,32 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
       setError(null);
       setSubmitting(true);
 
+      const endTime =
+        form.reservedStart.trim() !== ""
+          ? slotEndTime(form.reservedStart)
+          : null;
+      const visitTimeSlot =
+        form.visitType === "RESERVED" && form.reservedStart && endTime
+          ? `${form.reservedStart}-${endTime}`
+          : form.visitTimeSlot.trim() || null;
+
       const payload: SubmissionPayload = {
         name,
         contact,
         quantity: qty,
+        officeId: form.visitType === "RESERVED" ? form.officeId : null,
+        officeName:
+          offices.find((o) => o.id === form.officeId)?.name ?? null,
         visitType: form.visitType,
         visitDate: form.visitDate.trim() || null,
-        visitTimeSlot: form.visitTimeSlot.trim() || null,
+        reservedStart:
+          form.visitType === "RESERVED"
+            ? form.reservedStart.trim() || null
+            : null,
+        visitTimeSlot,
         isExistingSbmb: form.isExistingSbmb,
         memo: form.memo.trim() || null,
         agreePrivacy: form.agreePrivacy,
-        // 위험·P2P 고지는 안내문(FootNotes)으로 대체. API 호환을 위해 동의로 전송.
         agreeRisk: true,
         agreeP2p: true,
       };
@@ -289,7 +315,7 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
         setSubmitting(false);
       }
     },
-    [form, submitting],
+    [form, submitting, offices],
   );
 
   if (!open) return null;
@@ -307,6 +333,7 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
             <FormView
               form={form}
               setForm={setForm}
+              offices={offices}
               submitting={submitting}
               error={error}
               onSubmit={handleSubmit}
@@ -317,6 +344,8 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
                 quantity: submitted.quantity,
                 contact: submitted.contact,
                 visitDate: submitted.visitDate,
+                reservedStart: submitted.reservedStart,
+                officeName: submitted.officeName,
               }}
               applicationNo={applicationNo}
               onRestart={() => {
@@ -337,6 +366,7 @@ export default function Apply10MoModal({ open, onClose }: Apply10MoModalProps) {
 interface FormViewProps {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
+  offices: PublicOffice[];
   submitting: boolean;
   error: string | null;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
@@ -349,112 +379,10 @@ interface EstimateResult {
   asOf: string;
 }
 
-interface InlineCalendarProps {
-  valueDate: string;
-  min: Date;
-  max: Date;
-  onSelect: (dateStr: string) => void;
-}
-
-// 인라인 월별 달력 — min~max 범위만 클릭 가능, 타이핑 입력 없음.
-function InlineCalendar({
-  valueDate,
-  min,
-  max,
-  onSelect,
-}: InlineCalendarProps) {
-  const base = parseLocal(valueDate) ?? min;
-  const [view, setView] = useState<{ y: number; m: number }>({
-    y: base.getFullYear(),
-    m: base.getMonth(),
-  });
-
-  const minMonthIdx = min.getFullYear() * 12 + min.getMonth();
-  const maxMonthIdx = max.getFullYear() * 12 + max.getMonth();
-  const viewMonthIdx = view.y * 12 + view.m;
-  const canPrev = viewMonthIdx > minMonthIdx;
-  const canNext = viewMonthIdx < maxMonthIdx;
-
-  const shiftMonth = (delta: number) => {
-    setView((v) => {
-      const idx = v.y * 12 + v.m + delta;
-      return { y: Math.floor(idx / 12), m: ((idx % 12) + 12) % 12 };
-    });
-  };
-
-  const startWeekday = new Date(view.y, view.m, 1).getDay();
-  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
-  const minTime = startOfDay(min).getTime();
-  const maxTime = startOfDay(max).getTime();
-
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < startWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++)
-    cells.push(new Date(view.y, view.m, d));
-
-  const inRange = (d: Date) => {
-    // 일요일(0)은 방문 불가 — 비활성화.
-    if (d.getDay() === 0) return false;
-    const t = startOfDay(d).getTime();
-    return t >= minTime && t <= maxTime;
-  };
-
-  return (
-    <CalendarBox>
-      <CalendarHeader>
-        <CalNavButton
-          type="button"
-          disabled={!canPrev}
-          onClick={() => canPrev && shiftMonth(-1)}
-          aria-label="이전 달"
-        >
-          ‹
-        </CalNavButton>
-        <CalTitle>
-          {view.y}년 {view.m + 1}월
-        </CalTitle>
-        <CalNavButton
-          type="button"
-          disabled={!canNext}
-          onClick={() => canNext && shiftMonth(1)}
-          aria-label="다음 달"
-        >
-          ›
-        </CalNavButton>
-      </CalendarHeader>
-      <CalWeekRow>
-        {WEEKDAYS.map((w, i) => (
-          <CalWeekday key={w} $sun={i === 0} $sat={i === 6}>
-            {w}
-          </CalWeekday>
-        ))}
-      </CalWeekRow>
-      <CalGrid>
-        {cells.map((d, idx) =>
-          d ? (
-            <CalDay
-              key={idx}
-              type="button"
-              disabled={!inRange(d)}
-              $selected={valueDate === fmtLocal(d)}
-              $sun={d.getDay() === 0}
-              $sat={d.getDay() === 6}
-              onClick={() => inRange(d) && onSelect(fmtLocal(d))}
-            >
-              {d.getDate()}
-            </CalDay>
-          ) : (
-            <CalEmpty key={idx} aria-hidden="true" />
-          ),
-        )}
-      </CalGrid>
-    </CalendarBox>
-  );
-}
-
 function FormView({
   form,
   setForm,
+  offices,
   submitting,
   error,
   onSubmit,
@@ -471,10 +399,32 @@ function FormView({
   const [estLoading, setEstLoading] = useState(false);
   const [estError, setEstError] = useState<string | null>(null);
 
-  const minDate = addDays(startOfToday(), 1);
-  const maxDate = addDays(startOfToday(), 28);
+  const minDateStr = addDaysKstYmd(todayKst(), 1);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const t = minDateStr;
+    return { y: Number(t.slice(0, 4)), m: Number(t.slice(5, 7)) - 1 };
+  });
+  const [slotOpenDates, setSlotOpenDates] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [daySlots, setDaySlots] = useState<AvailableSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [daysLoading, setDaysLoading] = useState(false);
+
+  const showOfficePicker = offices.length > 1;
+  const selectedOffice = offices.find((o) => o.id === form.officeId);
+
+  useEffect(() => {
+    if (offices.length === 0) return;
+    if (form.officeId != null) return;
+    const gangnam = offices.find((o) => o.code === "GANGNAM");
+    setForm((prev) => ({
+      ...prev,
+      officeId: gangnam?.id ?? offices[0].id,
+    }));
+  }, [offices, form.officeId, setForm]);
 
   useEffect(() => {
     if (!calendarOpen) return;
@@ -486,6 +436,95 @@ function FormView({
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [calendarOpen]);
+
+  useEffect(() => {
+    if (form.visitType !== "RESERVED" || form.officeId == null) {
+      setSlotOpenDates(new Set());
+      return;
+    }
+    let cancelled = false;
+    setDaysLoading(true);
+    const { from, to } = monthBoundsKst(viewMonth.y, viewMonth.m);
+    fetch(
+      `/api/miracle10/available-slots?officeId=${form.officeId}&from=${from}&to=${to}`,
+    )
+      .then(async (res) => {
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.ok) throw new Error(json.error);
+        const dates = new Set<string>(
+          (
+            json.days as {
+              date: string;
+              slotCount: number;
+              hasAvailability: boolean;
+            }[]
+          )
+            .filter((d) => d.slotCount > 0)
+            .map((d) => d.date),
+        );
+        setSlotOpenDates(dates);
+      })
+      .catch(() => {
+        if (!cancelled) setSlotOpenDates(new Set());
+      })
+      .finally(() => {
+        if (!cancelled) setDaysLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.officeId, form.visitType, viewMonth.y, viewMonth.m]);
+
+  useEffect(() => {
+    if (
+      form.visitType !== "RESERVED" ||
+      form.officeId == null ||
+      !form.visitDate
+    ) {
+      setDaySlots([]);
+      return;
+    }
+    let cancelled = false;
+    setSlotsLoading(true);
+    fetch(
+      `/api/miracle10/available-slots?officeId=${form.officeId}&date=${form.visitDate}`,
+    )
+      .then(async (res) => {
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.ok) throw new Error(json.error);
+        setDaySlots(json.slots as AvailableSlot[]);
+      })
+      .catch(() => {
+        if (!cancelled) setDaySlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.visitDate, form.officeId, form.visitType]);
+
+  const handleMonthChange = useCallback((y: number, m: number) => {
+    setViewMonth((prev) => (prev.y === y && prev.m === m ? prev : { y, m }));
+  }, []);
+
+  const isBookingDateEnabled = useCallback(
+    (ymd: string) => isBusinessDayKst(ymd) && slotOpenDates.has(ymd),
+    [slotOpenDates],
+  );
+
+  const handleCalendarSelect = useCallback((s: string) => {
+    setForm((prev) => ({
+      ...prev,
+      visitDate: s,
+      reservedStart: "",
+      visitTimeSlot: "",
+    }));
+    setCalendarOpen(false);
+  }, [setForm]);
 
   const isLargeQty = qty != null && qty >= LARGE_QTY_THRESHOLD;
 
@@ -703,6 +742,8 @@ function FormView({
                     ...prev,
                     visitType: v.value,
                     visitDate: v.value === "RESERVED" ? prev.visitDate : "",
+                    reservedStart:
+                      v.value === "RESERVED" ? prev.reservedStart : "",
                     visitTimeSlot:
                       v.value === "RESERVED" ? prev.visitTimeSlot : "",
                   }))
@@ -716,6 +757,39 @@ function FormView({
 
         {form.visitType === "RESERVED" ? (
           <>
+            {showOfficePicker ? (
+              <Field>
+                <Label htmlFor="apply-office">
+                  방문 사무실 <Required>*</Required>
+                </Label>
+                <OfficeSelect
+                  id="apply-office"
+                  value={form.officeId ?? ""}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      officeId: id,
+                      visitDate: "",
+                      reservedStart: "",
+                      visitTimeSlot: "",
+                    }));
+                  }}
+                >
+                  {offices.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </OfficeSelect>
+              </Field>
+            ) : selectedOffice ? (
+              <OfficeFixedNote>
+                방문지: <strong>{selectedOffice.name}</strong>
+                {OFFICE_HOURS_LABEL ? ` · ${OFFICE_HOURS_LABEL}` : ""}
+              </OfficeFixedNote>
+            ) : null}
+
             <Field>
               <Label>
                 예약 희망일 <Required>*</Required>
@@ -728,7 +802,7 @@ function FormView({
                 >
                   <span>
                     {form.visitDate
-                      ? formatDisplayDate(form.visitDate)
+                      ? (formatKstYmdLong(form.visitDate) ?? form.visitDate)
                       : "날짜 선택"}
                   </span>
                   <DateChevron $open={calendarOpen} aria-hidden="true">
@@ -736,44 +810,79 @@ function FormView({
                   </DateChevron>
                 </DateSelectButton>
                 {calendarOpen && (
-                  <InlineCalendar
-                    valueDate={form.visitDate}
-                    min={minDate}
-                    max={maxDate}
-                    onSelect={(s) => {
-                      updateField("visitDate", s);
-                      setCalendarOpen(false);
-                    }}
-                  />
+                  <CalendarDropdown>
+                    <MonthCalendar
+                      valueDate={form.visitDate || minDateStr}
+                      minDate={minDateStr}
+                      maxDate={defaultCalendarMaxDate(minDateStr, 2)}
+                      isDateEnabled={isBookingDateEnabled}
+                      onSelect={handleCalendarSelect}
+                      onMonthChange={handleMonthChange}
+                    />
+                    {daysLoading ? (
+                      <CalendarHint>예약 가능일 조회 중…</CalendarHint>
+                    ) : slotOpenDates.size === 0 ? (
+                      <CalendarHint>
+                        이 달에 운영자가 연 근무일이 없습니다.
+                      </CalendarHint>
+                    ) : null}
+                  </CalendarDropdown>
                 )}
               </DatePickerWrap>
             </Field>
 
-            {form.visitDate && (
+            {form.visitDate ? (
               <Field>
                 <Label>
-                  방문 시간대 <Required>*</Required>
+                  방문 시간 <Required>*</Required>
                 </Label>
-                <ChipRow>
-                  {TIME_SLOTS.map((ts) => (
-                    <Chip
-                      key={ts}
-                      type="button"
-                      $active={form.visitTimeSlot === ts}
-                      onClick={() =>
-                        updateField(
-                          "visitTimeSlot",
-                          form.visitTimeSlot === ts ? "" : ts,
-                        )
-                      }
-                    >
-                      {ts}
-                    </Chip>
-                  ))}
-                </ChipRow>
-                <TimeAdjustNote>시간은 조율할게요.</TimeAdjustNote>
+                {slotsLoading ? (
+                  <TimeAdjustNote>시간 조회 중…</TimeAdjustNote>
+                ) : daySlots.length === 0 ? (
+                  <TimeAdjustNote>
+                    예약 가능한 시간이 없습니다. 다른 날짜를 선택해 주세요.
+                  </TimeAdjustNote>
+                ) : (
+                  <ChipRow>
+                    {daySlots.map((slot) => {
+                      const active = form.reservedStart === slot.startTime;
+                      return (
+                        <SlotChip
+                          key={slot.startTime}
+                          type="button"
+                          $active={active}
+                          $booked={!slot.available}
+                          disabled={!slot.available}
+                          onClick={() => {
+                            if (!slot.available) return;
+                            const next =
+                              active ? "" : slot.startTime;
+                            const end = next ? slotEndTime(next) : null;
+                            setForm((prev) => ({
+                              ...prev,
+                              reservedStart: next,
+                              visitTimeSlot:
+                                next && end ? `${next}-${end}` : "",
+                            }));
+                          }}
+                        >
+                          <SlotChipTime>{slot.startTime}</SlotChipTime>
+                          <SlotChipMeta>
+                            {!slot.available
+                              ? "예약됨"
+                              : `남음 ${slot.remaining}자리`}
+                          </SlotChipMeta>
+                        </SlotChip>
+                      );
+                    })}
+                  </ChipRow>
+                )}
+                <TimeAdjustNote>
+                  확정 전까지는 같은 시간에 여러 분이 신청하실 수 있으며,
+                  최종 일정은 연락 후 확정됩니다.
+                </TimeAdjustNote>
               </Field>
-            )}
+            ) : null}
           </>
         ) : (
           <WalkInNote>
@@ -1183,115 +1292,6 @@ const DateChevron = styled.span<{ $open: boolean }>`
   transform: ${(p) => (p.$open ? "rotate(180deg)" : "rotate(0deg)")};
 `;
 
-const CalendarBox = styled.div`
-  margin-top: 8px;
-  width: 100%;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 8px 24px rgba(15, 15, 28, 0.12);
-`;
-
-const CalendarHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-`;
-
-const CalNavButton = styled.button`
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #434392;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover:not(:disabled) {
-    background: #f5f3ff;
-    border-color: #434392;
-  }
-
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-`;
-
-const CalTitle = styled.span`
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #111827;
-`;
-
-const CalWeekRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 4px;
-`;
-
-const CalWeekday = styled.span<{ $sun?: boolean; $sat?: boolean }>`
-  text-align: center;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 4px 0;
-  color: ${(p) => (p.$sun ? "#dc2626" : p.$sat ? "#2563eb" : "#6b7280")};
-`;
-
-const CalGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-`;
-
-const CalEmpty = styled.div`
-  aspect-ratio: 1 / 1;
-`;
-
-const CalDay = styled.button<{
-  $selected: boolean;
-  $sun?: boolean;
-  $sat?: boolean;
-}>`
-  aspect-ratio: 1 / 1;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: ${(p) => (p.$selected ? 800 : 500)};
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: ${(p) => (p.$selected ? "#434392" : "transparent")};
-  color: ${(p) =>
-    p.$selected
-      ? "#ffffff"
-      : p.$sun
-        ? "#dc2626"
-        : p.$sat
-          ? "#2563eb"
-          : "#1f2937"};
-  transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
-
-  &:hover:not(:disabled) {
-    background: ${(p) => (p.$selected ? "#363689" : "#f5f3ff")};
-  }
-
-  &:disabled {
-    color: #d1d5db;
-    cursor: not-allowed;
-  }
-`;
-
 const TimeAdjustNote = styled.p`
   margin: 8px 0 0;
   font-size: 0.78rem;
@@ -1315,7 +1315,7 @@ const ChipRow = styled.div`
   gap: 8px;
 `;
 
-const Chip = styled.button<{ $active: boolean }>`
+const Chip = styled.button<{ $active: boolean; $disabled?: boolean }>`
   padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid ${(p) => (p.$active ? "#434392" : "#e5e7eb")};
@@ -1323,12 +1323,74 @@ const Chip = styled.button<{ $active: boolean }>`
   color: ${(p) => (p.$active ? "#ffffff" : "#374151")};
   font-size: 0.85rem;
   font-weight: 600;
-  cursor: pointer;
+  cursor: ${(p) => (p.$disabled ? "not-allowed" : "pointer")};
+  opacity: ${(p) => (p.$disabled ? 0.55 : 1)};
   transition: all 0.12s ease;
 
   &:hover {
+    border-color: ${(p) => (p.$disabled ? "#e5e7eb" : "#434392")};
+  }
+`;
+
+const SlotChip = styled.button<{ $active: boolean; $booked?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 88px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid
+    ${(p) =>
+      p.$active ? "#434392" : p.$booked ? "#e5e7eb" : "#d1d5db"};
+  background: ${(p) =>
+    p.$active ? "#434392" : p.$booked ? "#f9fafb" : "#ffffff"};
+  color: ${(p) => (p.$active ? "#ffffff" : "#374151")};
+  cursor: ${(p) => (p.$booked ? "not-allowed" : "pointer")};
+  opacity: ${(p) => (p.$booked ? 0.65 : 1)};
+
+  &:hover:not(:disabled) {
     border-color: #434392;
   }
+`;
+
+const SlotChipTime = styled.span`
+  font-size: 0.9rem;
+  font-weight: 700;
+`;
+
+const SlotChipMeta = styled.span`
+  font-size: 0.72rem;
+  opacity: 0.9;
+`;
+
+const OfficeSelect = styled.select`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #fff;
+`;
+
+const OfficeFixedNote = styled.p`
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f5f3ff;
+  font-size: 0.85rem;
+  color: #4b5563;
+`;
+
+const CalendarDropdown = styled.div`
+  margin-top: 8px;
+`;
+
+const CalendarHint = styled.p`
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-align: center;
 `;
 
 const CheckboxField = styled.div`

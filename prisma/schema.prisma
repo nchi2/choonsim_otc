@@ -56,6 +56,40 @@ model AdminUser {
   role         String   @default("operator")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  workSlots      WorkSlot[]
+  assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
+}
+
+// 사무실 — enum 대신 테이블(지점 추가·활성화 관리).
+model Office {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique // "GANGNAM", "SEONGSU" …
+  name      String // "강남 사무실"
+  address   String?
+  isActive  Boolean  @default(true) // 손님 노출 여부
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workSlots WorkSlot[]
+  orders    OtcOrder[]
+}
+
+// 운영자 근무 가능 슬롯 — 30분 단위, KST date/startTime.
+model WorkSlot {
+  id          Int       @id @default(autoincrement())
+  adminUserId Int
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id])
+  officeId    Int
+  office      Office    @relation(fields: [officeId], references: [id])
+  date        String // "YYYY-MM-DD" (KST)
+  startTime   String // "HH:MM" 30분 단위 시작
+  createdAt   DateTime  @default(now())
+
+  @@unique([adminUserId, officeId, date, startTime])
+  @@index([officeId, date])
+  @@index([date, startTime])
 }
 
 model Customer {
@@ -99,6 +133,13 @@ model OtcOrder {
   visitType       String?
   visitDate       String?
   visitTimeSlot   String?
+
+  // 예약 연결 — 기존 visitDate/visitTimeSlot(1시간)과 공존, 신규는 reservedStart(30분).
+  officeId            Int?
+  office              Office?    @relation(fields: [officeId], references: [id])
+  reservedStart       String? // "HH:MM" 확정 시작(30분 슬롯)
+  assignedAdminUserId Int?
+  assignedAdminUser   AdminUser? @relation("OrderAssignedAdmin", fields: [assignedAdminUserId], references: [id])
 
   // 사전파악 답 (yes/no/unsure 등)
   needUsdt     String?

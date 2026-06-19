@@ -13,6 +13,74 @@ const prisma = new PrismaClient({ adapter });
 
 const BCRYPT_ROUNDS = 10;
 
+/** 사무실 seed — code 기준 upsert. 강남만 isActive=true. */
+const OFFICE_SEEDS = [
+  {
+    code: "GANGNAM",
+    name: "강남 사무실",
+    address: "서울 서초구 사임당로 149-5 지하층",
+    isActive: true,
+    sortOrder: 0,
+  },
+  {
+    code: "SEONGSU",
+    name: "성수 사무실",
+    address: null as string | null,
+    isActive: false,
+    sortOrder: 1,
+  },
+  {
+    code: "DAEGU",
+    name: "대구 사무실",
+    address: null,
+    isActive: false,
+    sortOrder: 2,
+  },
+  {
+    code: "DAEJEON",
+    name: "대전 사무실",
+    address: null,
+    isActive: false,
+    sortOrder: 3,
+  },
+  {
+    code: "GWANGJU",
+    name: "광주 사무실",
+    address: null,
+    isActive: false,
+    sortOrder: 4,
+  },
+  {
+    code: "BUSAN",
+    name: "부산 사무실",
+    address: null,
+    isActive: false,
+    sortOrder: 5,
+  },
+] as const;
+
+async function seedOffices() {
+  for (const o of OFFICE_SEEDS) {
+    await prisma.office.upsert({
+      where: { code: o.code },
+      create: {
+        code: o.code,
+        name: o.name,
+        address: o.address,
+        isActive: o.isActive,
+        sortOrder: o.sortOrder,
+      },
+      update: {
+        name: o.name,
+        address: o.address,
+        isActive: o.isActive,
+        sortOrder: o.sortOrder,
+      },
+    });
+    console.log(`[seed] office upsert done: ${o.code}`);
+  }
+}
+
 interface SeedAccount {
   username: string;
   displayName: string;
@@ -90,6 +158,8 @@ async function main() {
     });
     console.log(`[seed] upsert done: ${acc.username}`);
   }
+
+  await seedOffices();
 }
 
 main()

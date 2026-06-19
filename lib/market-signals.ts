@@ -8,6 +8,7 @@
  */
 
 import { fetchCcapi, getCcapiKlinesUrl } from "@/lib/ccapi-fetch";
+import { fmtKstDate, fmtKstMinute, fmtKstYearMonth } from "@/lib/kst";
 import { fetchTickerPrice, fetchUsdtKrw } from "@/lib/otc-orderbook";
 
 // ─────────────────────────── 상수 (조정 가능) ───────────────────────────
@@ -170,32 +171,6 @@ const lastN = <T>(arr: T[], n: number): T[] =>
 
 const fmt = (n: number | null, unit = "", digits = 1): string =>
   n == null ? "—" : `${n.toLocaleString("ko-KR", { maximumFractionDigits: digits })}${unit}`;
-
-/** "2026-06-11 17:39 KST" 형식(분 단위, UTC+9). */
-function fmtKstMinute(d: Date): string {
-  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-  const y = kst.getUTCFullYear();
-  const mo = String(kst.getUTCMonth() + 1).padStart(2, "0");
-  const da = String(kst.getUTCDate()).padStart(2, "0");
-  const h = String(kst.getUTCHours()).padStart(2, "0");
-  const mi = String(kst.getUTCMinutes()).padStart(2, "0");
-  return `${y}-${mo}-${da} ${h}:${mi} KST`;
-}
-
-/** "2026년 6월" 형식(현재 시점 검색 안내용). */
-function fmtKstYearMonth(d: Date): string {
-  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-  return `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월`;
-}
-
-/** "2026.06.11" 형식(KST). 타임스탬프(ms) → 날짜 문자열. */
-function fmtKstDate(ms: number): string {
-  const kst = new Date(ms + 9 * 60 * 60 * 1000);
-  const y = kst.getUTCFullYear();
-  const mo = String(kst.getUTCMonth() + 1).padStart(2, "0");
-  const da = String(kst.getUTCDate()).padStart(2, "0");
-  return `${y}.${mo}.${da}`;
-}
 
 /** % 1자리 부호 표시: +1.2% / −0.8% / 0.0% */
 function fmtPctSigned(n: number | null): string {

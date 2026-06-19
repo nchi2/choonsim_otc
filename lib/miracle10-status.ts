@@ -12,7 +12,7 @@ export type Miracle10Status = (typeof MIRACLE10_STATUSES)[number];
 export const STATUS_LABELS: Record<Miracle10Status, string> = {
   PENDING: "접수",
   CONTACTED: "연락완료",
-  VERIFIED: "인증완료",
+  VERIFIED: "일정 확정",
   COMPLETED: "완료",
   CANCELED: "취소",
 };
@@ -24,3 +24,25 @@ export const STATUS_COLORS: Record<Miracle10Status, string> = {
   COMPLETED: "#64748b",
   CANCELED: "#dc2626",
 };
+
+/** 운영자 UI — 방문 방식 표시 (WALK_IN 일정 지정 여부 포함). */
+export function formatAdminVisitTypeLabel(
+  visitType: string | null,
+  schedule?: {
+    officeId?: number | null;
+    visitDate?: string | null;
+    reservedStart?: string | null;
+  },
+): string {
+  if (visitType === "RESERVED") return "직접 방문 (예약일 지정)";
+  if (visitType === "WALK_IN") {
+    const hasSchedule =
+      schedule?.officeId != null &&
+      schedule?.visitDate != null &&
+      schedule.visitDate.trim() !== "" &&
+      schedule?.reservedStart != null &&
+      schedule.reservedStart.trim() !== "";
+    return hasSchedule ? "워크인 · 일정 지정됨" : "예약 없이 방문";
+  }
+  return visitType?.trim() ? visitType : "-";
+}

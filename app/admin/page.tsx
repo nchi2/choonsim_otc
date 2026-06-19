@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
-import AdminTopBar from "@/components/admin/AdminTopBar";
-
 const Page = styled.div`
   max-width: 960px;
   margin: 0 auto;
-  padding: 2rem 1rem 4rem;
+  padding: 0.5rem 1rem 1rem;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1.5rem 1rem;
+  }
 `;
 
 const StatsGrid = styled.div`
@@ -26,17 +28,34 @@ const StatCard = styled.div`
   padding: 1rem 1.1rem;
 `;
 
-const StatLabel = styled.div`
+const PendingStatCard = styled(Link)<{ $highlight: boolean }>`
+  display: block;
+  border: 1px solid ${(p) => (p.$highlight ? "#fb7185" : "#e5e7eb")};
+  border-radius: 12px;
+  background: ${(p) => (p.$highlight ? "#fff1f2" : "#fff")};
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+  &:hover {
+    border-color: ${(p) => (p.$highlight ? "#f43f5e" : "#d1d5db")};
+    box-shadow: ${(p) =>
+      p.$highlight ? "0 4px 14px rgba(244, 63, 94, 0.12)" : "none"};
+  }
+`;
+
+const StatLabel = styled.div<{ $accent?: boolean }>`
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: ${(p) => (p.$accent ? "#e11d48" : "#6b7280")};
   margin-bottom: 0.35rem;
 `;
 
-const StatValue = styled.div`
+const StatValue = styled.div<{ $accent?: boolean }>`
   font-size: 1.5rem;
   font-weight: 800;
-  color: #111827;
+  color: ${(p) => (p.$accent ? "#be123c" : "#111827")};
 `;
 
 const SectionTitle = styled.h2`
@@ -100,7 +119,6 @@ interface Stats {
 
 export default function AdminHubPage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,24 +129,16 @@ export default function AdminHubPage() {
       setLoading(true);
       setError(null);
       try {
-        const [meRes, statsRes] = await Promise.all([
-          fetch("/api/admin/auth/me"),
-          fetch("/api/admin/stats"),
-        ]);
-        if (meRes.status === 401 || statsRes.status === 401) {
+        const statsRes = await fetch("/api/admin/stats");
+        if (statsRes.status === 401) {
           router.push("/admin/login");
           return;
         }
-        const me = await meRes.json();
         const statsJson = await statsRes.json();
-        if (!meRes.ok || !me.ok) {
-          throw new Error(me.error || "인증 정보를 불러오지 못했습니다.");
-        }
         if (!statsRes.ok || !statsJson.ok) {
           throw new Error(statsJson.error || "집계를 불러오지 못했습니다.");
         }
         if (!cancelled) {
-          setDisplayName(me.displayName);
           setStats(statsJson.stats);
         }
       } catch (e) {
@@ -146,12 +156,6 @@ export default function AdminHubPage() {
 
   return (
     <Page>
-      <AdminTopBar
-        title="운영 대시보드"
-        displayName={displayName}
-        showHubLink={false}
-      />
-
       {loading && <Empty>불러오는 중...</Empty>}
       {error && <Empty style={{ color: "#dc2626" }}>{error}</Empty>}
 
@@ -166,10 +170,13 @@ export default function AdminHubPage() {
               <StatLabel>진행 중</StatLabel>
               <StatValue>{stats.active}</StatValue>
             </StatCard>
-            <StatCard>
-              <StatLabel>접수</StatLabel>
-              <StatValue>{stats.pending}</StatValue>
-            </StatCard>
+            <PendingStatCard
+              href="/admin/miracle10?tab=PENDING"
+              $highlight={stats.pending > 0}
+            >
+              <StatLabel $accent={stats.pending > 0}>접수</StatLabel>
+              <StatValue $accent={stats.pending > 0}>{stats.pending}</StatValue>
+            </PendingStatCard>
             <StatCard>
               <StatLabel>완료</StatLabel>
               <StatValue>{stats.completed}</StatValue>
@@ -182,6 +189,12 @@ export default function AdminHubPage() {
 
           <SectionTitle>메뉴</SectionTitle>
           <MenuGrid>
+            <MenuCard href="/admin/schedule">
+              <MenuTitle>근무 슬롯 등록</MenuTitle>
+              <MenuDesc>
+                사무실·날짜별 30분 근무 슬롯 등록 및 조회
+              </MenuDesc>
+            </MenuCard>
             <MenuCard href="/admin/miracle10">
               <MenuTitle>10모의 기적 신청 관리</MenuTitle>
               <MenuDesc>

@@ -4,17 +4,31 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
+import MonthCalendar, {
+  defaultCalendarMaxDate,
+} from "@/components/admin/MonthCalendar";
 import {
   MIRACLE10_STATUSES,
   STATUS_COLORS,
   STATUS_LABELS,
+  formatAdminVisitTypeLabel,
   type Miracle10Status,
 } from "@/lib/miracle10-status";
+import {
+  formatKstYmdLong,
+  monthBoundsKst,
+  todayKst,
+} from "@/lib/kst";
+import { isBusinessDayKst } from "@/lib/work-schedule";
 
 const Page = styled.div`
   max-width: 720px;
   margin: 0 auto;
-  padding: 2rem 1rem 4rem;
+  padding: 0.5rem 1rem 1rem;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1.5rem 1rem;
+  }
 `;
 
 const BackLink = styled(Link)`
@@ -46,6 +60,13 @@ const SectionTitle = styled.h2`
   font-weight: 700;
   color: #374151;
   margin: 0 0 0.75rem;
+`;
+
+const SectionSub = styled.p`
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem;
+  line-height: 1.45;
 `;
 
 const Field = styled.div`
@@ -107,6 +128,117 @@ const Empty = styled.div`
   color: #6b7280;
 `;
 
+const DatePickerWrap = styled.div`
+  position: relative;
+  margin-bottom: 0.75rem;
+`;
+
+const DateSelectButton = styled.button<{ $hasValue: boolean }>`
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: ${(p) => (p.$hasValue ? "#111827" : "#9ca3af")};
+`;
+
+const CalendarDropdown = styled.div`
+  margin-top: 0.5rem;
+`;
+
+const CalendarHint = styled.p`
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+`;
+
+const SlotGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+`;
+
+const SlotChip = styled.button<{ $active: boolean; $booked?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 84px;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  border: 1.5px solid
+    ${(p) =>
+      p.$active ? "#4338ca" : p.$booked ? "#e5e7eb" : "#d1d5db"};
+  background: ${(p) =>
+    p.$active ? "#4338ca" : p.$booked ? "#f9fafb" : "#fff"};
+  color: ${(p) => (p.$active ? "#fff" : "#374151")};
+  cursor: ${(p) => (p.$booked ? "not-allowed" : "pointer")};
+  opacity: ${(p) => (p.$booked ? 0.65 : 1)};
+`;
+
+const SlotChipTime = styled.span`
+  font-size: 0.85rem;
+  font-weight: 700;
+`;
+
+const SlotChipMeta = styled.span`
+  font-size: 0.68rem;
+`;
+
+const SaveScheduleBtn = styled.button`
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: #4338ca;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
+const ScheduleError = styled.p`
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #dc2626;
+`;
+
+const OfficeSelect = styled.select`
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+`;
+
+interface AvailableSlot {
+  startTime: string;
+  capacity: number;
+  taken: number;
+  remaining: number;
+  available: boolean;
+}
+
+interface OfficeOption {
+  id: number;
+  name: string;
+  isActive: boolean;
+}
+
 interface Detail {
   id: number;
   createdAt: string;
@@ -121,15 +253,15 @@ interface Detail {
   contactTimePref: string | null;
   visitType: string | null;
   visitDate: string | null;
+  reservedStart: string | null;
   visitTimeSlot: string | null;
+  officeId: number | null;
   needUsdt: string | null;
   needBmb: string | null;
   needFaceAuth: string | null;
   isSbmbMember: boolean;
   memo: string | null;
   agreePrivacy: boolean;
-  agreeRisk: boolean;
-  agreeP2p: boolean;
   customer: {
     id: number;
     name: string;
@@ -201,6 +333,20 @@ export default function Miracle10DetailPage({
   if (error) return <Page><Empty style={{ color: "#dc2626" }}>{error}</Empty></Page>;
   if (!data) return null;
 
+  const canEditSchedule =
+    (data.visitType === "RESERVED" || data.visitType === "WALK_IN") &&
+    (data.status === "PENDING" || data.status === "VERIFIED");
+
+  const showScheduleEditor =
+    canEditSchedule &&
+    (data.visitType === "WALK_IN" || data.officeId != null);
+
+  const visitTypeLabel = formatAdminVisitTypeLabel(data.visitType, {
+    officeId: data.officeId,
+    visitDate: data.visitDate,
+    reservedStart: data.reservedStart,
+  });
+
   return (
     <Page>
       <BackLink href="/admin/miracle10">← 목록으로</BackLink>
@@ -264,16 +410,38 @@ export default function Miracle10DetailPage({
         </Field>
         <Field>
           <Key>방문 방식</Key>
-          <Val>{data.visitType || "-"}</Val>
+          <Val>{visitTypeLabel}</Val>
         </Field>
-        <Field>
-          <Key>방문 희망일</Key>
-          <Val>{data.visitDate || "-"}</Val>
-        </Field>
-        <Field>
-          <Key>방문 시간대</Key>
-          <Val>{data.visitTimeSlot || "-"}</Val>
-        </Field>
+        {showScheduleEditor ? (
+          <VisitScheduleEditor
+            orderId={data.id}
+            visitType={data.visitType}
+            officeId={data.officeId}
+            status={data.status}
+            visitDate={data.visitDate}
+            reservedStart={data.reservedStart}
+            onSaved={load}
+          />
+        ) : (
+          <>
+            <Field>
+              <Key>방문 희망일</Key>
+              <Val>
+                {data.visitDate
+                  ? (formatKstYmdLong(data.visitDate) ?? data.visitDate)
+                  : "-"}
+              </Val>
+            </Field>
+            <Field>
+              <Key>방문 시간</Key>
+              <Val>
+                {data.reservedStart
+                  ? `${data.reservedStart} 시작`
+                  : data.visitTimeSlot || "-"}
+              </Val>
+            </Field>
+          </>
+        )}
         <Field>
           <Key>메모</Key>
           <Val>{data.memo || "-"}</Val>
@@ -303,14 +471,6 @@ export default function Miracle10DetailPage({
           <Val>{data.agreePrivacy ? "동의" : "미동의"}</Val>
         </Field>
         <Field>
-          <Key>리스크 고지 동의</Key>
-          <Val>{data.agreeRisk ? "동의" : "미동의"}</Val>
-        </Field>
-        <Field>
-          <Key>P2P 동의</Key>
-          <Val>{data.agreeP2p ? "동의" : "미동의"}</Val>
-        </Field>
-        <Field>
           <Key>접수일시</Key>
           <Val>{new Date(data.createdAt).toLocaleString("ko-KR")}</Val>
         </Field>
@@ -328,5 +488,318 @@ export default function Miracle10DetailPage({
         </Field>
       </Card>
     </Page>
+  );
+}
+
+interface VisitScheduleEditorProps {
+  orderId: number;
+  visitType: string | null;
+  officeId: number | null;
+  status: Miracle10Status;
+  visitDate: string | null;
+  reservedStart: string | null;
+  onSaved: () => void;
+}
+
+function VisitScheduleEditor({
+  orderId,
+  visitType,
+  officeId,
+  status,
+  visitDate,
+  reservedStart,
+  onSaved,
+}: VisitScheduleEditorProps) {
+  const allowOfficePick = visitType === "WALK_IN";
+  const minDate = todayKst();
+  const [draftOfficeId, setDraftOfficeId] = useState<number | null>(officeId);
+  const [offices, setOffices] = useState<OfficeOption[]>([]);
+  const [officesLoading, setOfficesLoading] = useState(allowOfficePick);
+  const [draftDate, setDraftDate] = useState(visitDate ?? "");
+  const [draftStart, setDraftStart] = useState(reservedStart ?? "");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const base = visitDate && visitDate >= minDate ? visitDate : minDate;
+    return { y: Number(base.slice(0, 4)), m: Number(base.slice(5, 7)) - 1 };
+  });
+  const [slotOpenDates, setSlotOpenDates] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [daySlots, setDaySlots] = useState<AvailableSlot[]>([]);
+  const [daysLoading, setDaysLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraftOfficeId(officeId);
+    setDraftDate(visitDate ?? "");
+    setDraftStart(reservedStart ?? "");
+  }, [officeId, visitDate, reservedStart]);
+
+  useEffect(() => {
+    if (!allowOfficePick) return;
+    let cancelled = false;
+    setOfficesLoading(true);
+    fetch("/api/admin/offices")
+      .then(async (res) => {
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.ok) throw new Error(json.error);
+        setOffices(json.offices as OfficeOption[]);
+      })
+      .catch(() => {
+        if (!cancelled) setOffices([]);
+      })
+      .finally(() => {
+        if (!cancelled) setOfficesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allowOfficePick]);
+
+  const activeOfficeId = allowOfficePick ? draftOfficeId : officeId;
+
+  useEffect(() => {
+    if (activeOfficeId == null) {
+      setSlotOpenDates(new Set());
+      return;
+    }
+    let cancelled = false;
+    setDaysLoading(true);
+    const { from, to } = monthBoundsKst(viewMonth.y, viewMonth.m);
+    fetch(
+      `/api/miracle10/available-slots?officeId=${activeOfficeId}&from=${from}&to=${to}`,
+    )
+      .then(async (res) => {
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.ok) throw new Error(json.error);
+        const dates = new Set<string>(
+          (
+            json.days as { date: string; slotCount: number }[]
+          )
+            .filter((d) => d.slotCount > 0)
+            .map((d) => d.date),
+        );
+        if (visitDate) dates.add(visitDate);
+        setSlotOpenDates(dates);
+      })
+      .catch(() => {
+        if (!cancelled) setSlotOpenDates(visitDate ? new Set([visitDate]) : new Set());
+      })
+      .finally(() => {
+        if (!cancelled) setDaysLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOfficeId, viewMonth.y, viewMonth.m, visitDate]);
+
+  useEffect(() => {
+    if (!draftDate || activeOfficeId == null) {
+      setDaySlots([]);
+      return;
+    }
+    let cancelled = false;
+    setSlotsLoading(true);
+    fetch(
+      `/api/miracle10/available-slots?officeId=${activeOfficeId}&date=${draftDate}`,
+    )
+      .then(async (res) => {
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.ok) throw new Error(json.error);
+        setDaySlots(json.slots as AvailableSlot[]);
+      })
+      .catch(() => {
+        if (!cancelled) setDaySlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draftDate, activeOfficeId]);
+
+  const handleMonthChange = useCallback((y: number, m: number) => {
+    setViewMonth((prev) => (prev.y === y && prev.m === m ? prev : { y, m }));
+  }, []);
+
+  const isDateEnabled = useCallback(
+    (ymd: string) => isBusinessDayKst(ymd) && slotOpenDates.has(ymd),
+    [slotOpenDates],
+  );
+
+  const hasChanges =
+    draftDate !== (visitDate ?? "") ||
+    draftStart !== (reservedStart ?? "") ||
+    (allowOfficePick && draftOfficeId !== officeId);
+
+  const canSave =
+    hasChanges &&
+    activeOfficeId != null &&
+    draftDate !== "" &&
+    draftStart !== "";
+
+  const saveSchedule = async () => {
+    if (!canSave || saving || activeOfficeId == null) return;
+    setSaving(true);
+    setScheduleError(null);
+    try {
+      const payload: {
+        visitDate: string;
+        reservedStart: string;
+        officeId?: number;
+      } = {
+        visitDate: draftDate,
+        reservedStart: draftStart,
+      };
+      if (allowOfficePick || draftOfficeId !== officeId) {
+        payload.officeId = activeOfficeId;
+      }
+      const res = await fetch(`/api/admin/miracle10/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "일정 저장 실패");
+      }
+      onSaved();
+    } catch (e) {
+      setScheduleError(
+        e instanceof Error ? e.message : "일정 저장에 실패했습니다.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ gridColumn: "1 / -1", paddingTop: "0.25rem" }}>
+      <SectionTitle style={{ marginTop: "0.5rem" }}>방문 일정</SectionTitle>
+      <SectionSub>
+        {visitType === "WALK_IN"
+          ? "워크인 건 — 사무실·날짜·시간을 지정하면 정식 예약과 동일하게 캘린더·정원에 반영됩니다."
+          : status === "VERIFIED"
+            ? "일정 확정 건 — 변경 시 기존 자리를 반환하고 새 시간에 재배정합니다."
+            : "접수 건 — 방문 희망일·시간을 수정할 수 있습니다."}
+      </SectionSub>
+
+      {allowOfficePick ? (
+        <>
+          <SectionSub style={{ marginBottom: "0.35rem" }}>사무실</SectionSub>
+          <OfficeSelect
+            value={draftOfficeId ?? ""}
+            disabled={officesLoading || saving}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              setDraftOfficeId(Number.isInteger(next) && next > 0 ? next : null);
+              setDraftDate("");
+              setDraftStart("");
+              setCalendarOpen(false);
+            }}
+          >
+            <option value="">
+              {officesLoading ? "불러오는 중…" : "사무실 선택"}
+            </option>
+            {offices.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+                {!o.isActive ? " (비활성)" : ""}
+              </option>
+            ))}
+          </OfficeSelect>
+        </>
+      ) : null}
+
+      {activeOfficeId == null ? (
+        <CalendarHint>사무실을 먼저 선택해 주세요.</CalendarHint>
+      ) : (
+        <>
+      <DatePickerWrap>
+        <DateSelectButton
+          type="button"
+          $hasValue={!!draftDate}
+          onClick={() => setCalendarOpen((o) => !o)}
+        >
+          <span>
+            {draftDate
+              ? (formatKstYmdLong(draftDate) ?? draftDate)
+              : "날짜 선택"}
+          </span>
+          <span aria-hidden="true">{calendarOpen ? "▴" : "▾"}</span>
+        </DateSelectButton>
+        {calendarOpen ? (
+          <CalendarDropdown>
+            <MonthCalendar
+              valueDate={draftDate || minDate}
+              minDate={minDate}
+              maxDate={defaultCalendarMaxDate(minDate, 3)}
+              isDateEnabled={isDateEnabled}
+              onSelect={(s) => {
+                setDraftDate(s);
+                setDraftStart("");
+                setCalendarOpen(false);
+              }}
+              onMonthChange={handleMonthChange}
+            />
+            {daysLoading ? (
+              <CalendarHint>근무일 조회 중…</CalendarHint>
+            ) : slotOpenDates.size === 0 ? (
+              <CalendarHint>이 달에 운영 슬롯이 없습니다.</CalendarHint>
+            ) : null}
+          </CalendarDropdown>
+        ) : null}
+      </DatePickerWrap>
+
+      {draftDate ? (
+        slotsLoading ? (
+          <CalendarHint>시간 조회 중…</CalendarHint>
+        ) : daySlots.length === 0 ? (
+          <CalendarHint>예약 가능한 시간이 없습니다.</CalendarHint>
+        ) : (
+          <SlotGrid>
+            {daySlots.map((slot) => {
+              const isCurrent =
+                slot.startTime === reservedStart && draftDate === visitDate;
+              const selectable = slot.available || isCurrent;
+              const active = draftStart === slot.startTime;
+              return (
+                <SlotChip
+                  key={slot.startTime}
+                  type="button"
+                  $active={active}
+                  $booked={!selectable}
+                  disabled={!selectable}
+                  onClick={() => {
+                    if (!selectable) return;
+                    setDraftStart(active ? "" : slot.startTime);
+                  }}
+                >
+                  <SlotChipTime>{slot.startTime}</SlotChipTime>
+                  <SlotChipMeta>
+                    {!selectable
+                      ? "예약됨"
+                      : `남음 ${slot.remaining}자리`}
+                  </SlotChipMeta>
+                </SlotChip>
+              );
+            })}
+          </SlotGrid>
+        )
+      ) : null}
+
+      <SaveScheduleBtn type="button" disabled={!canSave || saving} onClick={saveSchedule}>
+        {saving ? "저장 중…" : "일정 저장"}
+      </SaveScheduleBtn>
+        </>
+      )}
+      {scheduleError ? <ScheduleError role="alert">{scheduleError}</ScheduleError> : null}
+    </div>
   );
 }

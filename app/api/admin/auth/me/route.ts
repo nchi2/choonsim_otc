@@ -10,6 +10,7 @@ export async function GET() {
   }
   return NextResponse.json({
     ok: true,
+    adminUserId: user.adminUserId,
     username: user.username,
     displayName: user.displayName,
   });

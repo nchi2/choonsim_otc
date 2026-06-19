@@ -136,9 +136,11 @@ const IconArrowLeft = ({ size, stroke }: { size: number; stroke: string }) => (
 );
 
 export interface Apply10MoResultData {
-  quantity: number; // 모 단위 신청값
+  quantity: number;
   contact: string;
-  visitDate: string | null; // "YYYY-MM-DD" | null
+  visitDate: string | null;
+  reservedStart?: string | null;
+  officeName?: string | null;
 }
 
 interface Apply10MoResultProps {
@@ -193,7 +195,14 @@ export default function Apply10MoResult({
   }, [copyText]);
 
   const wbmb = (submitted.quantity * MO_TO_WBMB).toLocaleString("ko-KR");
-  const visitLabel = formatVisitDateLong(submitted.visitDate) ?? "방문 시 조율";
+  const visitDateLabel =
+    formatVisitDateLong(submitted.visitDate) ?? "방문 시 조율";
+  const visitTimeLabel = submitted.reservedStart
+    ? `${submitted.reservedStart} 시작`
+    : null;
+  const visitLabel = [visitDateLabel, visitTimeLabel]
+    .filter(Boolean)
+    .join(" · ");
 
   // 신청번호는 끝자리 일련번호만 4자리로 표시 (예: "M10-2026-42" → "0042").
   const shortApplicationNo = (() => {

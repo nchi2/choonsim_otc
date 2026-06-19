@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
-import AdminTopBar from "@/components/admin/AdminTopBar";
 import BmbUsdtTicker from "@/app/page/components/BmbUsdtTicker";
 
 const Page = styled.div`
   max-width: 960px;
   margin: 0 auto;
-  padding: 2rem 1rem 4rem;
+  padding: 0.5rem 1rem 1rem;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1.5rem 1rem;
+  }
 `;
 
 const Card = styled.div`
@@ -890,6 +893,9 @@ const MARGIN_CHIPS = [1, 2] as const;
 /** 마진 하한(%) — 1% 미만 입력 불가, 입력 시 1%로 보정. */
 const MIN_MARGIN_PCT = 1;
 
+/** 수량 입력 기본값 — blur 시 빈칸이면 복귀. */
+const DEFAULT_QTY = 10;
+
 const EXTRA_LEVELS = 8;
 
 /** 상태 배지용 짧은 라벨. */
@@ -909,6 +915,35 @@ function fmtUsdt(n: number) {
 
 function fmtKrw(n: number) {
   return Math.round(n).toLocaleString("ko-KR");
+}
+
+/** 원화 입력 요약 — 300만원 등 자연스러운 표기. */
+function fmtKrwBrief(won: number): string {
+  if (won >= 10_000 && won % 10_000 === 0) {
+    return `${(won / 10_000).toLocaleString("ko-KR")}만원`;
+  }
+  return `${fmtKrw(won)}원`;
+}
+
+function parsePositiveInt(raw: string): number | null {
+  const trimmed = raw.trim().replace(/,/g, "");
+  if (trimmed === "") return null;
+  const v = Number(trimmed);
+  if (!Number.isInteger(v) || v <= 0) return null;
+  return v;
+}
+
+function parsePositiveKrw(raw: string): number | null {
+  const trimmed = raw.trim().replace(/,/g, "");
+  if (trimmed === "") return null;
+  const v = Number(trimmed);
+  if (!Number.isFinite(v) || v <= 0) return null;
+  return Math.round(v);
+}
+
+/** 입력칸 포커스 시 전체 선택 — 바로 덮어쓰기 가능. */
+function selectAllOnFocus(e: FocusEvent<HTMLInputElement>) {
+  e.currentTarget.select();
 }
 
 /** 호가 체결 수량 — 라벨·막대가 같은 값을 쓰도록 소수 2자리까지. */
@@ -1013,10 +1048,13 @@ function TrendIcon({ up }: { up: boolean }) {
   );
 }
 
+type InputMode = "qty" | "krw";
+
 export default function AdminCalculatorPage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(10);
+  const [inputMode, setInputMode] = useState<InputMode>("qty");
+  const [quantityInput, setQuantityInput] = useState(String(DEFAULT_QTY));
+  const [krwInput, setKrwInput] = useState("");
   const [direction, setDirection] = useState<Direction>("buy");
   // 단가 산정 탭 — 기본 "현재가 기준". 탭마다 마진을 따로 둔다.
   const [priceTab, setPriceTab] = useState<"current" | "vwap">("current");
@@ -1035,19 +1073,6 @@ export default function AdminCalculatorPage() {
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [signalsError, setSignalsError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/admin/auth/me")
-      .then(async (res) => {
-        if (res.status === 401) {
-          router.push("/admin/login");
-          return;
-        }
-        const json = await res.json();
-        if (json.ok) setDisplayName(json.displayName);
-      })
-      .catch(() => {});
-  }, [router]);
 
   // 직접 입력은 1% 미만이면 1%로 보정(MIN_MARGIN_PCT).
   const effMarginCur = useMemo(() => {
@@ -1071,15 +1096,78 @@ export default function AdminCalculatorPage() {
       const v = Number(usdtKrwOverride.replace(/,/g, ""));
       if (Number.isFinite(v) && v > 0) return v;
     }
-    return data?.usdtKrw ?? null;
-  }, [usdtKrwOverride, data?.usdtKrw]);
+    return data?.usdtKrw ?? signals?.usdtKrw ?? null;
+  }, [usdtKrwOverride, data?.usdtKrw, signals?.usdtKrw]);
+
+  /** 원화→수량 환산·표시용 현재가 — otc-calc 응답 없어도 시장 지표로 환산 가능. */
+  const lastPriceUsdtForConvert = useMemo(
+    () => data?.lastPrice ?? signals?.lastPrice ?? null,
+    [data?.lastPrice, signals?.lastPrice],
+  );
+
+  /** 모빅 1개당 원화 ≈ 현재가(USDT) × USDT환율 */
+  const bmbKrwPerUnit = useMemo(() => {
+    if (lastPriceUsdtForConvert == null || effectiveUsdtKrw == null) return null;
+    return lastPriceUsdtForConvert * effectiveUsdtKrw;
+  }, [lastPriceUsdtForConvert, effectiveUsdtKrw]);
+
+  const parsedKrwInput = useMemo(
+    () => parsePositiveKrw(krwInput),
+    [krwInput],
+  );
+
+  /** 계산 파이프라인에 투입할 유효 수량 — 입력 모드에 따라 파싱/환산. */
+  const effectiveQuantity = useMemo(() => {
+    if (inputMode === "qty") {
+      return parsePositiveInt(quantityInput);
+    }
+    if (parsedKrwInput == null || bmbKrwPerUnit == null || bmbKrwPerUnit <= 0) {
+      return null;
+    }
+    const rounded = Math.round(parsedKrwInput / bmbKrwPerUnit);
+    return rounded > 0 ? rounded : null;
+  }, [inputMode, quantityInput, parsedKrwInput, bmbKrwPerUnit]);
+
+  const inputHint = useMemo(() => {
+    if (inputMode === "qty") {
+      if (quantityInput.trim() === "") return "수량을 입력하세요";
+      if (parsePositiveInt(quantityInput) == null) return "올바른 수량(양의 정수)을 입력하세요";
+      return null;
+    }
+    if (krwInput.trim() === "") return "원화 금액을 입력하세요";
+    if (parsedKrwInput == null) return "올바른 원화 금액(양의 정수)을 입력하세요";
+    if (bmbKrwPerUnit == null) {
+      return signalsLoading
+        ? "시세·환율 조회 중…"
+        : "현재가·환율 조회 후 환산됩니다";
+    }
+    if (effectiveQuantity == null) return "환산 수량이 0개입니다 — 금액을 늘려주세요";
+    return null;
+  }, [
+    inputMode,
+    quantityInput,
+    krwInput,
+    parsedKrwInput,
+    bmbKrwPerUnit,
+    effectiveQuantity,
+    signalsLoading,
+  ]);
 
   const fetchCalc = useCallback(async () => {
+    if (effectiveQuantity == null) {
+      // 수량 모드: 유효 수량 없으면 결과 비움. 원화 모드: 시세 참조용 data 유지.
+      if (inputMode === "qty") {
+        setData(null);
+      }
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `/api/admin/otc-calc?quantity=${quantity}&direction=${direction}`,
+        `/api/admin/otc-calc?quantity=${effectiveQuantity}&direction=${direction}`,
       );
       if (res.status === 401) {
         router.push("/admin/login");
@@ -1096,7 +1184,7 @@ export default function AdminCalculatorPage() {
     } finally {
       setLoading(false);
     }
-  }, [quantity, direction, router]);
+  }, [effectiveQuantity, direction, inputMode, router]);
 
   useEffect(() => {
     fetchCalc();
@@ -1133,7 +1221,7 @@ export default function AdminCalculatorPage() {
   const isBuy = (data?.direction ?? direction) === "buy";
 
   const vwapUsdt = data?.vwap ?? null;
-  const lastPriceUsdt = data?.lastPrice ?? null;
+  const lastPriceUsdt = data?.lastPrice ?? signals?.lastPrice ?? null;
 
   // 탭별 기준가 — 산식은 동일(기준가 × (1±마진)), 기준가만 탭으로 선택.
   //   현재가 기준: 손님 판매 신청 응대 — LBANK 호가가 우리 매수가가 아님.
@@ -1286,7 +1374,9 @@ export default function AdminCalculatorPage() {
   const dailyVol = sb?.volAvg7 ?? sb?.volPrevDay ?? null;
   const volBasisLabel = sb?.volAvg7 != null ? "7일 평균 거래량" : "전일 거래량";
   const orderVolPct =
-    dailyVol != null && dailyVol > 0 ? (quantity / dailyVol) * 100 : null;
+    dailyVol != null && dailyVol > 0 && effectiveQuantity != null
+      ? (effectiveQuantity / dailyVol) * 100
+      : null;
   const liquidityLevel: "block" | "tight" | null =
     orderVolPct == null
       ? null
@@ -1414,9 +1504,13 @@ export default function AdminCalculatorPage() {
       `호가 평단가: ${vwapStr}`,
     );
 
+    const qtyLabel =
+      effectiveQuantity != null
+        ? effectiveQuantity.toLocaleString("ko-KR")
+        : "—";
     const dirStr = isBuy
-      ? `수량 ${quantity.toLocaleString("ko-KR")}개 / 손님이 우리에게서 매수 (우리=판매측, 손님 판매가 책정)`
-      : `수량 ${quantity.toLocaleString("ko-KR")}개 / 손님이 우리에게 매도 (우리=매입측, 손님 매입가 책정)`;
+      ? `수량 ${qtyLabel}개 / 손님이 우리에게서 매수 (우리=판매측, 손님 판매가 책정)`
+      : `수량 ${qtyLabel}개 / 손님이 우리에게 매도 (우리=매입측, 손님 매입가 책정)`;
     const basisText =
       priceTab === "current"
         ? `현재가 기준 (${currentSourceLabel ?? `마진 ${isBuy ? "+" : "−"}${fmtPct(activeMargin)}%`})`
@@ -1451,7 +1545,7 @@ export default function AdminCalculatorPage() {
     sig,
     data?.vwap,
     data?.vwapKrw,
-    quantity,
+    effectiveQuantity,
     isBuy,
     priceTab,
     activeMargin,
@@ -1502,8 +1596,6 @@ export default function AdminCalculatorPage() {
 
   return (
     <Page>
-      <AdminTopBar title="BMB OTC 단가 계산기" displayName={displayName} />
-
       <TopHint>
         시장 <strong>안정(초록)</strong>이면 제시가 그대로 안내.{" "}
         <strong>주의(노랑·빨강)</strong>면 아래 섹션을 확인하세요.
@@ -1543,18 +1635,64 @@ export default function AdminCalculatorPage() {
         </Row>
 
         <Row>
-          <Label htmlFor="qty">수량(개)</Label>
-          <Input
-            id="qty"
-            type="number"
-            min={1}
-            step={1}
-            value={quantity}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              if (Number.isInteger(v) && v > 0) setQuantity(v);
-            }}
-          />
+          <Label>입력</Label>
+          <Chip
+            type="button"
+            $active={inputMode === "qty"}
+            onClick={() => setInputMode("qty")}
+          >
+            수량(개)
+          </Chip>
+          <Chip
+            type="button"
+            $active={inputMode === "krw"}
+            onClick={() => setInputMode("krw")}
+          >
+            원화(₩)
+          </Chip>
+        </Row>
+
+        <Row>
+          <Label htmlFor={inputMode === "qty" ? "qty" : "krw"}>
+            {inputMode === "qty" ? "수량(개)" : "원화(₩)"}
+          </Label>
+          {inputMode === "qty" ? (
+            <Input
+              id="qty"
+              type="text"
+              inputMode="numeric"
+              placeholder={String(DEFAULT_QTY)}
+              value={quantityInput}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "" || /^\d+$/.test(raw)) {
+                  setQuantityInput(raw);
+                }
+              }}
+              onFocus={selectAllOnFocus}
+              onBlur={() => {
+                if (quantityInput.trim() === "") {
+                  setQuantityInput(String(DEFAULT_QTY));
+                }
+              }}
+            />
+          ) : (
+            <Input
+              id="krw"
+              type="text"
+              inputMode="numeric"
+              placeholder="예: 3000000"
+              value={krwInput}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) {
+                  setKrwInput(raw);
+                }
+              }}
+              onFocus={selectAllOnFocus}
+              style={{ width: 160 }}
+            />
+          )}
           <RefreshButton
             type="button"
             onClick={handleRefresh}
@@ -1564,19 +1702,47 @@ export default function AdminCalculatorPage() {
           </RefreshButton>
         </Row>
 
+        {inputHint ? (
+          <Meta style={{ color: "#b45309", marginTop: 0 }}>{inputHint}</Meta>
+        ) : null}
+
+        {inputMode === "krw" &&
+        parsedKrwInput != null &&
+        effectiveQuantity != null &&
+        bmbKrwPerUnit != null &&
+        effectiveUsdtKrw != null ? (
+          <Meta style={{ marginTop: inputHint ? 0 : undefined }}>
+            입력 {fmtKrwBrief(parsedKrwInput)} ≈ 약{" "}
+            {effectiveQuantity.toLocaleString("ko-KR")}개 (현재가 기준 어림)
+            <br />
+            {fmtKrw(parsedKrwInput)}원 = 약{" "}
+            {fmtUsdt(parsedKrwInput / effectiveUsdtKrw)} USDT (환율{" "}
+            {fmtKrw(effectiveUsdtKrw)} 기준)
+            <br />
+            <span style={{ color: "#9ca3af" }}>
+              반올림 정수로 계산하므로 실제 총액은 입력 원화와 다를 수
+              있습니다.
+            </span>
+          </Meta>
+        ) : null}
+
         <Row>
           <Label htmlFor="usdt">USDT환율</Label>
           <Input
             id="usdt"
             type="text"
-            placeholder={data ? String(Math.round(data.usdtKrw)) : "자동"}
+            placeholder={
+              effectiveUsdtKrw != null
+                ? String(Math.round(effectiveUsdtKrw))
+                : "자동"
+            }
             value={usdtKrwOverride}
             onChange={(e) => setUsdtKrwOverride(e.target.value)}
             style={{ width: 140 }}
           />
-          {data ? (
+          {effectiveUsdtKrw != null ? (
             <span style={{ fontSize: 13, color: "#6b7280" }}>
-              자동: {fmtKrw(data.usdtKrw)}원
+              자동: {fmtKrw(effectiveUsdtKrw)}원
             </span>
           ) : null}
         </Row>
@@ -1801,7 +1967,11 @@ export default function AdminCalculatorPage() {
 
             <SummaryCell>
               <SummaryLabel>
-                총액 ({quantity.toLocaleString("ko-KR")}개)
+                총액 (
+                {(effectiveQuantity ?? data?.quantity ?? 0).toLocaleString(
+                  "ko-KR",
+                )}
+                개)
               </SummaryLabel>
               <SummaryValue>
                 {customerTotalKrw != null
@@ -1843,7 +2013,11 @@ export default function AdminCalculatorPage() {
               호가 시각화 ({isBuy ? "매도호가" : "매수호가"})
             </SectionTitle>
             <SectionHint>
-              싼 가격부터 {quantity.toLocaleString("ko-KR")}개를 채울 때 각
+              싼 가격부터{" "}
+              {(effectiveQuantity ?? data?.quantity ?? 0).toLocaleString(
+                "ko-KR",
+              )}
+              개를 채울 때 각
               호가에서 체결되는 수량. 막대 채움 = 전체 주문 중 비중.
             </SectionHint>
             <Orderbook>

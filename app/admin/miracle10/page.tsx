@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
-import AdminTopBar from "@/components/admin/AdminTopBar";
 import {
   MIRACLE10_STATUSES,
   STATUS_COLORS,
@@ -15,14 +14,26 @@ import {
 const Page = styled.div`
   max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem 1rem 4rem;
+  padding: 0.5rem 1rem 1rem;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1.5rem 1rem;
+  }
+`;
+
+const Toolbar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
 `;
 
 const Tabs = styled.div`
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
@@ -34,6 +45,32 @@ const Tab = styled.button<{ $active: boolean }>`
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+`;
+
+const TabCount = styled.span<{ $active: boolean }>`
+  margin-left: 0.25rem;
+  font-weight: 700;
+  color: ${(p) => (p.$active ? "rgba(255,255,255,0.85)" : "#6b7280")};
+`;
+
+const RefreshButton = styled.button`
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover {
+    background: #f9fafb;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const Table = styled.div`
@@ -98,6 +135,12 @@ const Empty = styled.div`
   color: #6b7280;
 `;
 
+const ListMeta = styled.div`
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 13px;
+`;
+
 interface Item {
   id: number;
   createdAt: string;
@@ -113,34 +156,55 @@ interface Item {
   contactMasked: string;
 }
 
+type StatusFilter = "ALL" | Miracle10Status;
+
+/** 탭 순서 — 처리 우선 상태 먼저, 전체는 맨 끝. */
+const STATUS_TAB_ORDER: StatusFilter[] = [
+  ...MIRACLE10_STATUSES,
+  "ALL",
+];
+
+const TAB_LABELS: Record<StatusFilter, string> = {
+  ...STATUS_LABELS,
+  ALL: "전체",
+};
+
+function emptyStatusCounts(): Record<Miracle10Status, number> {
+  return {
+    PENDING: 0,
+    CONTACTED: 0,
+    VERIFIED: 0,
+    COMPLETED: 0,
+    CANCELED: 0,
+  };
+}
+
 export default function Miracle10AdminPage() {
   const router = useRouter();
-  const [filter, setFilter] = useState<"ALL" | Miracle10Status>("ALL");
-  const [items, setItems] = useState<Item[]>([]);
-  const [total, setTotal] = useState(0);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [filter, setFilter] = useState<StatusFilter>("PENDING");
+  const [allItems, setAllItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/auth/me")
-      .then(async (res) => {
-        if (res.status === 401) {
-          router.push("/admin/login");
-          return;
-        }
-        const json = await res.json();
-        if (json.ok) setDisplayName(json.displayName);
-      })
-      .catch(() => {});
-  }, [router]);
+    const tab = searchParams.get("tab");
+    if (!tab) return;
+    if (tab === "ALL" || MIRACLE10_STATUSES.includes(tab as Miracle10Status)) {
+      setFilter(tab as StatusFilter);
+    }
+  }, [searchParams]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const qs = filter === "ALL" ? "" : `?status=${filter}`;
-      const res = await fetch(`/api/admin/miracle10${qs}`);
+      const res = await fetch("/api/admin/miracle10?limit=200");
       if (res.status === 401) {
         router.push("/admin/login");
         return;
@@ -149,45 +213,74 @@ export default function Miracle10AdminPage() {
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "목록을 불러오지 못했습니다.");
       }
-      setItems(data.items);
-      setTotal(data.total);
+      setAllItems(data.items);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [filter, router]);
+  }, [router]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  const statusCounts = useMemo(() => {
+    const counts = emptyStatusCounts();
+    for (const it of allItems) {
+      counts[it.status]++;
+    }
+    return counts;
+  }, [allItems]);
+
+  const filteredItems = useMemo(() => {
+    if (filter === "ALL") return allItems;
+    return allItems.filter((it) => it.status === filter);
+  }, [allItems, filter]);
+
+  const tabCount = useCallback(
+    (tab: StatusFilter) => {
+      if (tab === "ALL") return allItems.length;
+      return statusCounts[tab];
+    },
+    [allItems.length, statusCounts],
+  );
+
   return (
     <Page>
-      <AdminTopBar
-        title="10모의 기적 신청 관리"
-        displayName={displayName}
-      />
-
-      <Tabs>
-        <Tab $active={filter === "ALL"} onClick={() => setFilter("ALL")}>
-          전체
-        </Tab>
-        {MIRACLE10_STATUSES.map((s) => (
-          <Tab key={s} $active={filter === s} onClick={() => setFilter(s)}>
-            {STATUS_LABELS[s]}
-          </Tab>
-        ))}
-      </Tabs>
+      <Toolbar>
+        <Tabs>
+          {STATUS_TAB_ORDER.map((tab) => (
+            <Tab
+              key={tab}
+              type="button"
+              $active={filter === tab}
+              onClick={() => setFilter(tab)}
+            >
+              {TAB_LABELS[tab]}
+              <TabCount $active={filter === tab}>{tabCount(tab)}</TabCount>
+            </Tab>
+          ))}
+        </Tabs>
+        <RefreshButton
+          type="button"
+          onClick={() => load(true)}
+          disabled={loading || refreshing}
+        >
+          {refreshing ? "새로고침 중..." : "새로고침"}
+        </RefreshButton>
+      </Toolbar>
 
       {loading && <Empty>불러오는 중...</Empty>}
       {error && <Empty style={{ color: "#dc2626" }}>{error}</Empty>}
 
       {!loading && !error && (
         <>
-          <div style={{ marginBottom: 8, color: "#6b7280", fontSize: 13 }}>
-            총 {total}건
-          </div>
+          <ListMeta>
+            {TAB_LABELS[filter]} {filteredItems.length}건
+            {filter !== "ALL" ? ` · 전체 ${allItems.length}건` : ""}
+          </ListMeta>
           <Table>
             <HeadRow>
               <span>번호</span>
@@ -198,10 +291,14 @@ export default function Miracle10AdminPage() {
               <Hide>최종 수정</Hide>
               <span>상태</span>
             </HeadRow>
-            {items.length === 0 ? (
-              <Empty>신청이 없습니다.</Empty>
+            {filteredItems.length === 0 ? (
+              <Empty>
+                {filter === "ALL"
+                  ? "신청이 없습니다."
+                  : `${TAB_LABELS[filter]} 상태 신청이 없습니다.`}
+              </Empty>
             ) : (
-              items.map((it) => (
+              filteredItems.map((it) => (
                 <Row key={it.id} href={`/admin/miracle10/${it.id}`}>
                   <span>#{it.id}</span>
                   <span>
