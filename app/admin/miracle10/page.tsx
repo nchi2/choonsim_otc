@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
@@ -179,7 +179,7 @@ function emptyStatusCounts(): Record<Miracle10Status, number> {
   };
 }
 
-export default function Miracle10AdminPage() {
+function Miracle10AdminPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filter, setFilter] = useState<StatusFilter>("PENDING");
@@ -327,5 +327,13 @@ export default function Miracle10AdminPage() {
         </>
       )}
     </Page>
+  );
+}
+
+export default function Miracle10AdminPage() {
+  return (
+    <Suspense fallback={<Empty>불러오는 중…</Empty>}>
+      <Miracle10AdminPageInner />
+    </Suspense>
   );
 }
