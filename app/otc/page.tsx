@@ -6,6 +6,9 @@ import Header from "@/components/Header";
 import OTCSection from "../page/components/OTCSection";
 import MajorPriceBoard from "../page/components/MajorPriceBoard";
 import Apply10MoModal from "./components/Apply10MoModal";
+import OtcRequestModal, {
+  type OtcRequestSide,
+} from "./components/OtcRequestModal";
 import Footer from "@/components/Footer";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -156,6 +159,48 @@ const ApplyComingSoonNote = styled.span`
   font-size: 0.85rem;
   font-weight: 700;
   color: #0d9488;
+`;
+
+const ActionSlotStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+`;
+
+const TradeButtonRow = styled.div`
+  display: flex;
+  gap: 10px;
+  width: 100%;
+`;
+
+const TradeRequestButton = styled.button<{ $variant: "buy" | "sell" }>`
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: ${(p) => (p.$variant === "sell" ? "#6570C5" : "#A8639F")};
+  box-shadow: ${(p) =>
+    p.$variant === "sell"
+      ? "0 6px 16px rgba(101, 112, 197, 0.32)"
+      : "0 6px 16px rgba(168, 99, 159, 0.32)"};
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 // BTC/BMB 비율 차트 섹션
@@ -392,6 +437,15 @@ interface RatioDataPoint {
 const APPLY_QUERY_KEY = "apply";
 const APPLY_QUERY_VALUE = "1";
 
+// BMB 매수/판매 신청 모달 — `/otc?otcreq=buy` | `sell`
+const OTC_REQ_QUERY_KEY = "otcreq";
+
+function parseOtcReqParam(value: string | null): OtcRequestSide | null {
+  if (value === "buy") return "BUY";
+  if (value === "sell") return "SELL";
+  return null;
+}
+
 // 신청 기능 준비중 — true면 버튼 클릭 시 모달 대신 "준비 중입니다." 안내만 표시.
 const APPLY_COMING_SOON = false;
 
@@ -411,6 +465,16 @@ function OTCContent() {
   }, [urlApplyOpen]);
 
   const isApplyOpen = !APPLY_COMING_SOON && applyOpen;
+
+  const urlOtcReqSide = parseOtcReqParam(searchParams.get(OTC_REQ_QUERY_KEY));
+  const [otcReqSide, setOtcReqSide] = useState<OtcRequestSide | null>(
+    urlOtcReqSide,
+  );
+  const otcReqPushedRef = useRef(false);
+
+  useEffect(() => {
+    setOtcReqSide(urlOtcReqSide);
+  }, [urlOtcReqSide]);
 
   const openApplyModal = useCallback(() => {
     if (applyOpen) return;
@@ -442,6 +506,32 @@ function OTCContent() {
     }
     openApplyModal();
   }, [openApplyModal]);
+
+  const openOtcReqModal = useCallback(
+    (side: OtcRequestSide) => {
+      if (otcReqSide === side) return;
+      setOtcReqSide(side);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set(OTC_REQ_QUERY_KEY, side === "BUY" ? "buy" : "sell");
+      otcReqPushedRef.current = true;
+      router.push(`/otc?${params.toString()}`, { scroll: false });
+    },
+    [otcReqSide, router, searchParams],
+  );
+
+  const closeOtcReqModal = useCallback(() => {
+    if (!otcReqSide) return;
+    setOtcReqSide(null);
+    if (otcReqPushedRef.current) {
+      otcReqPushedRef.current = false;
+      router.back();
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(OTC_REQ_QUERY_KEY);
+    const qs = params.toString();
+    router.replace(qs ? `/otc?${qs}` : "/otc", { scroll: false });
+  }, [otcReqSide, router, searchParams]);
 
   // BTC/BMB 비율 차트 데이터
   const [ratioData, setRatioData] = useState<RatioDataPoint[]>([]);
@@ -622,25 +712,50 @@ function OTCContent() {
         title="Choonsim OTC"
         subtitle="BMB·메이저 코인 시세를 한눈에 확인하고 OTC 거래를 진행하세요."
         actionSlot={
-          <ApplyCard>
-            <ApplyCardBadge>NEW · 참여 모집중</ApplyCardBadge>
-            <ApplyCardTitle>10모의 기적 All-in-One</ApplyCardTitle>
-            <ApplyCardSubtitle>
-              복잡한 과정 없이 바로 시작하기
-            </ApplyCardSubtitle>
-            <ApplyCardButton type="button" onClick={handleApplyClick}>
-              참여 신청하기
-            </ApplyCardButton>
-            {applyComingSoonShown && (
-              <ApplyComingSoonNote role="status">
-                준비 중입니다.
-              </ApplyComingSoonNote>
-            )}
-          </ApplyCard>
+          <ActionSlotStack>
+            <TradeButtonRow>
+              <TradeRequestButton
+                type="button"
+                $variant="buy"
+                onClick={() => openOtcReqModal("BUY")}
+              >
+                BMB 구매
+              </TradeRequestButton>
+              <TradeRequestButton
+                type="button"
+                $variant="sell"
+                onClick={() => openOtcReqModal("SELL")}
+              >
+                BMB 판매
+              </TradeRequestButton>
+            </TradeButtonRow>
+            <ApplyCard>
+              <ApplyCardBadge>NEW · 참여 모집중</ApplyCardBadge>
+              <ApplyCardTitle>10모의 기적 All-in-One</ApplyCardTitle>
+              <ApplyCardSubtitle>
+                복잡한 과정 없이 바로 시작하기
+              </ApplyCardSubtitle>
+              <ApplyCardButton type="button" onClick={handleApplyClick}>
+                참여 신청하기
+              </ApplyCardButton>
+              {applyComingSoonShown && (
+                <ApplyComingSoonNote role="status">
+                  준비 중입니다.
+                </ApplyComingSoonNote>
+              )}
+            </ApplyCard>
+          </ActionSlotStack>
         }
       />
 
       <Apply10MoModal open={isApplyOpen} onClose={closeApplyModal} />
+      {otcReqSide ? (
+        <OtcRequestModal
+          open
+          side={otcReqSide}
+          onClose={closeOtcReqModal}
+        />
+      ) : null}
 
       <MainContent>
         <ContentWrapper>

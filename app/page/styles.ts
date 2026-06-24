@@ -502,10 +502,62 @@ export const OTCHeroPriceError = styled.p`
 export const OTCHeroLbankLinkBelowPrices = styled.div`
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 28px;
+  margin-bottom: 12px;
 
   @media (max-width: 768px) {
     justify-content: center;
+  }
+`;
+
+export const OTCHeroBottomPromoArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 28px;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    align-items: stretch;
+  }
+`;
+
+/** 10모 All-in-One — 반투명·외곽선 프로모 링크 */
+export const OTCHeroMiraclePromoLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.75);
+    color: #ffffff;
+  }
+
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+    min-height: 0;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    padding: 0.75rem 1rem;
   }
 `;
 
@@ -672,12 +724,68 @@ export const OTCHeroButton = styled(Link)`
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
   }
 
-  /* 모바일 1행: [OTC][SBMB] 각 50% (gap 1rem의 절반 보정) */
   @media (max-width: 768px) {
     flex: 1 1 calc(50% - 0.5rem);
     min-width: 0;
     padding: 0.95rem 1rem;
     font-size: 0.95rem;
+  }
+`;
+
+const otcTradeButtonBase = `
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  color: #ffffff;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.12s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.04);
+  }
+
+  @media (max-width: 768px) {
+    display: inline-flex;
+    width: auto;
+    min-height: 0;
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: 0;
+    padding: 0.95rem 1rem;
+    font-size: 0.95rem;
+  }
+`;
+
+/** BMB 구매 CTA — /otc?otcreq=buy */
+export const OTCHeroBuyButton = styled(Link)`
+  ${otcTradeButtonBase}
+  background: #a8639f;
+  box-shadow: 0 6px 16px rgba(168, 99, 159, 0.32);
+
+  &:hover {
+    box-shadow: 0 10px 22px rgba(168, 99, 159, 0.4);
+  }
+`;
+
+/** BMB 판매 CTA — /otc?otcreq=sell */
+export const OTCHeroSellButton = styled(Link)`
+  ${otcTradeButtonBase}
+  background: #6570c5;
+  box-shadow: 0 6px 16px rgba(101, 112, 197, 0.32);
+
+  &:hover {
+    box-shadow: 0 10px 22px rgba(101, 112, 197, 0.4);
   }
 `;
 
@@ -706,13 +814,12 @@ export const OTCHeroMiracleButton = styled(Link)`
     filter: brightness(1.04);
   }
 
-  /* 데스크탑: 폭이 부족하면 이 버튼만 다음 줄로 내려가 풀폭 차지 */
+  /* 데스크탑: 폭이 부족하면 다음 줄로. 모바일 2행 2열 중 오른쪽 칸 */
   flex: 1 1 auto;
 
-  /* 모바일 2행: 풀폭 */
   @media (max-width: 768px) {
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 1 1 calc(50% - 0.5rem);
+    width: auto;
     padding: 0.95rem 1rem;
     font-size: 0.95rem;
   }
@@ -735,14 +842,17 @@ export const OTCHeroBtnLabelShort = styled.span`
 `;
 
 export const OTCHeroButtonContainer = styled.div`
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 0.5rem;
+  width: 100%;
 
   @media (max-width: 768px) {
-    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1rem;
   }
 `;
 

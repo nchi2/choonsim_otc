@@ -33,6 +33,13 @@ const NAV_ITEMS = [
     showPendingBadge: true,
   },
   {
+    href: "/admin/otc-requests",
+    label: "OTC 신청",
+    shortLabel: "OTC",
+    title: "BMB 구매·판매 신청",
+    showPendingBadge: false,
+  },
+  {
     href: "/admin/calculator",
     label: "OTC 계산기",
     shortLabel: "계산",
@@ -237,6 +244,9 @@ function isNavActive(pathname: string, href: string, exact?: boolean): boolean {
 function resolvePageTitle(pathname: string): string {
   if (/^\/admin\/miracle10\/[^/]+$/.test(pathname)) {
     return "신청 상세";
+  }
+  if (pathname === "/admin/otc-requests") {
+    return "BMB 구매·판매 신청";
   }
   const item = NAV_ITEMS.find((nav) =>
     isNavActive(pathname, nav.href, "exact" in nav ? nav.exact : false),

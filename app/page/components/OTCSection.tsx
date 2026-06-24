@@ -20,7 +20,7 @@ const OtcActionArea = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
   margin: 0;
 `;
 
@@ -186,20 +186,24 @@ export default function OTCSection({
 
         {showTradeButton && (
           <S.OTCHeroButtonContainer>
-            <S.OTCHeroButton href="/otc" aria-label="OTC 거래 페이지로 이동">
-              <S.OTCHeroBtnLabelFull>OTC 거래 페이지로 이동</S.OTCHeroBtnLabelFull>
-              <S.OTCHeroBtnLabelShort>OTC 거래</S.OTCHeroBtnLabelShort>
-            </S.OTCHeroButton>
-            <S.OTCHeroButton href="/sbmb" aria-label="SBMB 현황 페이지로 이동">
-              <S.OTCHeroBtnLabelFull>SBMB 현황보기</S.OTCHeroBtnLabelFull>
-              <S.OTCHeroBtnLabelShort>SBMB 현황</S.OTCHeroBtnLabelShort>
-            </S.OTCHeroButton>
-            <S.OTCHeroMiracleButton
-              href="/otc?apply=1"
-              aria-label="10모의 기적 신청하기 (접수 진행중)"
+            <S.OTCHeroBuyButton
+              href="/otc?otcreq=buy"
+              aria-label="BMB 구매 신청"
             >
-              10모의 기적 All-in-One
-            </S.OTCHeroMiracleButton>
+              BMB 구매
+            </S.OTCHeroBuyButton>
+            <S.OTCHeroSellButton
+              href="/otc?otcreq=sell"
+              aria-label="BMB 판매 신청"
+            >
+              BMB 판매
+            </S.OTCHeroSellButton>
+            <S.OTCHeroMiraclePromoLink
+              href="/otc?apply=1"
+              aria-label="10모의 기적 All-in-One 신청"
+            >
+              10모의 기적 All-in-One 신청
+            </S.OTCHeroMiraclePromoLink>
           </S.OTCHeroButtonContainer>
         )}
       </S.OTCHeroContent>

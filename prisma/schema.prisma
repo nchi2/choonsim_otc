@@ -74,6 +74,7 @@ model Office {
 
   workSlots WorkSlot[]
   orders    OtcOrder[]
+  otcRequests OtcRequest[]
 }
 
 // 운영자 근무 가능 슬롯 — 30분 단위, KST date/startTime.
@@ -165,4 +166,38 @@ model OtcOrder {
   @@index([createdAt])
   @@index([kind])
   @@index([customerId])
+}
+
+// BMB 매수/판매 OTC 신청 — 10모 OtcOrder와 독립.
+model OtcRequest {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  side      String // "BUY" | "SELL"
+  name      String
+  contact   String
+  quantity  Int
+  desiredPrice Int? // 희망 가격(원)
+
+  receiveAddress String? // 매수 — 받을 모빅 공개주소
+  visitDate      String? // 매수 — 방문 희망일 KST
+  reservedStart  String? // 매수 — 방문 시간
+  officeId       Int?
+  office         Office? @relation(fields: [officeId], references: [id])
+
+  senderAddress String? // 매도 — 판매자 지갑
+  bankInfo      String? // 매도 — 원화 입금 계좌 (통문자열, 레거시)
+  sellerBankName      String? // 판매자 계좌 — 은행명
+  sellerAccountNo     String? // 판매자 계좌 — 계좌번호
+  sellerAccountHolder String? // 판매자 계좌 — 예금주
+
+  customerBankInfo String? // 운영자 등록 — 매수자 계좌 (통문자열, 레거시)
+  buyerBankName       String? // 매수자 계좌 — 은행명 (운영자 등록용)
+  buyerAccountNo      String? // 매수자 계좌 — 계좌번호
+  buyerAccountHolder  String? // 매수자 계좌 — 예금주
+  memo           String?
+  status         String   @default("PENDING")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([side])
 }
