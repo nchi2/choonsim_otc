@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import styled from "styled-components";
 import Header from "@/components/Header";
 import OTCSection from "../page/components/OTCSection";
+import * as HubS from "../page/styles";
 import MajorPriceBoard from "../page/components/MajorPriceBoard";
 import Apply10MoModal from "./components/Apply10MoModal";
 import OtcRequestModal, {
@@ -66,141 +67,31 @@ const ContentWrapper = styled.div`
   }
 `;
 
-// Banner action card — 10모 신청 진입 (보라 배너 위에서 또렷이 보이도록 흰 카드 + 그림자 강조)
-const ApplyCard = styled.div`
-  width: 100%;
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow:
-    0 12px 28px rgba(15, 15, 28, 0.22),
-    0 2px 6px rgba(15, 15, 28, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-
-  @media (min-width: 768px) {
-    padding: 20px 22px;
-    gap: 10px;
-  }
-`;
-
-const ApplyCardBadge = styled.span`
-  align-self: flex-start;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: #ffffff;
-  background: #14b8a6;
-  padding: 4px 10px;
-  border-radius: 999px;
-  text-transform: none;
-`;
-
-const ApplyCardTitle = styled.span`
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  color: #111827;
-
-  @media (min-width: 768px) {
-    font-size: 1.3rem;
-  }
-`;
-
-const ApplyCardSubtitle = styled.span`
-  font-size: 0.85rem;
-  color: #4b5563;
-  line-height: 1.55;
-
-  @media (min-width: 768px) {
-    font-size: 0.95rem;
-  }
-`;
-
-const ApplyCardButton = styled.button`
-  align-self: stretch;
-  margin-top: 6px;
-  padding: 13px 18px;
-  font-size: 1rem;
-  font-weight: 800;
-  color: #ffffff;
-  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+// /otc 히어로 CTA — 메인 배너(OTCHeroButtonContainer)와 동일 스타일
+const HeroBuyButton = styled(HubS.OTCHeroBuyButton).attrs({
+  as: "button",
+  type: "button",
+})`
   border: none;
-  border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    filter 0.12s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 22px rgba(13, 148, 136, 0.42);
-    filter: brightness(1.04);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (min-width: 768px) {
-    padding: 14px 22px;
-    font-size: 1.05rem;
-  }
+  font-family: inherit;
 `;
 
-const ApplyComingSoonNote = styled.span`
-  margin-top: 4px;
-  align-self: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #0d9488;
-`;
-
-const ActionSlotStack = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-`;
-
-const TradeButtonRow = styled.div`
-  display: flex;
-  gap: 10px;
-  width: 100%;
-`;
-
-const TradeRequestButton = styled.button<{ $variant: "buy" | "sell" }>`
-  flex: 1;
-  padding: 12px 14px;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #ffffff;
+const HeroSellButton = styled(HubS.OTCHeroSellButton).attrs({
+  as: "button",
+  type: "button",
+})`
   border: none;
-  border-radius: 12px;
   cursor: pointer;
-  background: ${(p) => (p.$variant === "sell" ? "#6570C5" : "#A8639F")};
-  box-shadow: ${(p) =>
-    p.$variant === "sell"
-      ? "0 6px 16px rgba(101, 112, 197, 0.32)"
-      : "0 6px 16px rgba(168, 99, 159, 0.32)"};
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    filter 0.12s ease;
+  font-family: inherit;
+`;
 
-  &:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.04);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
+const HeroMiracleButton = styled(HubS.OTCHeroMiraclePromoLink).attrs({
+  as: "button",
+  type: "button",
+})`
+  cursor: pointer;
+  font-family: inherit;
 `;
 
 // BTC/BMB 비율 차트 섹션
@@ -457,7 +348,6 @@ function OTCContent() {
   const urlApplyOpen = searchParams.get(APPLY_QUERY_KEY) === APPLY_QUERY_VALUE;
   const [applyOpen, setApplyOpen] = useState(urlApplyOpen);
   const pushedByOpenRef = useRef(false);
-  const [applyComingSoonShown, setApplyComingSoonShown] = useState(false);
 
   // URL 변경(뒤로가기·직접 방문) 시 state 동기화
   useEffect(() => {
@@ -500,10 +390,7 @@ function OTCContent() {
   }, [applyOpen, router, searchParams]);
 
   const handleApplyClick = useCallback(() => {
-    if (APPLY_COMING_SOON) {
-      setApplyComingSoonShown(true);
-      return;
-    }
+    if (APPLY_COMING_SOON) return;
     openApplyModal();
   }, [openApplyModal]);
 
@@ -712,39 +599,23 @@ function OTCContent() {
         title="Choonsim OTC"
         subtitle="BMB·메이저 코인 시세를 한눈에 확인하고 OTC 거래를 진행하세요."
         actionSlot={
-          <ActionSlotStack>
-            <TradeButtonRow>
-              <TradeRequestButton
-                type="button"
-                $variant="buy"
-                onClick={() => openOtcReqModal("BUY")}
-              >
-                BMB 구매
-              </TradeRequestButton>
-              <TradeRequestButton
-                type="button"
-                $variant="sell"
-                onClick={() => openOtcReqModal("SELL")}
-              >
-                BMB 판매
-              </TradeRequestButton>
-            </TradeButtonRow>
-            <ApplyCard>
-              <ApplyCardBadge>NEW · 참여 모집중</ApplyCardBadge>
-              <ApplyCardTitle>10모의 기적 All-in-One</ApplyCardTitle>
-              <ApplyCardSubtitle>
-                복잡한 과정 없이 바로 시작하기
-              </ApplyCardSubtitle>
-              <ApplyCardButton type="button" onClick={handleApplyClick}>
-                참여 신청하기
-              </ApplyCardButton>
-              {applyComingSoonShown && (
-                <ApplyComingSoonNote role="status">
-                  준비 중입니다.
-                </ApplyComingSoonNote>
-              )}
-            </ApplyCard>
-          </ActionSlotStack>
+          <HubS.OTCHeroButtonContainer>
+            <HeroBuyButton
+              type="button"
+              onClick={() => openOtcReqModal("BUY")}
+            >
+              BMB 구매
+            </HeroBuyButton>
+            <HeroSellButton
+              type="button"
+              onClick={() => openOtcReqModal("SELL")}
+            >
+              BMB 판매
+            </HeroSellButton>
+            <HeroMiracleButton type="button" onClick={handleApplyClick}>
+              10모의 기적 All-in-One 신청
+            </HeroMiracleButton>
+          </HubS.OTCHeroButtonContainer>
         }
       />
 

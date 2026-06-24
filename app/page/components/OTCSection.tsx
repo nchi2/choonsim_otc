@@ -15,12 +15,11 @@ const CompactOTCHeroSection = styled(S.OTCHeroSection)`
   }
 `;
 
-// Plain wrapper — actionSlot child is responsible for its own background/padding.
+// Plain wrapper — actionSlot은 히어로 콘텐츠 폭(시세 카드 그리드)과 동일.
 const OtcActionArea = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 560px;
   margin: 0;
 `;
 
