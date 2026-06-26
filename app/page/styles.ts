@@ -522,8 +522,8 @@ export const OTCHeroBottomPromoArea = styled.div`
   }
 `;
 
-/** 10모 All-in-One — 반투명·외곽선 프로모 링크 */
-export const OTCHeroMiraclePromoLink = styled(Link)`
+/** 10모 All-in-One — 반투명·외곽선 프로모 (링크·버튼 공용) */
+export const OTCHeroMiraclePromoLink = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -537,6 +537,8 @@ export const OTCHeroMiraclePromoLink = styled(Link)`
   text-align: center;
   color: rgba(255, 255, 255, 0.95);
   text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
   background: rgba(255, 255, 255, 0.1);
   border: 1.5px solid rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(6px);
@@ -767,9 +769,12 @@ const otcTradeButtonBase = `
   }
 `;
 
-/** BMB 구매 CTA — /otc?otcreq=buy */
-export const OTCHeroBuyButton = styled(Link)`
+/** BMB 구매 CTA — 링크·버튼 공용 (메인: as={Link} href=…) */
+export const OTCHeroBuyButton = styled.button`
   ${otcTradeButtonBase}
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
   background: #a8639f;
   box-shadow: 0 6px 16px rgba(168, 99, 159, 0.32);
 
@@ -778,9 +783,12 @@ export const OTCHeroBuyButton = styled(Link)`
   }
 `;
 
-/** BMB 판매 CTA — /otc?otcreq=sell */
-export const OTCHeroSellButton = styled(Link)`
+/** BMB 판매 CTA — 링크·버튼 공용 (메인: as={Link} href=…) */
+export const OTCHeroSellButton = styled.button`
   ${otcTradeButtonBase}
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
   background: #6570c5;
   box-shadow: 0 6px 16px rgba(101, 112, 197, 0.32);
 

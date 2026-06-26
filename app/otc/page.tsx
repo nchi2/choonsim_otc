@@ -67,32 +67,10 @@ const ContentWrapper = styled.div`
   }
 `;
 
-// /otc 히어로 CTA — 메인 배너(OTCHeroButtonContainer)와 동일 스타일
-const HeroBuyButton = styled(HubS.OTCHeroBuyButton).attrs({
-  as: "button",
-  type: "button",
-})`
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-`;
-
-const HeroSellButton = styled(HubS.OTCHeroSellButton).attrs({
-  as: "button",
-  type: "button",
-})`
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-`;
-
-const HeroMiracleButton = styled(HubS.OTCHeroMiraclePromoLink).attrs({
-  as: "button",
-  type: "button",
-})`
-  cursor: pointer;
-  font-family: inherit;
-`;
+// /otc 히어로 CTA — 메인 배너와 동일 스타일, 클릭 시 모달 오픈
+const HeroBuyButton = HubS.OTCHeroBuyButton;
+const HeroSellButton = HubS.OTCHeroSellButton;
+const HeroMiracleButton = HubS.OTCHeroMiraclePromoLink;
 
 // BTC/BMB 비율 차트 섹션
 const ChartCard = styled.div`

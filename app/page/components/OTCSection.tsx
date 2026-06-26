@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, type ReactNode } from "react";
+import Link from "next/link";
 import styled from "styled-components";
 import * as S from "../styles";
 
@@ -186,18 +187,21 @@ export default function OTCSection({
         {showTradeButton && (
           <S.OTCHeroButtonContainer>
             <S.OTCHeroBuyButton
+              as={Link}
               href="/otc?otcreq=buy"
               aria-label="BMB 구매 신청"
             >
               BMB 구매
             </S.OTCHeroBuyButton>
             <S.OTCHeroSellButton
+              as={Link}
               href="/otc?otcreq=sell"
               aria-label="BMB 판매 신청"
             >
               BMB 판매
             </S.OTCHeroSellButton>
             <S.OTCHeroMiraclePromoLink
+              as={Link}
               href="/otc?apply=1"
               aria-label="10모의 기적 All-in-One 신청"
             >
