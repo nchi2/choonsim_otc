@@ -1,24 +1,44 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import PageLayout from "@/components/layouts/PageLayout";
 import SbmbHeroBanner from "@/components/sbmb/hero/SbmbHeroBanner";
 import { NetworkTab } from "./page/components/NetworkTab";
 import { SupportedTokensOverview } from "./page/components/SupportedTokensOverview";
 import { PortfolioSummary } from "./page/components/PortfolioSummary";
+import { ScannedAddressBar } from "./page/components/ScannedAddressBar";
 import { RecentUpdatesNotice } from "./page/components/RecentUpdatesNotice";
 import { StatusMessage } from "./page/components/StatusMessage";
 import { TokenRow } from "./page/components/TokenRow";
 import { NftStakeRow } from "./page/components/NftStakeRow";
 import { WalletQrScanner } from "./page/components/WalletQrScanner";
+import {
+  ScanModeToggle,
+  type ScanMode,
+} from "./page/components/ScanModeToggle";
+import { ContinuousScanPanel } from "./page/components/ContinuousScanPanel";
 import { isLdtStakeNft } from "./lib/tokens";
+import { addressDedupKey, isValidAddress } from "./lib/utils";
 import { useScanner } from "./page/hooks/useScanner";
 import * as S from "./page/styles";
 
+function scanCollectFeedback() {
+  try {
+    navigator.vibrate?.(40);
+  } catch {
+    /* 권한 없음 등 */
+  }
+}
+
 export default function ScannerPage() {
   const [input, setInput] = useState("");
+  const [scanMode, setScanMode] = useState<ScanMode>("single");
+  const [collectedAddresses, setCollectedAddresses] = useState<string[]>([]);
+  const [successFlashTick, setSuccessFlashTick] = useState(0);
+  const collectedKeysRef = useRef(new Set<string>());
+
   const {
-    address,
+    scannedAddress,
     status,
     results,
     activeTab,
@@ -28,20 +48,59 @@ export default function ScannerPage() {
     filteredResults,
   } = useScanner();
 
+  const isContinuous = scanMode === "continuous";
   const hasAnyBalance = results.some((r) => r.balance > 0);
-  const showResultsChrome = status === "done" && hasAnyBalance;
+  const showScannedAddress =
+    !isContinuous && status !== "idle" && scannedAddress.length > 0;
+  const showResultsChrome = !isContinuous && status === "done" && hasAnyBalance;
+
+  const clearCollected = useCallback(() => {
+    collectedKeysRef.current.clear();
+    setCollectedAddresses([]);
+  }, []);
+
+  const handleScanModeChange = useCallback(
+    (mode: ScanMode) => {
+      clearCollected();
+      setScanMode(mode);
+    },
+    [clearCollected],
+  );
+
+  const addCollectedAddress = useCallback((addr: string) => {
+    if (!isValidAddress(addr)) return;
+    const key = addressDedupKey(addr);
+    if (collectedKeysRef.current.has(key)) return;
+    collectedKeysRef.current.add(key);
+    setCollectedAddresses((prev) => [...prev, addr]);
+    setSuccessFlashTick((t) => t + 1);
+    scanCollectFeedback();
+  }, []);
+
+  const removeCollectedAddress = useCallback((addr: string) => {
+    const key = addressDedupKey(addr);
+    collectedKeysRef.current.delete(key);
+    setCollectedAddresses((prev) =>
+      prev.filter((a) => addressDedupKey(a) !== key),
+    );
+  }, []);
 
   const onSubmitForm = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isContinuous) return;
     void handleScan(input);
   };
 
   const onQrDetected = useCallback(
     (addr: string) => {
+      if (isContinuous) {
+        addCollectedAddress(addr);
+        return;
+      }
       setInput(addr);
       void handleScan(addr);
     },
-    [handleScan],
+    [isContinuous, addCollectedAddress, handleScan],
   );
 
   return (
@@ -59,62 +118,80 @@ export default function ScannerPage() {
             여러 체인의 네이티브·토큰 잔고를 한 화면에서 조회합니다.
           </S.SectionLead>
 
+          <ScanModeToggle mode={scanMode} onChange={handleScanModeChange} />
+
           <WalletQrScanner
             onDetected={onQrDetected}
-            paused={status === "loading"}
+            paused={!isContinuous && status === "loading"}
+            continuous={isContinuous}
+            successFlashTick={successFlashTick}
           />
 
-          <S.ScannerForm onSubmit={onSubmitForm}>
-            <S.ScannerFormRow>
-              <S.ScannerInput
-                name="wallet"
-                type="text"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="0x... 지갑 주소를 입력하세요"
-                value={input}
-                disabled={status === "loading"}
-                onChange={(e) => setInput(e.target.value)}
-              />
-              <S.ScannerSubmitButton
-                type="submit"
-                disabled={status === "loading"}
-              >
-                {status === "loading" ? "조회 중…" : "SCAN"}
-              </S.ScannerSubmitButton>
-            </S.ScannerFormRow>
-            <S.ScannerSecurityNote>
-              공공장소에서 화면 노출에 주의하세요. 이 앱은 입력한 주소를
-              저장하지 않습니다.
-            </S.ScannerSecurityNote>
-          </S.ScannerForm>
-
-          {status === "loading" && <StatusMessage state="loading" />}
-
-          {status === "error" && (
-            <StatusMessage state="error" message={errorMessage} />
-          )}
-
-          {status === "done" && !hasAnyBalance && (
-            <StatusMessage state="empty" />
-          )}
-
-          {showResultsChrome && (
+          {isContinuous ? (
+            <ContinuousScanPanel
+              addresses={collectedAddresses}
+              onRemove={removeCollectedAddress}
+              onClear={clearCollected}
+            />
+          ) : (
             <>
-              <NetworkTab active={activeTab} onChange={setActiveTab} />
-              <PortfolioSummary results={results} address={address} />
-              {filteredResults
-                .filter((row) => !isLdtStakeNft(row))
-                .map((row) => (
-                  <TokenRow
-                    key={`${row.symbol}-${row.network}-${row.address}`}
-                    token={row}
-                    balance={row.balance}
+              <S.ScannerForm onSubmit={onSubmitForm}>
+                <S.ScannerFormRow>
+                  <S.ScannerInput
+                    name="wallet"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="0x... 지갑 주소를 입력하세요"
+                    value={input}
+                    disabled={status === "loading"}
+                    onChange={(e) => setInput(e.target.value)}
                   />
-                ))}
-              <NftStakeRow
-                items={filteredResults.filter((row) => isLdtStakeNft(row))}
-              />
+                  <S.ScannerSubmitButton
+                    type="submit"
+                    disabled={status === "loading"}
+                  >
+                    {status === "loading" ? "조회 중…" : "SCAN"}
+                  </S.ScannerSubmitButton>
+                </S.ScannerFormRow>
+                <S.ScannerSecurityNote>
+                  공공장소에서 화면 노출에 주의하세요. 이 앱은 입력한 주소를
+                  저장하지 않습니다.
+                </S.ScannerSecurityNote>
+              </S.ScannerForm>
+
+              {showScannedAddress ? (
+                <ScannedAddressBar address={scannedAddress} />
+              ) : null}
+
+              {status === "loading" && <StatusMessage state="loading" />}
+
+              {status === "error" && (
+                <StatusMessage state="error" message={errorMessage} />
+              )}
+
+              {status === "done" && !hasAnyBalance && (
+                <StatusMessage state="empty" />
+              )}
+
+              {showResultsChrome && (
+                <>
+                  <NetworkTab active={activeTab} onChange={setActiveTab} />
+                  <PortfolioSummary results={results} />
+                  {filteredResults
+                    .filter((row) => !isLdtStakeNft(row))
+                    .map((row) => (
+                      <TokenRow
+                        key={`${row.symbol}-${row.network}-${row.address}`}
+                        token={row}
+                        balance={row.balance}
+                      />
+                    ))}
+                  <NftStakeRow
+                    items={filteredResults.filter((row) => isLdtStakeNft(row))}
+                  />
+                </>
+              )}
             </>
           )}
         </S.ScannerSection>

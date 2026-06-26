@@ -56,3 +56,8 @@ export function shortAddress(addr: string): string {
   if (a.length < 10) return addr;
   return `${a.slice(0, 6)}...${a.slice(-4)}`;
 }
+
+/** 중복 비교용 — EIP-55 대소문자 무시 */
+export function addressDedupKey(addr: string): string {
+  return addr.trim().toLowerCase();
+}

@@ -19,11 +19,17 @@ export interface WalletQrScannerProps {
   onDetected: (address: string) => void;
   /** true면 스트림 중단 (잔고 조회 중 등) */
   paused: boolean;
+  /** 연속 스캔 모드 — 안내 문구 변경 */
+  continuous?: boolean;
+  /** 증가할 때마다 성공 플래시 표시 */
+  successFlashTick?: number;
 }
 
 const SCAN_FAIL_HINT_MS = 12_000;
 const DEFAULT_HINT =
   "공개 주소를 스캔해 주세요. QR을 파란 모서리 안에 맞추면 주소가 입력되고 자동으로 조회됩니다.";
+const CONTINUOUS_HINT =
+  "연속 스캔: QR을 읽을 때마다 주소가 목록에 추가됩니다. 중복 주소는 무시됩니다.";
 const FAIL_HINT = "인식이 잘 안 되면 카메라 전환을 눌러보세요.";
 
 /** 후면 후보 — 큰 가점 */
@@ -128,7 +134,12 @@ function SwitchCameraIcon() {
   );
 }
 
-export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
+export function WalletQrScanner({
+  onDetected,
+  paused,
+  continuous = false,
+  successFlashTick = 0,
+}: WalletQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const debounceRef = useRef<{ addr: string; t: number }>({
@@ -143,8 +154,22 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
   const [videoDevices, setVideoDevices] = useState<VideoDevice[]>([]);
-  const [hintText, setHintText] = useState(DEFAULT_HINT);
+  const [hintText, setHintText] = useState(
+    continuous ? CONTINUOUS_HINT : DEFAULT_HINT,
+  );
   const [restartCounter, setRestartCounter] = useState(0);
+  const [showSuccessFlash, setShowSuccessFlash] = useState(false);
+
+  useEffect(() => {
+    setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
+  }, [continuous]);
+
+  useEffect(() => {
+    if (successFlashTick <= 0) return;
+    setShowSuccessFlash(true);
+    const t = setTimeout(() => setShowSuccessFlash(false), 450);
+    return () => clearTimeout(t);
+  }, [successFlashTick]);
 
   const clearScanFailTimer = useCallback(() => {
     if (scanFailTimerRef.current) {
@@ -155,11 +180,11 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
 
   const resetScanFailTimer = useCallback(() => {
     clearScanFailTimer();
-    setHintText(DEFAULT_HINT);
+    setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
     scanFailTimerRef.current = setTimeout(() => {
       setHintText(FAIL_HINT);
     }, SCAN_FAIL_HINT_MS);
-  }, [clearScanFailTimer]);
+  }, [clearScanFailTimer, continuous]);
 
   const stop = useCallback(() => {
     controlsRef.current?.stop();
@@ -358,7 +383,7 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
                 type="button"
                 onClick={() => {
                   setError(null);
-                  setHintText(DEFAULT_HINT);
+                  setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
                   setCameraActive(true);
                 }}
               >
@@ -385,6 +410,7 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
             {paused ? (
               <S.QrPausedOverlay aria-live="polite">잔고 조회 중…</S.QrPausedOverlay>
             ) : null}
+            {showSuccessFlash ? <S.QrSuccessFlash aria-hidden /> : null}
           </>
         )}
       </S.QrVideoWrap>
@@ -401,7 +427,7 @@ export function WalletQrScanner({ onDetected, paused }: WalletQrScannerProps) {
                 stop();
                 setError(null);
                 clearScanFailTimer();
-                setHintText(DEFAULT_HINT);
+                setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
               }}
             >
               카메라 끄기

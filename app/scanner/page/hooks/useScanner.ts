@@ -16,6 +16,7 @@ export type ScannerStatus = "idle" | "loading" | "done" | "error";
 
 export interface UseScannerResult {
   address: string;
+  scannedAddress: string;
   status: ScannerStatus;
   results: TokenResult[];
   activeTab: ScannerNetworkFilter;
@@ -27,6 +28,7 @@ export interface UseScannerResult {
 
 export function useScanner(): UseScannerResult {
   const [address, setAddress] = useState("");
+  const [scannedAddress, setScannedAddress] = useState("");
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [results, setResults] = useState<TokenResult[]>([]);
   const [activeTab, setActiveTab] = useState<ScannerNetworkFilter>("all");
@@ -46,6 +48,7 @@ export function useScanner(): UseScannerResult {
       return;
     }
 
+    setScannedAddress(trimmed);
     setStatus("loading");
     setActiveTab("all");
 
@@ -68,6 +71,7 @@ export function useScanner(): UseScannerResult {
 
   return {
     address,
+    scannedAddress,
     status,
     results,
     activeTab,

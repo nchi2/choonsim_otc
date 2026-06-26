@@ -512,6 +512,27 @@ export const QrPausedOverlay = styled.div`
   font-weight: 600;
 `;
 
+const scanFlash = keyframes`
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+`;
+
+export const QrSuccessFlash = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: rgba(59, 130, 246, 0.35);
+  animation: ${scanFlash} 0.45s ease-out forwards;
+`;
+
 /** 프리뷰 우상단 — 잘못된 렌즈(초광각 등)로 열렸을 때 다음 카메라로 순환 */
 export const QrSwitchButton = styled.button`
   position: absolute;
@@ -916,6 +937,48 @@ export const NftBadgeCount = styled.span`
 
 /** NetworkTab — 3.3.1 */
 
+export const ScanModeTabBar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+
+  @media (min-width: 768px) {
+    gap: 0.625rem;
+    margin-bottom: 0.875rem;
+  }
+`;
+
+export const ScanModeTabButton = styled.button<{ $active: boolean }>`
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+
+  ${(p) =>
+    p.$active &&
+    css`
+      background: #eff6ff;
+      border-color: #2563eb;
+      color: #1d4ed8;
+    `}
+
+  &:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+`;
+
 export const NetworkTabBar = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -1063,6 +1126,28 @@ export const StatusMessageDemoStack = styled.div`
 
 /** PortfolioSummary — 3.5.1 */
 
+export const ScannedAddressRoot = styled.div`
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+
+  @media (min-width: 768px) {
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.875rem;
+  }
+`;
+
+export const ScannedAddressLabel = styled.p`
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+`;
+
 export const PortfolioSummaryRoot = styled.div`
   padding: 1rem;
   margin-bottom: 1rem;
@@ -1075,18 +1160,35 @@ export const PortfolioSummaryRoot = styled.div`
   }
 `;
 
+export const PortfolioSummaryAddressRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+`;
+
 export const PortfolioSummaryAddress = styled.p`
-  margin: 0 0 0.875rem;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #374151;
+  color: #2563eb;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
   word-break: break-all;
+  line-height: 1.45;
 
   @media (min-width: 768px) {
     font-size: 0.875rem;
-    margin-bottom: 1rem;
   }
 `;
 
@@ -1121,5 +1223,151 @@ export const PortfolioSummaryStatValue = styled.span`
 
   @media (min-width: 768px) {
     font-size: 1.0625rem;
+  }
+`;
+
+/** 연속 스캔 결과 패널 */
+
+export const ContinuousScanPanel = styled.div`
+  margin: 0 0 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+
+  @media (min-width: 768px) {
+    padding: 1.25rem;
+  }
+`;
+
+export const ContinuousScanHeader = styled.div`
+  margin-bottom: 0.75rem;
+`;
+
+export const ContinuousScanCount = styled.p`
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+
+  strong {
+    color: #2563eb;
+    font-weight: 800;
+  }
+`;
+
+export const ContinuousScanEmpty = styled.p`
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  line-height: 1.5;
+`;
+
+export const ScanHistoryList = styled.ul`
+  list-style: none;
+  margin: 0 0 0.875rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  max-height: 280px;
+  overflow-y: auto;
+`;
+
+export const ScanHistoryRowRoot = styled.li`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+`;
+
+export const ScanHistoryAddress = styled.span`
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2563eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  word-break: break-all;
+  line-height: 1.45;
+
+  @media (min-width: 768px) {
+    font-size: 0.8125rem;
+  }
+`;
+
+export const ScanHistoryRowActions = styled.div`
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+`;
+
+export const ScanHistoryRemoveButton = styled.button`
+  font-family: inherit;
+  cursor: pointer;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 1.125rem;
+  line-height: 1;
+  font-weight: 600;
+  color: #6b7280;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+
+  &:hover {
+    color: #dc2626;
+    border-color: #fecaca;
+    background: #fef2f2;
+  }
+`;
+
+export const ContinuousScanActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+export const ContinuousScanClearButton = styled.button`
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    color: #9ca3af;
+    background: #f3f4f6;
+    border-color: #e5e7eb;
   }
 `;

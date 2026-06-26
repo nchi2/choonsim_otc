@@ -103,6 +103,13 @@ export const YOUTUBE_CHANNELS: YoutubeChannel[] = [
     avatar:
       "https://yt3.googleusercontent.com/fmaloJ0iIFMrA-0RWW1ykcpp8Djj7bhtMTCZIhdquloVgnVPW-xMymHP6ThYwhR4KlhNi4h1dfE=s900-c-k-c0x00ffffff-no-rj",
   },
+  {
+    handle: "@Ark_BMB",
+    displayName: "Ark BMB",
+    channelId: "UCBjp6U4FB9zrQtsgVxNSNcQ",
+    avatar:
+      "https://yt3.googleusercontent.com/ae73WASMasvGCUbO5dh87E-cHBHv7qWFbPicsnJ8o_xTvRKrvvh-3bGqrH4dsWVTczpl2cfwWA=s900-c-k-c0x00ffffff-no-rj",
+  },
 
   {
     handle: "@btcmobickerjay",
