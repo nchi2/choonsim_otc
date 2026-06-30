@@ -11,6 +11,7 @@ import {
   MIRACLE10_STATUSES,
   STATUS_COLORS,
   STATUS_LABELS,
+  canAdminEditSchedule,
   formatAdminVisitTypeLabel,
   type Miracle10Status,
 } from "@/lib/miracle10-status";
@@ -159,20 +160,26 @@ const CalendarHint = styled.p`
 `;
 
 const SlotGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
 `;
 
 const SlotChip = styled.button<{ $active: boolean; $booked?: boolean }>`
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 84px;
-  padding: 0.45rem 0.65rem;
-  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 58px;
+  padding: 0.75rem 0.5rem;
+  border-radius: 10px;
   border: 1.5px solid
     ${(p) =>
       p.$active ? "#4338ca" : p.$booked ? "#e5e7eb" : "#d1d5db"};
@@ -180,16 +187,27 @@ const SlotChip = styled.button<{ $active: boolean; $booked?: boolean }>`
     p.$active ? "#4338ca" : p.$booked ? "#f9fafb" : "#fff"};
   color: ${(p) => (p.$active ? "#fff" : "#374151")};
   cursor: ${(p) => (p.$booked ? "not-allowed" : "pointer")};
-  opacity: ${(p) => (p.$booked ? 0.65 : 1)};
+  opacity: ${(p) => (p.$booked ? 0.55 : 1)};
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 `;
 
 const SlotChipTime = styled.span`
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 `;
 
-const SlotChipMeta = styled.span`
+const SlotChipMeta = styled.span<{ $active?: boolean; $emphasis?: boolean }>`
   font-size: 0.68rem;
+  font-weight: ${(p) => (p.$emphasis ? 600 : 400)};
+  color: ${(p) =>
+    p.$active
+      ? "rgba(255,255,255,0.85)"
+      : p.$emphasis
+        ? "#b91c1c"
+        : "#9ca3af"};
 `;
 
 const SaveScheduleBtn = styled.button`
@@ -335,11 +353,9 @@ export default function Miracle10DetailPage({
 
   const canEditSchedule =
     (data.visitType === "RESERVED" || data.visitType === "WALK_IN") &&
-    (data.status === "PENDING" || data.status === "VERIFIED");
+    canAdminEditSchedule(data.status);
 
-  const showScheduleEditor =
-    canEditSchedule &&
-    (data.visitType === "WALK_IN" || data.officeId != null);
+  const showScheduleEditor = canEditSchedule;
 
   const visitTypeLabel = formatAdminVisitTypeLabel(data.visitType, {
     officeId: data.officeId,
@@ -510,11 +526,10 @@ function VisitScheduleEditor({
   reservedStart,
   onSaved,
 }: VisitScheduleEditorProps) {
-  const allowOfficePick = visitType === "WALK_IN";
   const minDate = todayKst();
   const [draftOfficeId, setDraftOfficeId] = useState<number | null>(officeId);
   const [offices, setOffices] = useState<OfficeOption[]>([]);
-  const [officesLoading, setOfficesLoading] = useState(allowOfficePick);
+  const [officesLoading, setOfficesLoading] = useState(true);
   const [draftDate, setDraftDate] = useState(visitDate ?? "");
   const [draftStart, setDraftStart] = useState(reservedStart ?? "");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -538,7 +553,6 @@ function VisitScheduleEditor({
   }, [officeId, visitDate, reservedStart]);
 
   useEffect(() => {
-    if (!allowOfficePick) return;
     let cancelled = false;
     setOfficesLoading(true);
     fetch("/api/admin/offices")
@@ -546,7 +560,9 @@ function VisitScheduleEditor({
         const json = await res.json();
         if (cancelled) return;
         if (!res.ok || !json.ok) throw new Error(json.error);
-        setOffices(json.offices as OfficeOption[]);
+        setOffices(
+          (json.offices as OfficeOption[]).filter((o) => o.isActive),
+        );
       })
       .catch(() => {
         if (!cancelled) setOffices([]);
@@ -557,9 +573,9 @@ function VisitScheduleEditor({
     return () => {
       cancelled = true;
     };
-  }, [allowOfficePick]);
+  }, []);
 
-  const activeOfficeId = allowOfficePick ? draftOfficeId : officeId;
+  const activeOfficeId = draftOfficeId;
 
   useEffect(() => {
     if (activeOfficeId == null) {
@@ -636,7 +652,7 @@ function VisitScheduleEditor({
   const hasChanges =
     draftDate !== (visitDate ?? "") ||
     draftStart !== (reservedStart ?? "") ||
-    (allowOfficePick && draftOfficeId !== officeId);
+    draftOfficeId !== officeId;
 
   const canSave =
     hasChanges &&
@@ -652,14 +668,12 @@ function VisitScheduleEditor({
       const payload: {
         visitDate: string;
         reservedStart: string;
-        officeId?: number;
+        officeId: number;
       } = {
         visitDate: draftDate,
         reservedStart: draftStart,
+        officeId: activeOfficeId,
       };
-      if (allowOfficePick || draftOfficeId !== officeId) {
-        payload.officeId = activeOfficeId;
-      }
       const res = await fetch(`/api/admin/miracle10/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -687,34 +701,35 @@ function VisitScheduleEditor({
           ? "워크인 건 — 사무실·날짜·시간을 지정하면 정식 예약과 동일하게 캘린더·정원에 반영됩니다."
           : status === "VERIFIED"
             ? "일정 확정 건 — 변경 시 기존 자리를 반환하고 새 시간에 재배정합니다."
-            : "접수 건 — 방문 희망일·시간을 수정할 수 있습니다."}
+            : "접수·연락완료 건 — 사무실·방문 희망일·시간을 지정·수정할 수 있습니다."}
       </SectionSub>
 
-      {allowOfficePick ? (
-        <>
-          <SectionSub style={{ marginBottom: "0.35rem" }}>사무실</SectionSub>
-          <OfficeSelect
-            value={draftOfficeId ?? ""}
-            disabled={officesLoading || saving}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setDraftOfficeId(Number.isInteger(next) && next > 0 ? next : null);
-              setDraftDate("");
-              setDraftStart("");
-              setCalendarOpen(false);
-            }}
-          >
-            <option value="">
-              {officesLoading ? "불러오는 중…" : "사무실 선택"}
-            </option>
-            {offices.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-                {!o.isActive ? " (비활성)" : ""}
-              </option>
-            ))}
-          </OfficeSelect>
-        </>
+      <SectionSub style={{ marginBottom: "0.35rem" }}>사무실</SectionSub>
+      <OfficeSelect
+        value={draftOfficeId ?? ""}
+        disabled={officesLoading || saving}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          setDraftOfficeId(Number.isInteger(next) && next > 0 ? next : null);
+          setDraftDate("");
+          setDraftStart("");
+          setCalendarOpen(false);
+        }}
+      >
+        <option value="">
+          {officesLoading ? "불러오는 중…" : "사무실 선택"}
+        </option>
+        {offices.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </OfficeSelect>
+      {officeId != null && visitType === "RESERVED" ? (
+        <CalendarHint style={{ textAlign: "left", marginBottom: "0.75rem" }}>
+          신청 시 사무실이 자동 지정됐을 수 있습니다. 실제 방문지와 다르면 변경해
+          주세요.
+        </CalendarHint>
       ) : null}
 
       {activeOfficeId == null ? (
@@ -769,6 +784,7 @@ function VisitScheduleEditor({
                 slot.startTime === reservedStart && draftDate === visitDate;
               const selectable = slot.available || isCurrent;
               const active = draftStart === slot.startTime;
+              const showLastSpot = selectable && slot.remaining === 1;
               return (
                 <SlotChip
                   key={slot.startTime}
@@ -782,11 +798,13 @@ function VisitScheduleEditor({
                   }}
                 >
                   <SlotChipTime>{slot.startTime}</SlotChipTime>
-                  <SlotChipMeta>
-                    {!selectable
-                      ? "예약됨"
-                      : `남음 ${slot.remaining}자리`}
-                  </SlotChipMeta>
+                  {!selectable ? (
+                    <SlotChipMeta $active={active} $emphasis>
+                      예약됨
+                    </SlotChipMeta>
+                  ) : showLastSpot ? (
+                    <SlotChipMeta $active={active}>마지막 1자리</SlotChipMeta>
+                  ) : null}
                 </SlotChip>
               );
             })}

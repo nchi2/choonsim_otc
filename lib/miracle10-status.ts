@@ -25,6 +25,15 @@ export const STATUS_COLORS: Record<Miracle10Status, string> = {
   CANCELED: "#dc2626",
 };
 
+/** 운영자 일정 지정·수정 가능 상태 (완료·취소 제외). */
+export function canAdminEditSchedule(status: Miracle10Status): boolean {
+  return (
+    status === "PENDING" ||
+    status === "CONTACTED" ||
+    status === "VERIFIED"
+  );
+}
+
 /** 운영자 UI — 방문 방식 표시 (WALK_IN 일정 지정 여부 포함). */
 export function formatAdminVisitTypeLabel(
   visitType: string | null,

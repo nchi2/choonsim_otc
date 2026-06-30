@@ -6,6 +6,7 @@ import {
   getAdminUser,
 } from "@/lib/admin-guard";
 import { isKstYmd } from "@/lib/kst";
+import { canAdminEditSchedule, type Miracle10Status } from "@/lib/miracle10-status";
 import { isAllowedSlotTime, isBusinessDayKst } from "@/lib/work-schedule";
 import {
   CAPACITY_FULL_MESSAGE,
@@ -172,13 +173,10 @@ export async function PATCH(
         }
 
         if (scheduleInput?.ok) {
-          if (
-            existing.status !== OrderStatus.PENDING &&
-            existing.status !== OrderStatus.VERIFIED
-          ) {
+          if (!canAdminEditSchedule(existing.status as Miracle10Status)) {
             return {
               kind: "bad",
-              error: "접수·일정 확정 상태에서만 일정을 수정할 수 있습니다.",
+              error: "완료·취소된 신청은 일정을 수정할 수 없습니다.",
             };
           }
 
