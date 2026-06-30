@@ -17,6 +17,10 @@ import {
   todayKst,
 } from "@/lib/kst";
 import { isAllowedSlotTime, isBusinessDayKst } from "@/lib/work-schedule";
+import {
+  MIRACLE10_APPLY_SUSPENDED,
+  MIRACLE10_APPLY_SUSPENDED_MESSAGE,
+} from "@/app/otc/components/apply10mo.constants";
 
 export const runtime = "nodejs";
 
@@ -37,6 +41,10 @@ function isValidVisitDate(s: string): boolean {
 }
 
 export async function POST(request: Request) {
+  if (MIRACLE10_APPLY_SUSPENDED) {
+    return bad(MIRACLE10_APPLY_SUSPENDED_MESSAGE, 503);
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;

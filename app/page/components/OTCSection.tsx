@@ -3,6 +3,8 @@
 import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import styled from "styled-components";
+import Apply10MoSuspendedDialog from "@/app/otc/components/Apply10MoSuspendedDialog";
+import { MIRACLE10_APPLY_SUSPENDED } from "@/app/otc/components/apply10mo.constants";
 import * as S from "../styles";
 
 const LBANK_BMB_USDT_URL = "https://www.lbank.com/trade/bmb_usdt";
@@ -57,6 +59,7 @@ export default function OTCSection({
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [miracleSuspendedOpen, setMiracleSuspendedOpen] = useState(false);
 
   useEffect(() => {
     if (!showPriceCards) {
@@ -201,8 +204,15 @@ export default function OTCSection({
               BMB 판매
             </S.OTCHeroSellButton>
             <S.OTCHeroMiraclePromoLink
-              as={Link}
-              href="/otc?apply=1"
+              {...(MIRACLE10_APPLY_SUSPENDED
+                ? {
+                    type: "button" as const,
+                    onClick: () => setMiracleSuspendedOpen(true),
+                  }
+                : {
+                    as: Link,
+                    href: "/otc?apply=1",
+                  })}
               aria-label="10모의 기적 All-in-One 신청"
             >
               10모의 기적 All-in-One 신청
@@ -210,6 +220,10 @@ export default function OTCSection({
           </S.OTCHeroButtonContainer>
         )}
       </S.OTCHeroContent>
+      <Apply10MoSuspendedDialog
+        open={miracleSuspendedOpen}
+        onClose={() => setMiracleSuspendedOpen(false)}
+      />
     </HeroWrapper>
   );
 }

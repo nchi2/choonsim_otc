@@ -7,6 +7,8 @@ import OTCSection from "../page/components/OTCSection";
 import * as HubS from "../page/styles";
 import MajorPriceBoard from "../page/components/MajorPriceBoard";
 import Apply10MoModal from "./components/Apply10MoModal";
+import Apply10MoSuspendedDialog from "./components/Apply10MoSuspendedDialog";
+import { MIRACLE10_APPLY_SUSPENDED } from "./components/apply10mo.constants";
 import OtcRequestModal, {
   type OtcRequestSide,
 } from "./components/OtcRequestModal";
@@ -315,24 +317,35 @@ function parseOtcReqParam(value: string | null): OtcRequestSide | null {
   return null;
 }
 
-// 신청 기능 준비중 — true면 버튼 클릭 시 모달 대신 "준비 중입니다." 안내만 표시.
-const APPLY_COMING_SOON = false;
-
 function OTCContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   // Apply modal — 로컬 state로 즉시 열고, URL(?apply=1)은 딥링크·공유용으로 동기화.
   const urlApplyOpen = searchParams.get(APPLY_QUERY_KEY) === APPLY_QUERY_VALUE;
-  const [applyOpen, setApplyOpen] = useState(urlApplyOpen);
+  const [applyOpen, setApplyOpen] = useState(
+    !MIRACLE10_APPLY_SUSPENDED && urlApplyOpen,
+  );
+  const [suspendedOpen, setSuspendedOpen] = useState(false);
   const pushedByOpenRef = useRef(false);
 
   // URL 변경(뒤로가기·직접 방문) 시 state 동기화
   useEffect(() => {
+    if (MIRACLE10_APPLY_SUSPENDED) {
+      if (urlApplyOpen) {
+        setSuspendedOpen(true);
+        setApplyOpen(false);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(APPLY_QUERY_KEY);
+        const qs = params.toString();
+        router.replace(qs ? `/otc?${qs}` : "/otc", { scroll: false });
+      }
+      return;
+    }
     setApplyOpen(urlApplyOpen);
-  }, [urlApplyOpen]);
+  }, [urlApplyOpen, router, searchParams]);
 
-  const isApplyOpen = !APPLY_COMING_SOON && applyOpen;
+  const isApplyOpen = !MIRACLE10_APPLY_SUSPENDED && applyOpen;
 
   const urlOtcReqSide = parseOtcReqParam(searchParams.get(OTC_REQ_QUERY_KEY));
   const [otcReqSide, setOtcReqSide] = useState<OtcRequestSide | null>(
@@ -368,9 +381,16 @@ function OTCContent() {
   }, [applyOpen, router, searchParams]);
 
   const handleApplyClick = useCallback(() => {
-    if (APPLY_COMING_SOON) return;
+    if (MIRACLE10_APPLY_SUSPENDED) {
+      setSuspendedOpen(true);
+      return;
+    }
     openApplyModal();
   }, [openApplyModal]);
+
+  const closeSuspendedDialog = useCallback(() => {
+    setSuspendedOpen(false);
+  }, []);
 
   const openOtcReqModal = useCallback(
     (side: OtcRequestSide) => {
@@ -598,6 +618,10 @@ function OTCContent() {
       />
 
       <Apply10MoModal open={isApplyOpen} onClose={closeApplyModal} />
+      <Apply10MoSuspendedDialog
+        open={suspendedOpen}
+        onClose={closeSuspendedDialog}
+      />
       {otcReqSide ? (
         <OtcRequestModal
           open

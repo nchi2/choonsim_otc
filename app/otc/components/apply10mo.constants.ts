@@ -1,6 +1,13 @@
 // 10모의 기적 신청 플로우(가치 / 신청 폼 / 접수 완료) 공유 상수.
 // 세 화면이 같은 URL·주소·환산·문구를 단일 소스에서 가져온다.
 
+/** true면 신청 버튼·API 접수를 막고 일시중지 안내를 표시한다. */
+export const MIRACLE10_APPLY_SUSPENDED = true;
+
+export const MIRACLE10_APPLY_SUSPENDED_TITLE = "신청 일시중지";
+export const MIRACLE10_APPLY_SUSPENDED_MESSAGE =
+  "10모의 기적 All-in-One 신청이 일시중지되었습니다. 재개 시 안내드리겠습니다.";
+
 // 문의는 이메일로 받는다.
 export const CONTACT_EMAIL = "contact@choonsim.com";
 export const KAKAO_INQUIRY_URL = `mailto:${CONTACT_EMAIL}`;
