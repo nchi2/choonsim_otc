@@ -11,23 +11,40 @@ export interface ViewerRegistryToken {
   name: string;
   chain: Network;
   chainId: number;
-  type: ViewerTokenType;
+  type: "native" | "erc20";
   address: string | null;
   decimals: number;
   tier?: "ours" | "otaverse";
-  nftTier?: string;
 }
+
+export interface ViewerRegistryNft {
+  id: string;
+  symbol: string;
+  name: string;
+  chain: Network;
+  chainId: number;
+  type: "erc721";
+  address: string;
+  tier: string;
+}
+
+export type ViewerBalanceAsset = ViewerRegistryToken | ViewerRegistryNft;
 
 export interface ViewerRegistry {
   version: number;
   generatedFrom?: string;
   tokens: ViewerRegistryToken[];
+  nfts: ViewerRegistryNft[];
 }
 
 const registry = registryJson as ViewerRegistry;
 
-const byId = new Map<string, ViewerRegistryToken>(
+const tokenById = new Map<string, ViewerRegistryToken>(
   registry.tokens.map((t) => [t.id, t]),
+);
+
+const nftById = new Map<string, ViewerRegistryNft>(
+  (registry.nfts ?? []).map((n) => [n.id, n]),
 );
 
 export function getViewerRegistry(): ViewerRegistry {
@@ -35,9 +52,20 @@ export function getViewerRegistry(): ViewerRegistry {
 }
 
 export function getViewerTokenById(id: string): ViewerRegistryToken | undefined {
-  return byId.get(id);
+  return tokenById.get(id);
+}
+
+export function getViewerNftById(id: string): ViewerRegistryNft | undefined {
+  return nftById.get(id);
+}
+
+/** balance API — tokens + nfts 통합 조회 */
+export function getViewerBalanceAssetById(
+  id: string,
+): ViewerBalanceAsset | undefined {
+  return tokenById.get(id) ?? nftById.get(id);
 }
 
 export function getViewerTokenMap(): ReadonlyMap<string, ViewerRegistryToken> {
-  return byId;
+  return tokenById;
 }

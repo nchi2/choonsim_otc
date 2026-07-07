@@ -173,61 +173,58 @@
       "type": "erc20",
       "address": "0x55d398326f99059fF775485246999027B3197955",
       "decimals": 18
-    },
+    }
+  ],
+  "nfts": [
     {
-      "id": "ldtstake-10-base",
+      "id": "ldt-stake-10",
       "symbol": "LDTSTAKE",
-      "name": "LDT STAKE NFT 10 (Base)",
+      "name": "LDT STAKE NFT 10",
       "chain": "base",
       "chainId": 8453,
       "type": "erc721",
       "address": "0x4988c1d9FF849A7f7A5700A423273b7807f8EDBa",
-      "decimals": 0,
-      "nftTier": "10"
+      "tier": "10"
     },
     {
-      "id": "ldtstake-50-base",
+      "id": "ldt-stake-50",
       "symbol": "LDTSTAKE",
-      "name": "LDT STAKE NFT 50 (Base)",
+      "name": "LDT STAKE NFT 50",
       "chain": "base",
       "chainId": 8453,
       "type": "erc721",
       "address": "0xb27E75b2a671f9ed8E484213e45d53eD2FA7cc33",
-      "decimals": 0,
-      "nftTier": "50"
+      "tier": "50"
     },
     {
-      "id": "ldtstake-100-base",
+      "id": "ldt-stake-100",
       "symbol": "LDTSTAKE",
-      "name": "LDT STAKE NFT 100 (Base)",
+      "name": "LDT STAKE NFT 100",
       "chain": "base",
       "chainId": 8453,
       "type": "erc721",
       "address": "0x3e7082ac9579e008087f712587031aeef82fAbB3",
-      "decimals": 0,
-      "nftTier": "100"
+      "tier": "100"
     },
     {
-      "id": "ldtstake-200-base",
+      "id": "ldt-stake-200",
       "symbol": "LDTSTAKE",
-      "name": "LDT STAKE NFT 200 (Base)",
+      "name": "LDT STAKE NFT 200",
       "chain": "base",
       "chainId": 8453,
       "type": "erc721",
       "address": "0x0B1797d9f7147a1387D40043c77c695191683b9C",
-      "decimals": 0,
-      "nftTier": "200"
+      "tier": "200"
     },
     {
-      "id": "ldtstake-1000-base",
+      "id": "ldt-stake-1000",
       "symbol": "LDTSTAKE",
-      "name": "LDT STAKE NFT 1000 (Base)",
+      "name": "LDT STAKE NFT 1000",
       "chain": "base",
       "chainId": 8453,
       "type": "erc721",
       "address": "0x68F1C5D3eA3b20c226e35158f1c0d8F46613B717",
-      "decimals": 0,
-      "nftTier": "1000"
+      "tier": "1000"
     }
   ]
 }

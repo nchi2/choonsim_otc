@@ -6,7 +6,7 @@ import {
   fetchNativeBalance,
   type MulticallItem,
 } from "@/lib/viewer/multicall";
-import { getViewerTokenById } from "@/lib/viewer/registry";
+import { getViewerBalanceAssetById } from "@/lib/viewer/registry";
 
 export async function fetchViewerBalances(
   address: string,
@@ -20,7 +20,7 @@ export async function fetchViewerBalances(
   const natives: { tokenId: string; chain: Network }[] = [];
 
   for (const id of tokenIds) {
-    const token = getViewerTokenById(id);
+    const token = getViewerBalanceAssetById(id);
     if (!token) {
       balances[id] = "error";
       continue;
@@ -29,7 +29,12 @@ export async function fetchViewerBalances(
       natives.push({ tokenId: id, chain: token.chain });
       continue;
     }
-    if (!token.address) {
+    if (token.type === "erc721" || token.type === "erc20") {
+      if (!token.address) {
+        balances[id] = "error";
+        continue;
+      }
+    } else {
       balances[id] = "error";
       continue;
     }
