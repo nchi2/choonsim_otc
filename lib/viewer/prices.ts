@@ -1,9 +1,10 @@
 import { fetchTickerPrice, fetchUsdtKrw } from "@/lib/otc-orderbook";
 
 export interface ViewerPriceEntry {
-  krw: number;
-  usd?: number;
+  krw: number | null;
+  usd?: number | null;
   source: string;
+  note?: string;
 }
 
 /** CoinGecko id → 레지스트리 symbol (priceSource: market) */
@@ -18,16 +19,25 @@ const COINGECKO_MARKET_IDS: Record<string, string> = {
 const COINGECKO_SIMPLE_PRICE_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,binancecoin,tether,usd-coin,wrapped-bitcoin&vs_currencies=usd";
 
-/** 춘심 OTC 호가·수동 단가 — 운영 확정 전까지 임시 */
-// TODO: 어드민 OTC 호가/시그널 API와 연동
-const CHOONSIM_MANUAL_KRW: Record<string, number> = {
-  SBMB: 5000,
-  WBMB: 0,
-  LDT: 0,
-  PRR: 0,
-  MOVL: 0,
-  MOVN: 0,
-};
+const VALUE_UNAVAILABLE_SYMBOLS = ["SBMB", "LDT", "PRR", "MOVL"] as const;
+
+function unavailablePrice(note?: string): ViewerPriceEntry {
+  return {
+    krw: null,
+    usd: null,
+    source: "unavailable",
+    ...(note ? { note } : {}),
+  };
+}
+
+function pendingPrice(note: string): ViewerPriceEntry {
+  return {
+    krw: null,
+    usd: null,
+    source: "pending",
+    note,
+  };
+}
 
 export interface ViewerRatesPayload {
   usdKrw: number | null;
@@ -80,15 +90,29 @@ export async function fetchViewerRates(): Promise<ViewerRatesPayload> {
   if (bmbUsdt != null && usdtKrw != null) {
     prices.BMB = {
       krw: bmbUsdt * usdtKrw,
+      usd: bmbUsdt,
       source: "lbank",
+    };
+    // WBMB는 현재 BMB 래핑 자산으로 같은 시세를 사용한다.
+    prices.WBMB = {
+      krw: bmbUsdt * usdtKrw,
+      usd: bmbUsdt,
+      source: "bmb-parity",
     };
   }
 
-  for (const [symbol, krw] of Object.entries(CHOONSIM_MANUAL_KRW)) {
-    if (krw > 0) {
-      prices[symbol] = { krw, source: "choonsim" };
-    }
+  for (const symbol of VALUE_UNAVAILABLE_SYMBOLS) {
+    prices[symbol] = unavailablePrice();
   }
+
+  // TODO: Uniswap V4 BSC MOVN-USDT 실시간 가격 연동
+  // 현재 부족한 정보:
+  // 1) positions/v4/bnb/631138 링크가 직접 poolId(bytes32)를 제공하지 않음
+  // 2) BSC용 v4 PositionManager / PoolManager 주소와 poolKeys(poolId[:25]) 조회 경로 확인 필요
+  // 3) 또는 Uniswap v4 / Bitquery subgraph에서 해당 포지션이 참조하는 poolId를 먼저 역매핑해야 함
+  prices.MOVN = pendingPrice(
+    "Uniswap V4 BSC poolId/PoolKey 확인 필요",
+  );
 
   if (usdtKrw != null) {
     for (const [symbol, usd] of Object.entries(marketUsd)) {
