@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "generatedFrom": "app/scanner/lib/tokens.ts",
+  "_comment": "TODO: 확정 registry.json으로 교체",
+  "tokens": [
+    {
+      "id": "eth-eth",
+      "symbol": "ETH",
+      "name": "ETH (Ethereum)",
+      "chain": "eth",
+      "chainId": 1,
+      "type": "native",
+      "address": null,
+      "decimals": 18
+    },
+    {
+      "id": "eth-base",
+      "symbol": "ETH",
+      "name": "ETH (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "native",
+      "address": null,
+      "decimals": 18
+    },
+    {
+      "id": "bnb-bsc",
+      "symbol": "BNB",
+      "name": "BNB (BNB Chain)",
+      "chain": "bsc",
+      "chainId": 56,
+      "type": "native",
+      "address": null,
+      "decimals": 18
+    },
+    {
+      "id": "sbmb-eth",
+      "symbol": "SBMB",
+      "name": "SBMB (Ethereum)",
+      "chain": "eth",
+      "chainId": 1,
+      "type": "erc20",
+      "address": "0xc90990Db321F5806587bF496a3652c19aB223b94",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "sbmb-base",
+      "symbol": "SBMB",
+      "name": "SBMB (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc20",
+      "address": "0xc90990Db321F5806587bF496a3652c19aB223b94",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "sbmb-bsc",
+      "symbol": "SBMB",
+      "name": "SBMB (BNB Chain)",
+      "chain": "bsc",
+      "chainId": 56,
+      "type": "erc20",
+      "address": "0xc90990Db321F5806587bF496a3652c19aB223b94",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "ldt-eth",
+      "symbol": "LDT",
+      "name": "LDT (Lucem Diffundo Token) (Ethereum)",
+      "chain": "eth",
+      "chainId": 1,
+      "type": "erc20",
+      "address": "0xD437aB2F890A119c654B67B3d392e204087A3696",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "ldt-base",
+      "symbol": "LDT",
+      "name": "LDT (Lucem Diffundo Token) (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc20",
+      "address": "0x504B262539d3A4194d0649f69Fe3cCA06D5bB24a",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "wbmb-base",
+      "symbol": "WBMB",
+      "name": "WBMB (Wrapped BMB) (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc20",
+      "address": "0x71E7CBD674762F95D4D685138749feC3665c8225",
+      "decimals": 8,
+      "tier": "otaverse"
+    },
+    {
+      "id": "ldt-bsc",
+      "symbol": "LDT",
+      "name": "LDT (Lucem Diffundo Token) (BNB Chain)",
+      "chain": "bsc",
+      "chainId": 56,
+      "type": "erc20",
+      "address": "0x504B262539d3A4194d0649f69Fe3cCA06D5bB24a",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "movl-base",
+      "symbol": "MOVL",
+      "name": "MOVL (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc20",
+      "address": "0x6c3b923561B9e3b19D06cB02537Cc0FD5F1af6d4",
+      "decimals": 18,
+      "tier": "otaverse"
+    },
+    {
+      "id": "prr-base",
+      "symbol": "PRR",
+      "name": "PRR (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc20",
+      "address": "0x7d29E2274212426Ae964cE354F9A5FC9b74BA2d1",
+      "decimals": 18,
+      "tier": "ours"
+    },
+    {
+      "id": "wbmb-bsc",
+      "symbol": "WBMB",
+      "name": "WBMB (Wrapped BMB) (BNB Chain)",
+      "chain": "bsc",
+      "chainId": 56,
+      "type": "erc20",
+      "address": "0x9E4c611B834672c3643D9818249366bf65ae4C86",
+      "decimals": 8,
+      "tier": "otaverse"
+    },
+    {
+      "id": "movn-bsc",
+      "symbol": "MOVN",
+      "name": "MOVN (BNB Chain)",
+      "chain": "bsc",
+      "chainId": 56,
+      "type": "erc20",
+      "address": "0x200b63AA750c901892d4DCf82439860F9C270274",
+      "decimals": 18,
+      "tier": "otaverse"
+    },
+    {
+      "id": "usdt-eth",
+      "symbol": "USDT",
+      "name": "USDT (Tether) (Ethereum)",
+      "chain": "eth",
+      "chainId": 1,
+      "type": "erc20",
+      "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "decimals": 6
+    },
+    {
+      "id": "usdt-bsc",
+      "symbol": "USDT",
+      "name": "USDT (Tether) (BNB Chain)",
+      "chain": "bsc",
+      "chainId": 56,
+      "type": "erc20",
+      "address": "0x55d398326f99059fF775485246999027B3197955",
+      "decimals": 18
+    },
+    {
+      "id": "ldtstake-10-base",
+      "symbol": "LDTSTAKE",
+      "name": "LDT STAKE NFT 10 (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc721",
+      "address": "0x4988c1d9FF849A7f7A5700A423273b7807f8EDBa",
+      "decimals": 0,
+      "nftTier": "10"
+    },
+    {
+      "id": "ldtstake-50-base",
+      "symbol": "LDTSTAKE",
+      "name": "LDT STAKE NFT 50 (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc721",
+      "address": "0xb27E75b2a671f9ed8E484213e45d53eD2FA7cc33",
+      "decimals": 0,
+      "nftTier": "50"
+    },
+    {
+      "id": "ldtstake-100-base",
+      "symbol": "LDTSTAKE",
+      "name": "LDT STAKE NFT 100 (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc721",
+      "address": "0x3e7082ac9579e008087f712587031aeef82fAbB3",
+      "decimals": 0,
+      "nftTier": "100"
+    },
+    {
+      "id": "ldtstake-200-base",
+      "symbol": "LDTSTAKE",
+      "name": "LDT STAKE NFT 200 (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc721",
+      "address": "0x0B1797d9f7147a1387D40043c77c695191683b9C",
+      "decimals": 0,
+      "nftTier": "200"
+    },
+    {
+      "id": "ldtstake-1000-base",
+      "symbol": "LDTSTAKE",
+      "name": "LDT STAKE NFT 1000 (Base)",
+      "chain": "base",
+      "chainId": 8453,
+      "type": "erc721",
+      "address": "0x68F1C5D3eA3b20c226e35158f1c0d8F46613B717",
+      "decimals": 0,
+      "nftTier": "1000"
+    }
+  ]
+}
