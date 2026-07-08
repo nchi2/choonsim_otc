@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
         개인정보처리방침
       </h1>
       <p style={{ color: '#666', marginBottom: 40, fontSize: 14 }}>
-        시행일: 2026년 7월 8일 · 적용 서비스: 춘심 뷰어 (evm-viewer-app)
+        시행일: 2026년 7월 8일 · 적용 서비스: EVM Viewer (evm-viewer-app)
       </p>
 
       <section style={{ marginBottom: 32 }}>
@@ -22,7 +22,7 @@ export default function PrivacyPolicyPage() {
           1. 앱의 성격
         </h2>
         <p>
-          춘심 뷰어(이하 &ldquo;앱&rdquo;)는 이더리움, Base, BNB Smart Chain
+          EVM Viewer(이하 &ldquo;앱&rdquo;)는 이더리움, Base, BNB Smart Chain
           등 공개 블록체인 네트워크상의 지갑 주소 잔고를 <b>조회만 하는</b>{' '}
           watch-only 애플리케이션입니다. 앱은 개인키·니모닉 등 지갑을
           제어할 수 있는 정보를 요청하거나 저장하지 않으며, 자산의 전송·
