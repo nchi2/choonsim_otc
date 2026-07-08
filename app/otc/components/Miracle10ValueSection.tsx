@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import styled from "styled-components";
+import Apply10MoPreparingNotice from "./Apply10MoPreparingNotice";
 
 /* ────────────────────────────────────────────────────────────
  * 색 토큰 (Figma 스펙 그대로 — 임의 변경 금지). 라이트 고정.
@@ -232,6 +233,9 @@ export default function Miracle10ValueSection({
     <Card className={className}>
       {/* 본문(스크롤 영역) — 히어로/대비 스트립 포함, 하단 푸터만 고정 */}
       <ScrollArea>
+        <NoticeWrap>
+          <Apply10MoPreparingNotice />
+        </NoticeWrap>
         {/* 1. Hero */}
         <Hero>
           <HeroSub>복잡한 과정 없이</HeroSub>
@@ -375,6 +379,14 @@ const ScrollArea = styled.div`
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+`;
+
+const NoticeWrap = styled.div`
+  padding: 16px 20px 0;
+
+  @media (min-width: 768px) {
+    padding: 20px 32px 0;
+  }
 `;
 
 /* 1. Hero */

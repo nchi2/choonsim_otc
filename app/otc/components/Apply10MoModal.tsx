@@ -22,6 +22,7 @@ import {
 } from "@/lib/kst";
 import { isBusinessDayKst } from "@/lib/work-schedule";
 import Miracle10ValueSection from "./Miracle10ValueSection";
+import Apply10MoPreparingNotice from "./Apply10MoPreparingNotice";
 import Apply10MoResult from "./Apply10MoResult";
 
 // 신규 참여자는 강남 사무실에서 면대면 인증을 거친다(폼 안내문에서 사용).
@@ -584,6 +585,8 @@ function FormView({
           구매부터 전송까지, 어렵지 않게 도와드려요.
         </FormHeaderSubtitle>
       </FormHeader>
+
+      <Apply10MoPreparingNotice compact />
 
       <HeaderDivider />
 

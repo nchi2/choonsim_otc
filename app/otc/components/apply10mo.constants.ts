@@ -2,11 +2,18 @@
 // 세 화면이 같은 URL·주소·환산·문구를 단일 소스에서 가져온다.
 
 /** true면 신청 버튼·API 접수를 막고 일시중지 안내를 표시한다. */
-export const MIRACLE10_APPLY_SUSPENDED = true;
+export const MIRACLE10_APPLY_SUSPENDED = false;
 
 export const MIRACLE10_APPLY_SUSPENDED_TITLE = "신청 일시중지";
 export const MIRACLE10_APPLY_SUSPENDED_MESSAGE =
   "10모의 기적 All-in-One 신청이 일시중지되었습니다. 재개 시 안내드리겠습니다.";
+
+/** true면 신청은 받되 재오픈 준비 안내 배너를 표시한다. */
+export const MIRACLE10_APPLY_PREPARING = true;
+
+export const MIRACLE10_APPLY_PREPARING_TITLE = "재오픈 준비 중";
+export const MIRACLE10_APPLY_PREPARING_MESSAGE =
+  "10모의 기적 All-in-One을 다시 준비하고 있습니다. 지금은 신청만 접수해 두시면, 정식 오픈 시 순서대로 안내드립니다.";
 
 // 문의는 이메일로 받는다.
 export const CONTACT_EMAIL = "contact@choonsim.com";
