@@ -13,6 +13,10 @@ function isPlaceholderAddress(address: string): boolean {
   return address === ERC20_ADDRESS_PLACEHOLDER;
 }
 
+function shouldShowNewContractBadge(symbol: string): boolean {
+  return symbol === "SBMB";
+}
+
 /** SBMB·LDT on BNB: same data; gray header + preparing badge only. */
 function shouldShowPreparingBadge(symbol: string, network: Network): boolean {
   return network === "bsc" && (symbol === "SBMB" || symbol === "LDT");
@@ -48,24 +52,32 @@ export function TokenCard({ group }: { group: ContractTokenGroup }) {
       {group.intro ? <S.TokenIntro>{group.intro}</S.TokenIntro> : null}
       {group.chains.map((row) => {
         const ph = isPlaceholderAddress(row.address);
+        const newContractPending = shouldShowNewContractBadge(group.symbol);
         const preparing = shouldShowPreparingBadge(group.symbol, row.network);
         const temporarilyDisabled = isTemporarilyDisabledRow(
           group.symbol,
           row.network,
         );
-        const inactive = preparing || temporarilyDisabled;
+        const inactive = newContractPending || preparing || temporarilyDisabled;
         const key = `${row.network}-${row.address}`;
         const showCopied = copiedKey === key;
         const explorer = explorerAddressUrl(row.network, row.address);
         const rowActionsDisabled = ph || inactive;
+        const badgeLabel = newContractPending
+          ? "새 컨트랙트 예정"
+          : "준비중";
+        const addressLabel = newContractPending
+          ? "새 컨트랙트 발행 예정"
+          : row.address;
 
         return (
           <ChainContractCard
             key={key}
             network={row.network}
-            showPreparingBadge={preparing}
+            showPreparingBadge={newContractPending || preparing}
+            preparingBadgeLabel={badgeLabel}
           >
-            <S.AddressLine>{row.address}</S.AddressLine>
+            <S.AddressLine>{addressLabel}</S.AddressLine>
             <S.RowActionsWrap>
               <S.RowActions>
                 <S.GhostButton

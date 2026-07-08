@@ -20,12 +20,14 @@ const CHAIN_THEME: Record<Network, ChainTheme> = {
 export interface ChainContractCardProps {
   network: Network;
   showPreparingBadge?: boolean;
+  preparingBadgeLabel?: string;
   children: ReactNode;
 }
 
 export function ChainContractCard({
   network,
   showPreparingBadge = false,
+  preparingBadgeLabel = "준비중",
   children,
 }: ChainContractCardProps) {
   const theme = CHAIN_THEME[network];
@@ -42,7 +44,7 @@ export function ChainContractCard({
         {showPreparingBadge ? (
           <>
             <S.ChainContractCardHeaderSpacer />
-            <S.PreparingBadge>준비중</S.PreparingBadge>
+            <S.PreparingBadge>{preparingBadgeLabel}</S.PreparingBadge>
           </>
         ) : null}
       </S.ChainContractCardHeader>
