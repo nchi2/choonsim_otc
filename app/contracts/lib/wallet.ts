@@ -27,18 +27,40 @@ function isMobileUserAgent(): boolean {
   );
 }
 
+function getCurrentPageUrl(): string {
+  if (typeof window === "undefined") return "";
+  return window.location.href;
+}
+
+/** Trust Wallet universal link — https only (no trust:// custom scheme). */
+export function buildTrustDeepLink(sealedUrl: string): string {
+  return `https://link.trustwallet.com/open_url?coin_id=60&url=${encodeURIComponent(sealedUrl)}`;
+}
+
+/** MetaMask mobile universal link — host+path form (no metamask:// scheme). */
+export function buildMetamaskDeepLink(sealedUrl: string): string {
+  const parsed = new URL(sealedUrl);
+  const dappPath = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  return `https://metamask.app.link/dapp/${dappPath}`;
+}
+
+function triggerDeepLink(url: string): void {
+  if (typeof window === "undefined") return;
+  window.location.href = url;
+}
+
 /** Trust Wallet universal link — opens this URL in the in-app browser */
 export function openCurrentPageInTrustWallet(): void {
-  if (typeof window === "undefined") return;
-  const url = encodeURIComponent(window.location.href);
-  window.location.href = `https://link.trustwallet.com/open_url?url=${url}`;
+  const sealedUrl = getCurrentPageUrl();
+  if (!sealedUrl) return;
+  triggerDeepLink(buildTrustDeepLink(sealedUrl));
 }
 
 /** MetaMask mobile — opens this page in the in-app browser */
 export function openCurrentPageInMetaMask(): void {
-  if (typeof window === "undefined") return;
-  const u = encodeURIComponent(window.location.href);
-  window.location.href = `https://metamask.app.link/dapp/${u}`;
+  const sealedUrl = getCurrentPageUrl();
+  if (!sealedUrl) return;
+  triggerDeepLink(buildMetamaskDeepLink(sealedUrl));
 }
 
 const CHAIN_NOT_ADDED_CODE = 4902;
