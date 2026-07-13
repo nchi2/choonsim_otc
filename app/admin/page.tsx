@@ -23,13 +23,6 @@ const StatsGrid = styled.div`
   margin-bottom: 2rem;
 `;
 
-const StatCard = styled.div`
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  padding: 1rem 1.1rem;
-`;
-
 const PendingStatCard = styled(Link)<{ $highlight: boolean }>`
   display: block;
   border: 1px solid
@@ -117,7 +110,17 @@ interface Stats {
   completed: number;
   canceled: number;
   active: number;
+  otc: {
+    total: number;
+    pending: number;
+    contacted: number;
+    agreed: number;
+    completed: number;
+    canceled: number;
+  };
   walletStock: number;
+  walletIn: number;
+  walletOut: number;
 }
 
 export default function AdminHubPage() {
@@ -164,21 +167,28 @@ export default function AdminHubPage() {
 
       {!loading && !error && stats && (
         <>
+          <SectionTitle>10모의 기적 신청</SectionTitle>
           <StatsGrid>
-            <PendingStatCard href="/admin/miracle10?tab=ALL" $highlight={false}>
-              <StatLabel>총 신청</StatLabel>
-              <StatValue>{stats.total}</StatValue>
-            </PendingStatCard>
-            <PendingStatCard href="/admin/miracle10?tab=ALL" $highlight={false}>
-              <StatLabel>진행 중</StatLabel>
-              <StatValue>{stats.active}</StatValue>
-            </PendingStatCard>
             <PendingStatCard
               href="/admin/miracle10?tab=PENDING"
               $highlight={stats.pending > 0}
             >
               <StatLabel $accent={stats.pending > 0}>접수</StatLabel>
               <StatValue $accent={stats.pending > 0}>{stats.pending}</StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/miracle10?tab=CONTACTED"
+              $highlight={false}
+            >
+              <StatLabel>연락완료</StatLabel>
+              <StatValue>{stats.contacted}</StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/miracle10?tab=VERIFIED"
+              $highlight={false}
+            >
+              <StatLabel>일정 확정</StatLabel>
+              <StatValue>{stats.verified}</StatValue>
             </PendingStatCard>
             <PendingStatCard
               href="/admin/miracle10?tab=COMPLETED"
@@ -194,12 +204,73 @@ export default function AdminHubPage() {
               <StatLabel>취소</StatLabel>
               <StatValue>{stats.canceled}</StatValue>
             </PendingStatCard>
+            <PendingStatCard href="/admin/miracle10?tab=ALL" $highlight={false}>
+              <StatLabel>전체</StatLabel>
+              <StatValue>{stats.total}</StatValue>
+            </PendingStatCard>
+          </StatsGrid>
+
+          <SectionTitle>BMB 구매·판매 (OTC)</SectionTitle>
+          <StatsGrid>
             <PendingStatCard
-              href="/admin/wallet-inventory"
+              href="/admin/otc-requests?status=PENDING"
+              $highlight={stats.otc.pending > 0}
+            >
+              <StatLabel $accent={stats.otc.pending > 0}>접수</StatLabel>
+              <StatValue $accent={stats.otc.pending > 0}>
+                {stats.otc.pending}
+              </StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/otc-requests?status=CONTACTED"
               $highlight={false}
             >
-              <StatLabel>지갑 재고</StatLabel>
+              <StatLabel>연락완료</StatLabel>
+              <StatValue>{stats.otc.contacted}</StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/otc-requests?status=AGREED"
+              $highlight={false}
+            >
+              <StatLabel>합의완료</StatLabel>
+              <StatValue>{stats.otc.agreed}</StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/otc-requests?status=COMPLETED"
+              $highlight={false}
+            >
+              <StatLabel>완료</StatLabel>
+              <StatValue>{stats.otc.completed}</StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/otc-requests?status=CANCELED"
+              $highlight={false}
+            >
+              <StatLabel>취소</StatLabel>
+              <StatValue>{stats.otc.canceled}</StatValue>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/otc-requests?status=ALL"
+              $highlight={false}
+            >
+              <StatLabel>전체</StatLabel>
+              <StatValue>{stats.otc.total}</StatValue>
+            </PendingStatCard>
+          </StatsGrid>
+
+          <SectionTitle>종이지갑 재고</SectionTitle>
+          <StatsGrid>
+            <PendingStatCard href="/admin/wallet-inventory" $highlight={false}>
+              <StatLabel>현재 재고</StatLabel>
               <StatValue>{stats.walletStock}장</StatValue>
+            </PendingStatCard>
+            <PendingStatCard href="/admin/wallet-inventory" $highlight={false}>
+              <StatLabel>입고 누계</StatLabel>
+              <StatValue>{stats.walletIn}장</StatValue>
+            </PendingStatCard>
+            <PendingStatCard href="/admin/wallet-inventory" $highlight={false}>
+              <StatLabel>불출 누계</StatLabel>
+              <StatValue>{stats.walletOut}장</StatValue>
             </PendingStatCard>
           </StatsGrid>
 

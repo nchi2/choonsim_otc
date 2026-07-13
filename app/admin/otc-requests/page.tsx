@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import {
   FilterTab,
@@ -13,8 +13,11 @@ import {
   adminColors,
 } from "@/components/admin/ui";
 import {
+  OTC_REQUEST_STATUSES,
+  OTC_REQUEST_STATUS_LABELS,
   otcRequestStatusColor,
   otcRequestStatusLabel,
+  type OtcRequestStatus,
 } from "@/lib/otc-request-status";
 
 const Page = styled.div`
@@ -129,11 +132,19 @@ const SideBadge = styled.span<{ $side: string }>`
 `;
 
 type SideFilter = "ALL" | "BUY" | "SELL";
+type StatusFilter = "ALL" | OtcRequestStatus;
 
 const TAB_LABELS: Record<SideFilter, string> = {
   ALL: "전체",
   BUY: "구매",
   SELL: "판매",
+};
+
+const STATUS_TAB_ORDER: StatusFilter[] = [...OTC_REQUEST_STATUSES, "ALL"];
+
+const STATUS_TAB_LABELS: Record<StatusFilter, string> = {
+  ...OTC_REQUEST_STATUS_LABELS,
+  ALL: "전체",
 };
 
 interface Item {
@@ -147,13 +158,27 @@ interface Item {
   status: string;
 }
 
-export default function AdminOtcRequestsPage() {
+function AdminOtcRequestsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<SideFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 대시보드 카드 → ?status= 진입 지원
+  useEffect(() => {
+    const s = searchParams.get("status");
+    if (!s) return;
+    if (
+      s === "ALL" ||
+      (OTC_REQUEST_STATUSES as readonly string[]).includes(s)
+    ) {
+      setStatusFilter(s as StatusFilter);
+    }
+  }, [searchParams]);
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -188,10 +213,15 @@ export default function AdminOtcRequestsPage() {
     load();
   }, [load]);
 
-  const filtered = useMemo(() => {
+  const sideFiltered = useMemo(() => {
     if (filter === "ALL") return items;
     return items.filter((it) => it.side === filter);
   }, [items, filter]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === "ALL") return sideFiltered;
+    return sideFiltered.filter((it) => it.status === statusFilter);
+  }, [sideFiltered, statusFilter]);
 
   const tabCount = useCallback(
     (tab: SideFilter) => {
@@ -199,6 +229,15 @@ export default function AdminOtcRequestsPage() {
       return items.filter((it) => it.side === tab).length;
     },
     [items],
+  );
+
+  // 상태 탭 건수 — 현재 구분(구매/판매) 탭 안에서 센다.
+  const statusTabCount = useCallback(
+    (tab: StatusFilter) => {
+      if (tab === "ALL") return sideFiltered.length;
+      return sideFiltered.filter((it) => it.status === tab).length;
+    },
+    [sideFiltered],
   );
 
   return (
@@ -228,21 +267,41 @@ export default function AdminOtcRequestsPage() {
         </ToolbarButton>
       </Toolbar>
 
+      <Toolbar style={{ marginTop: "-0.5rem" }}>
+        <Tabs aria-label="상태 필터">
+          {STATUS_TAB_ORDER.map((tab) => (
+            <FilterTab
+              key={tab}
+              type="button"
+              $active={statusFilter === tab}
+              onClick={() => setStatusFilter(tab)}
+            >
+              {STATUS_TAB_LABELS[tab]}
+              <FilterTabCount $active={statusFilter === tab}>
+                {statusTabCount(tab)}
+              </FilterTabCount>
+            </FilterTab>
+          ))}
+        </Tabs>
+      </Toolbar>
+
       {loading && <StateBox $variant="loading">불러오는 중…</StateBox>}
       {error && <StateBox $variant="error">{error}</StateBox>}
 
       {!loading && !error && (
         <>
           <ListMeta>
-            {TAB_LABELS[filter]} {filtered.length}건
-            {filter !== "ALL" ? ` · 전체 ${items.length}건` : ""}
+            {TAB_LABELS[filter]}
+            {statusFilter !== "ALL"
+              ? ` · ${STATUS_TAB_LABELS[statusFilter]}`
+              : ""}{" "}
+            {filtered.length}건
+            {filter !== "ALL" || statusFilter !== "ALL"
+              ? ` · 전체 ${items.length}건`
+              : ""}
           </ListMeta>
           {filtered.length === 0 ? (
-            <StateBox $variant="empty">
-              {filter === "ALL"
-                ? "신청이 없습니다."
-                : `${TAB_LABELS[filter]} 신청이 없습니다.`}
-            </StateBox>
+            <StateBox $variant="empty">조건에 맞는 신청이 없습니다.</StateBox>
           ) : (
             <Table>
               <HeadRow>
@@ -296,5 +355,13 @@ export default function AdminOtcRequestsPage() {
         </>
       )}
     </Page>
+  );
+}
+
+export default function AdminOtcRequestsPage() {
+  return (
+    <Suspense fallback={<StateBox $variant="loading">불러오는 중…</StateBox>}>
+      <AdminOtcRequestsPageInner />
+    </Suspense>
   );
 }

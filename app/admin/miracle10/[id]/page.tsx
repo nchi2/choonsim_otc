@@ -512,6 +512,28 @@ const AddressText = styled.span`
   word-break: break-all;
 `;
 
+/** 주소별 「우리 지갑」 체크 — 체크된 수만큼 완료 시 재고 불출. */
+const OursCheck = styled.label<{ $checked: boolean }>`
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid ${(p) => (p.$checked ? "#99f6e4" : "#e5e7eb")};
+  background: ${(p) => (p.$checked ? "#ccfbf1" : "#fff")};
+  color: ${(p) => (p.$checked ? "#0f766e" : "#9ca3af")};
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+
+  input {
+    margin: 0;
+    accent-color: #0d9488;
+  }
+`;
+
 const AddrRemoveBtn = styled.button`
   flex-shrink: 0;
   padding: 0.25rem 0.6rem;
@@ -544,6 +566,12 @@ const MismatchNote = styled.p`
   font-size: 0.76rem;
   font-weight: 600;
 `;
+
+/** 수령 지갑 — isOurs=우리 종이지갑(재고 불출 대상). */
+interface ReceiveWallet {
+  address: string;
+  isOurs: boolean;
+}
 
 interface AvailableSlot {
   startTime: string;
@@ -591,7 +619,7 @@ interface Detail {
   paperWalletCount: number | null;
   paperWalletKrw: string | number | null;
   dealTotalKrw: string | number | null;
-  receiveWalletAddresses: string[];
+  receiveWallets: ReceiveWallet[];
   customer: {
     id: number;
     name: string;
@@ -646,6 +674,19 @@ export default function Miracle10DetailPage({
     extra?: Record<string, unknown>,
   ) => {
     if (!data || (data.status === status && !extra) || saving) return;
+
+    // 완료 전환 — 자동 불출 안내 후 확인 (저장된 거래 기록 기준).
+    const oursCount = (data.receiveWallets ?? []).filter(
+      (w) => w.isOurs,
+    ).length;
+    if (status === "COMPLETED" && data.status !== "COMPLETED") {
+      const msg =
+        oursCount > 0
+          ? `거래 완료 처리하시겠습니까?\n\n저장된 거래 기록 기준, 우리 지갑 ${oursCount}장이 재고에서 자동 불출 기록됩니다.\n(이 신청으로 불출 기록이 이미 있으면 중복 기록되지 않습니다.)`
+          : "거래 완료 처리하시겠습니까?\n\n「우리 지갑」으로 체크된 주소가 없어 재고 불출은 기록되지 않습니다.";
+      if (!window.confirm(msg)) return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/miracle10/${id}`, {
@@ -656,6 +697,13 @@ export default function Miracle10DetailPage({
       const json = await res.json();
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "상태 변경 실패");
+      }
+      if (
+        status === "COMPLETED" &&
+        oursCount > 0 &&
+        (json.walletAutoOut ?? 0) === 0
+      ) {
+        alert("이 신청의 불출 기록이 이미 있어 자동 불출은 생략되었습니다.");
       }
       await load();
     } catch (e) {
@@ -788,11 +836,7 @@ export default function Miracle10DetailPage({
             <NextActionRow>
               <PrimaryActionBtn
                 disabled={saving}
-                onClick={() => {
-                  if (window.confirm("거래 완료 처리하시겠습니까?")) {
-                    changeStatus("COMPLETED");
-                  }
-                }}
+                onClick={() => changeStatus("COMPLETED")}
               >
                 거래 완료 처리
               </PrimaryActionBtn>
@@ -1328,12 +1372,12 @@ function DealRecordSection({
   const [walletCountInput, setWalletCountInput] = useState(() =>
     String(order.paperWalletCount ?? defaultPaperWalletCount(initialQty)),
   );
-  // 수령 지갑주소 — 여러 장(연속 스캔·직접 입력). dedup 키는 소문자 기준.
-  const [addresses, setAddresses] = useState<string[]>(
-    order.receiveWalletAddresses ?? [],
+  // 수령 지갑 — 여러 장(연속 스캔·직접 입력) + 주소별 「우리 지갑」 여부. dedup 키는 소문자 기준.
+  const [wallets, setWallets] = useState<ReceiveWallet[]>(
+    order.receiveWallets ?? [],
   );
   const addrKeysRef = useRef(
-    new Set((order.receiveWalletAddresses ?? []).map(addressDedupKey)),
+    new Set((order.receiveWallets ?? []).map((w) => addressDedupKey(w.address))),
   );
   const [addressInput, setAddressInput] = useState("");
   const [scanFlashTick, setScanFlashTick] = useState(0);
@@ -1460,14 +1504,25 @@ function DealRecordSection({
     const key = addressDedupKey(t);
     if (addrKeysRef.current.has(key)) return false;
     addrKeysRef.current.add(key);
-    setAddresses((prev) => [...prev, t]);
+    // 기본 = 우리 지갑 (대부분 우리 종이지갑을 전달)
+    setWallets((prev) => [...prev, { address: t, isOurs: true }]);
     return true;
   };
 
   const removeAddress = (addr: string) => {
     addrKeysRef.current.delete(addressDedupKey(addr));
-    setAddresses((prev) => prev.filter((a) => a !== addr));
+    setWallets((prev) => prev.filter((w) => w.address !== addr));
   };
+
+  const toggleOurs = (addr: string) => {
+    setWallets((prev) =>
+      prev.map((w) =>
+        w.address === addr ? { ...w, isOurs: !w.isOurs } : w,
+      ),
+    );
+  };
+
+  const oursCount = wallets.filter((w) => w.isOurs).length;
 
   const addManualAddress = () => {
     if (addAddress(addressInput)) setAddressInput("");
@@ -1483,12 +1538,12 @@ function DealRecordSection({
     }
   };
 
-  // 스캔 장수 ≠ 종이지갑 수량 — 참고 표시(강제 아님).
+  // 우리 지갑 수 ≠ 종이지갑 수량 — 참고 표시(강제 아님).
   const walletCountMismatch =
     walletCount != null &&
     walletCount > 0 &&
-    addresses.length > 0 &&
-    addresses.length !== walletCount;
+    wallets.length > 0 &&
+    oursCount !== walletCount;
 
   const save = async () => {
     if (qty == null || saving) return;
@@ -1506,7 +1561,7 @@ function DealRecordSection({
           paperWalletCount: walletCount,
           paperWalletKrw: paperKrw,
           dealTotalKrw: totalKrw,
-          receiveWalletAddresses: addresses,
+          receiveWallets: wallets,
         }),
       });
       const json = await res.json();
@@ -1688,14 +1743,25 @@ function DealRecordSection({
         </RecordField>
         <RecordField $full>
           <FieldLabel htmlFor="deal-address-input">
-            수령 지갑주소 ({addresses.length}개)
+            수령 지갑주소 ({wallets.length}개 · 우리 지갑 {oursCount}개)
           </FieldLabel>
-          {addresses.length > 0 ? (
+          {wallets.length > 0 ? (
             <AddressList>
-              {addresses.map((a) => (
-                <AddressRow key={addressDedupKey(a)}>
-                  <AddressText>{a}</AddressText>
-                  <AddrRemoveBtn type="button" onClick={() => removeAddress(a)}>
+              {wallets.map((w) => (
+                <AddressRow key={addressDedupKey(w.address)}>
+                  <OursCheck $checked={w.isOurs}>
+                    <input
+                      type="checkbox"
+                      checked={w.isOurs}
+                      onChange={() => toggleOurs(w.address)}
+                    />
+                    우리 지갑
+                  </OursCheck>
+                  <AddressText>{w.address}</AddressText>
+                  <AddrRemoveBtn
+                    type="button"
+                    onClick={() => removeAddress(w.address)}
+                  >
                     삭제
                   </AddrRemoveBtn>
                 </AddressRow>
@@ -1704,8 +1770,8 @@ function DealRecordSection({
           ) : null}
           {walletCountMismatch ? (
             <MismatchNote>
-              참고: 주소 {addresses.length}개 · 종이지갑 {walletCount}장 —
-              수량이 서로 다릅니다.
+              참고: 우리 지갑 {oursCount}개 · 종이지갑 수량 {walletCount}장 —
+              수가 서로 다릅니다. 손님 본인 지갑은 체크를 해제하세요.
             </MismatchNote>
           ) : null}
           <AddressAddRow>
@@ -1754,12 +1820,12 @@ function DealRecordSection({
         >
           {saving ? "저장 중…" : "저장"}
         </PrimaryActionBtn>
-        {walletCount != null && walletCount > 0 ? (
+        {oursCount > 0 ? (
           <SmallLinkBtn
-            href={`/admin/wallet-inventory?type=OUT&orderId=${order.id}&count=${walletCount}&receiver=${encodeURIComponent(order.customer.name)}`}
-            title="종이지갑 전달 후 재고 원장에 불출을 기록하세요 (자동 기록 아님)"
+            href={`/admin/wallet-inventory?type=OUT&orderId=${order.id}&count=${oursCount}&receiver=${encodeURIComponent(order.customer.name)}`}
+            title="거래 완료 처리 시 자동 불출됩니다. 완료 전에 먼저 기록하려면 이 링크로 수동 등록하세요 (완료 시 중복 기록 안 됨)."
           >
-            재고 불출 등록 →
+            재고 불출 수동 등록 →
           </SmallLinkBtn>
         ) : null}
         {saveMsg ? (

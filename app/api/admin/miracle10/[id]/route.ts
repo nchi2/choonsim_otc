@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { OrderStatus } from "@/app/generated/prisma/client";
+import { OrderStatus, type Prisma } from "@/app/generated/prisma/client";
 import {
   editorFieldsFromSession,
   getAdminUser,
 } from "@/lib/admin-guard";
-import { isKstYmd } from "@/lib/kst";
+import { isKstYmd, todayKst } from "@/lib/kst";
 import { canAdminEditSchedule, type Miracle10Status } from "@/lib/miracle10-status";
 import { isAllowedSlotTime, isBusinessDayKst } from "@/lib/work-schedule";
 import {
@@ -23,7 +23,12 @@ type TxResult =
   | { kind: "not_found" }
   | { kind: "capacity_full"; error: string }
   | { kind: "bad"; error: string }
-  | { kind: "ok"; order: { id: number; status: OrderStatus } };
+  | {
+      kind: "ok";
+      order: { id: number; status: OrderStatus };
+      /** 완료 전환 시 자동 불출된 종이지갑 장수 (0=불출 없음/이미 기록됨) */
+      walletAutoOut?: number;
+    };
 
 async function parseId(params: Promise<{ id: string }>): Promise<number | null> {
   const { id } = await params;
@@ -42,6 +47,11 @@ function parseOfficeId(v: unknown): number | null {
 }
 
 // 거래 기록 필드 — 요청에 없으면 미변경, null이면 비우기, 값이면 저장.
+interface ReceiveWallet {
+  address: string;
+  isOurs: boolean;
+}
+
 interface DealUpdateData {
   p2pExperienceConfirmed?: boolean | null;
   dealQuantity?: number | null;
@@ -51,12 +61,12 @@ interface DealUpdateData {
   paperWalletCount?: number | null;
   paperWalletKrw?: number | null;
   dealTotalKrw?: number | null;
-  receiveWalletAddresses?: string[];
+  receiveWallets?: ReceiveWallet[];
 }
 
 type NumericDealKey = Exclude<
   keyof DealUpdateData,
-  "p2pExperienceConfirmed" | "receiveWalletAddresses"
+  "p2pExperienceConfirmed" | "receiveWallets"
 >;
 
 const MAX_RECEIVE_ADDRESSES = 100;
@@ -108,33 +118,35 @@ function parseDealInput(
     data.p2pExperienceConfirmed = v;
   }
 
-  if ("receiveWalletAddresses" in body) {
-    const v = body.receiveWalletAddresses;
+  if ("receiveWallets" in body) {
+    const bad = {
+      ok: false as const,
+      error: "receiveWallets 값이 올바르지 않습니다.",
+    };
+    const v = body.receiveWallets;
     if (v === null) {
-      data.receiveWalletAddresses = [];
+      data.receiveWallets = [];
     } else if (!Array.isArray(v) || v.length > MAX_RECEIVE_ADDRESSES) {
-      return {
-        ok: false,
-        error: "receiveWalletAddresses 값이 올바르지 않습니다.",
-      };
+      return bad;
     } else {
       const seen = new Set<string>();
-      const list: string[] = [];
+      const list: ReceiveWallet[] = [];
       for (const item of v) {
-        if (typeof item !== "string" || item.trim().length > 200) {
-          return {
-            ok: false,
-            error: "receiveWalletAddresses 값이 올바르지 않습니다.",
-          };
+        if (item === null || typeof item !== "object") return bad;
+        const { address, isOurs } = item as Record<string, unknown>;
+        if (typeof address !== "string" || address.trim().length > 200) {
+          return bad;
         }
-        const t = item.trim();
+        if (isOurs !== undefined && typeof isOurs !== "boolean") return bad;
+        const t = address.trim();
         if (!t) continue;
         const key = t.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
-        list.push(t);
+        // isOurs 생략 시 기본 true (대부분 우리 지갑)
+        list.push({ address: t, isOurs: isOurs !== false });
       }
-      data.receiveWalletAddresses = list;
+      data.receiveWallets = list;
     }
   }
 
@@ -339,9 +351,20 @@ export async function PATCH(
         }
 
         if (hasDeal) {
+          const { receiveWallets, ...restDeal } = dealData;
           await tx.otcOrder.update({
             where: { id },
-            data: { ...dealData, ...editor },
+            data: {
+              ...restDeal,
+              // 검증 완료된 {address, isOurs}[] — Prisma Json 입력 타입으로 캐스트
+              ...(receiveWallets !== undefined
+                ? {
+                    receiveWallets:
+                      receiveWallets as unknown as Prisma.InputJsonValue,
+                  }
+                : {}),
+              ...editor,
+            },
           });
         }
 
@@ -420,7 +443,52 @@ export async function PATCH(
           select: { id: true, status: true, customerId: true },
         });
 
-        return { kind: "ok", order };
+        // 완료 전환 — 「우리 지갑」 수만큼 재고 불출 자동 기록.
+        // 이 신청으로 이미 불출 기록이 있으면 재기록하지 않는다(중복 방지).
+        let walletAutoOut = 0;
+        if (
+          newStatus === OrderStatus.COMPLETED &&
+          current.status !== OrderStatus.COMPLETED
+        ) {
+          const fresh = await tx.otcOrder.findUnique({
+            where: { id },
+            select: {
+              receiveWallets: true,
+              customer: { select: { name: true } },
+            },
+          });
+          const wallets = Array.isArray(fresh?.receiveWallets)
+            ? (fresh.receiveWallets as unknown[])
+            : [];
+          const oursCount = wallets.filter(
+            (w) =>
+              w != null &&
+              typeof w === "object" &&
+              (w as { isOurs?: unknown }).isOurs === true,
+          ).length;
+          if (oursCount > 0) {
+            const already = await tx.paperWalletLedger.count({
+              where: { orderId: id, type: "OUT" },
+            });
+            if (already === 0) {
+              await tx.paperWalletLedger.create({
+                data: {
+                  type: "OUT",
+                  count: oursCount,
+                  entryDate: todayKst(),
+                  memo: "거래 완료 자동 불출",
+                  adminUserId: admin.adminUserId,
+                  adminName: admin.displayName || admin.username,
+                  orderId: id,
+                  receiverName: fresh?.customer.name ?? null,
+                },
+              });
+              walletAutoOut = oursCount;
+            }
+          }
+        }
+
+        return { kind: "ok", order, walletAutoOut };
       },
       { isolationLevel: "Serializable" },
     );
@@ -445,6 +513,7 @@ export async function PATCH(
       ok: true,
       id: result.order.id,
       status: result.order.status,
+      walletAutoOut: result.walletAutoOut ?? 0,
     });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

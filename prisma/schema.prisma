@@ -160,7 +160,8 @@ model OtcOrder {
   paperWalletCount       Int? // 종이지갑 장수 (기본 = 수량/10)
   paperWalletKrw         Decimal? @db.Decimal(18, 2) // 종이지갑 가격(원) = 장수 × 20 USDT × 환율
   dealTotalKrw           Decimal? @db.Decimal(18, 2) // 총 가격(원) = 코인 총액 + 지갑 가격
-  receiveWalletAddresses String[] @default([]) // 수령 지갑주소 목록 (QR 연속 스캔 — 종이지갑 여러 장)
+  // 수령 지갑 목록 — [{address: string, isOurs: boolean}] (isOurs=우리 종이지갑 → 재고 불출 대상)
+  receiveWallets Json @default("[]")
 
   agreePrivacy Boolean @default(false)
   agreeRisk    Boolean @default(false)
