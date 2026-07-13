@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { computeCustomerEstimate } from "@/lib/otc-estimate";
 import {
   fetchAsks,
   fetchTickerPrice,
@@ -59,16 +60,19 @@ export async function GET(request: Request) {
         ? Math.round(((baseUsdt - ticker) / ticker) * 1000) / 10
         : null;
 
-    // 운영 마진 반영(마진율 자체는 응답에 노출하지 않음).
-    const perMoUsdt = baseUsdt * (1 + getMarginRate());
-    const perMoKrw = Math.round(perMoUsdt * usdtKrw);
-    const totalKrw = perMoKrw * quantity;
+    // 운영 마진 반영 — max(퍼센트 마진, 절대액 하한). 마진율·마진액은 응답에 노출하지 않음.
+    const estimate = computeCustomerEstimate({
+      baseUsdt,
+      usdtKrw,
+      quantity,
+      marginRate: getMarginRate(),
+    });
 
     return NextResponse.json({
       ok: true,
       quantity,
-      pricePerMoKrw: perMoKrw,
-      totalKrw,
+      pricePerMoKrw: estimate.perMoKrw,
+      totalKrw: estimate.totalKrw,
       deviationPct,
       asOf: new Date().toISOString(),
     });

@@ -16,6 +16,8 @@ export interface MonthCalendarDayMeta {
   mySlotCount?: number;
   workerCount?: number;
   myReservationCount?: number;
+  /** 일정만 잡힌 미확정(접수·연락완료) 신청 수 — 정원 차감과 무관, 표시 전용 */
+  pendingReservationCount?: number;
   /** "내 것만" 모드에서 전체 근무자 수 배지 숨김 */
   hideWorkerCount?: boolean;
 }
@@ -166,6 +168,11 @@ export default function MonthCalendar({
                       예약 {dayMeta[ymd].myReservationCount}
                     </DayBadge>
                   ) : null}
+                  {(dayMeta[ymd].pendingReservationCount ?? 0) > 0 ? (
+                    <DayBadge $tone="pending">
+                      미확정 {dayMeta[ymd].pendingReservationCount}
+                    </DayBadge>
+                  ) : null}
                   {!dayMeta[ymd].hideWorkerCount &&
                   (dayMeta[ymd].workerCount ?? 0) > 0 ? (
                     <DayBadge $tone="all">
@@ -265,6 +272,7 @@ const CalDayWrap = styled.div`
   flex-direction: column;
   align-items: center;
   min-height: 52px;
+  min-width: 0;
 `;
 
 const CalEmpty = styled.div`
@@ -277,7 +285,8 @@ const CalDay = styled.button<{
   $sat?: boolean;
   $muted?: boolean;
 }>`
-  width: 36px;
+  width: 100%;
+  max-width: 36px;
   height: 36px;
   border: none;
   border-radius: 8px;
@@ -319,25 +328,37 @@ const DayBadgeRow = styled.div`
   justify-content: center;
   margin-top: 2px;
   max-width: 100%;
+  overflow: hidden;
 `;
 
-const DayBadge = styled.span<{ $tone: "mine" | "all" | "reserve" }>`
-  font-size: 0.58rem;
+const DayBadge = styled.span<{
+  $tone: "mine" | "all" | "reserve" | "pending";
+}>`
+  font-size: 0.62rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.25;
   padding: 1px 4px;
   border-radius: 4px;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: ${(p) =>
     p.$tone === "mine"
-      ? "#6d28d9"
+      ? "#4338ca"
       : p.$tone === "reserve"
         ? "#0f766e"
-        : "#6b7280"};
+        : p.$tone === "pending"
+          ? "#6b7280"
+          : "#6b7280"};
   background: ${(p) =>
     p.$tone === "mine"
-      ? "#ede9fe"
+      ? "#eef2ff"
       : p.$tone === "reserve"
         ? "#ccfbf1"
-        : "#f3f4f6"};
+        : p.$tone === "pending"
+          ? "#ffffff"
+          : "#f3f4f6"};
+  border: ${(p) =>
+    p.$tone === "pending" ? "1px dashed #9ca3af" : "1px solid transparent"};
 `;

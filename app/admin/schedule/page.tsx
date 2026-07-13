@@ -16,6 +16,11 @@ import {
   isSlotRegistrationAllowed,
   OFFICE_HOURS,
 } from "@/lib/work-schedule";
+import { InlineError, adminColors } from "@/components/admin/ui";
+import {
+  STATUS_LABELS,
+  type Miracle10Status,
+} from "@/lib/miracle10-status";
 
 const Page = styled.div`
   max-width: 960px;
@@ -98,20 +103,18 @@ const SlotChip = styled.button<{
   border-radius: 8px;
   border: 1.5px solid
     ${(p) =>
-      p.$variant === "mine"
-        ? "#7c3aed"
-        : p.$variant === "mixed"
-          ? "#7c3aed"
-          : p.$variant === "others"
-            ? "#e5e7eb"
-            : "#d1d5db"};
+      p.$variant === "mine" || p.$variant === "mixed"
+        ? adminColors.primary
+        : p.$variant === "others"
+          ? adminColors.border
+          : adminColors.borderInput};
   background: ${(p) =>
     p.$variant === "mine"
-      ? "#ede9fe"
+      ? adminColors.primarySoft
       : p.$variant === "mixed"
-        ? "#f5f3ff"
+        ? "#f5f6ff"
         : p.$variant === "others"
-          ? "#f9fafb"
+          ? adminColors.bgSubtle
           : "#fff"};
   cursor: pointer;
   text-align: left;
@@ -119,7 +122,7 @@ const SlotChip = styled.button<{
 
   &:hover:not(:disabled) {
     border-color: ${(p) =>
-      p.$variant === "others" ? "#e5e7eb" : "#6d28d9"};
+      p.$variant === "others" ? adminColors.border : adminColors.primaryHover};
   }
 
   &:disabled {
@@ -143,14 +146,14 @@ const SlotTime = styled.span`
 `;
 
 const SlotCount = styled.span`
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: #9ca3af;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: ${adminColors.textMuted};
   white-space: nowrap;
 `;
 
 const SlotWorkers = styled.div`
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   line-height: 1.4;
   width: 100%;
   display: flex;
@@ -165,9 +168,9 @@ const WorkerLine = styled.div`
 `;
 
 const GuestLink = styled(Link)`
-  font-size: 0.64rem;
-  color: #0f766e;
-  font-weight: 600;
+  font-size: 0.72rem;
+  color: ${adminColors.success};
+  font-weight: 700;
   text-decoration: none;
 
   &:hover {
@@ -175,19 +178,32 @@ const GuestLink = styled(Link)`
   }
 `;
 
+const PendingGuestLink = styled(Link)`
+  font-size: 0.72rem;
+  color: ${adminColors.textMuted};
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: ${adminColors.textSub};
+  }
+`;
+
 const SlotEmptyLabel = styled.span`
-  font-size: 0.62rem;
-  color: #9ca3af;
+  font-size: 0.7rem;
+  color: ${adminColors.textFaint};
 `;
 
 const SlotName = styled.span<{ $isMe: boolean }>`
-  color: ${(p) => (p.$isMe ? "#6d28d9" : "#6b7280")};
+  color: ${(p) => (p.$isMe ? adminColors.primary : adminColors.textMuted)};
   font-weight: ${(p) => (p.$isMe ? 700 : 400)};
 `;
 
 const SlotMeta = styled.span`
-  font-size: 0.68rem;
-  color: #9ca3af;
+  font-size: 0.72rem;
+  color: ${adminColors.textFaint};
   line-height: 1.3;
 `;
 
@@ -199,17 +215,19 @@ const BtnRow = styled.div`
 `;
 
 const Button = styled.button<{ $primary?: boolean }>`
-  padding: 0.45rem 0.9rem;
+  padding: 0.5rem 1rem;
   border-radius: 8px;
-  border: 1px solid ${(p) => (p.$primary ? "#4338ca" : "#d1d5db")};
-  background: ${(p) => (p.$primary ? "#4338ca" : "#fff")};
-  color: ${(p) => (p.$primary ? "#fff" : "#374151")};
+  border: 1px solid
+    ${(p) => (p.$primary ? adminColors.primary : adminColors.borderInput)};
+  background: ${(p) => (p.$primary ? adminColors.primary : "#fff")};
+  color: ${(p) => (p.$primary ? "#fff" : adminColors.textSub)};
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: ${(p) => (p.$primary ? 700 : 600)};
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    opacity: 0.92;
+    background: ${(p) =>
+      p.$primary ? adminColors.primaryHover : adminColors.bgSubtle};
   }
 
   &:disabled {
@@ -242,9 +260,13 @@ const EmptyPanel = styled.div`
 `;
 
 const InactiveTag = styled.span`
-  font-size: 0.7rem;
-  color: #9ca3af;
-  margin-left: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${adminColors.alertTextStrong};
+  background: ${adminColors.alertSoft};
+  border: 1px solid ${adminColors.alertBorder};
+  border-radius: 999px;
+  padding: 2px 10px;
 `;
 
 const ViewToggle = styled.div`
@@ -255,16 +277,16 @@ const ViewToggle = styled.div`
 `;
 
 const ViewToggleBtn = styled.button<{ $active: boolean }>`
-  padding: 0.4rem 0.75rem;
+  padding: 0.45rem 0.8rem;
   border: none;
-  background: ${(p) => (p.$active ? "#4338ca" : "#fff")};
-  color: ${(p) => (p.$active ? "#fff" : "#4b5563")};
+  background: ${(p) => (p.$active ? adminColors.primary : "#fff")};
+  color: ${(p) => (p.$active ? "#fff" : adminColors.textSub)};
   font-size: 0.8rem;
   font-weight: ${(p) => (p.$active ? 700 : 500)};
   cursor: pointer;
 
   &:not(:last-child) {
-    border-right: 1px solid #d1d5db;
+    border-right: 1px solid ${adminColors.borderInput};
   }
 `;
 
@@ -289,8 +311,11 @@ interface ScheduleReservation {
   id: number;
   visitDate: string;
   reservedStart: string;
-  assignedAdminUserId: number;
+  assignedAdminUserId: number | null;
   customerName: string;
+  status: string;
+  /** true = VERIFIED+배정(정원 차감 대상), false = 미확정(표시만) */
+  confirmed: boolean;
 }
 
 const DISPLAY_NAME_MAX_LEN = 12;
@@ -481,38 +506,53 @@ export default function AdminSchedulePage() {
     );
   }, [selectedDate, officeId, serverMyTimesKey]);
 
+  const confirmedReservations = useMemo(
+    () => monthReservations.filter((r) => r.confirmed),
+    [monthReservations],
+  );
+
+  const pendingReservations = useMemo(
+    () => monthReservations.filter((r) => !r.confirmed),
+    [monthReservations],
+  );
+
   const dayMeta = useMemo(() => {
     if (myAdminUserId == null) return {};
     const meta: Record<string, MonthCalendarDayMeta> = {};
+    const ensure = (date: string): MonthCalendarDayMeta => {
+      if (!meta[date]) {
+        meta[date] = {
+          mySlotCount: 0,
+          workerCount: 0,
+          myReservationCount: 0,
+          pendingReservationCount: 0,
+          hideWorkerCount: mineOnlyView,
+        };
+      }
+      return meta[date];
+    };
 
     for (const s of monthSlots) {
       if (mineOnlyView && s.adminUserId !== myAdminUserId) continue;
-      if (!meta[s.date]) {
-        meta[s.date] = {
-          mySlotCount: 0,
-          workerCount: 0,
-          myReservationCount: 0,
-          hideWorkerCount: mineOnlyView,
-        };
-      }
+      const m = ensure(s.date);
       if (s.adminUserId === myAdminUserId) {
-        meta[s.date].mySlotCount = (meta[s.date].mySlotCount ?? 0) + 1;
+        m.mySlotCount = (m.mySlotCount ?? 0) + 1;
       }
     }
 
-    for (const r of monthReservations) {
+    for (const r of confirmedReservations) {
       if (mineOnlyView && r.assignedAdminUserId !== myAdminUserId) continue;
-      if (!meta[r.visitDate]) {
-        meta[r.visitDate] = {
-          mySlotCount: 0,
-          workerCount: 0,
-          myReservationCount: 0,
-          hideWorkerCount: mineOnlyView,
-        };
-      }
+      const m = ensure(r.visitDate);
       if (r.assignedAdminUserId === myAdminUserId) {
-        meta[r.visitDate].myReservationCount =
-          (meta[r.visitDate].myReservationCount ?? 0) + 1;
+        m.myReservationCount = (m.myReservationCount ?? 0) + 1;
+      }
+    }
+
+    // 미확정(접수·연락완료)은 배정 운영자가 없어 "내 것만" 모드에서는 숨긴다.
+    if (!mineOnlyView) {
+      for (const r of pendingReservations) {
+        const m = ensure(r.visitDate);
+        m.pendingReservationCount = (m.pendingReservationCount ?? 0) + 1;
       }
     }
 
@@ -526,7 +566,13 @@ export default function AdminSchedulePage() {
     }
 
     return meta;
-  }, [monthSlots, monthReservations, myAdminUserId, mineOnlyView]);
+  }, [
+    monthSlots,
+    confirmedReservations,
+    pendingReservations,
+    myAdminUserId,
+    mineOnlyView,
+  ]);
 
   const canEditDay = isSlotRegistrationAllowed(selectedDate);
 
@@ -613,8 +659,10 @@ export default function AdminSchedulePage() {
 
   const reservationsByTimeAdmin = useMemo(() => {
     const map = new Map<string, Map<number, ScheduleReservation>>();
-    for (const r of monthReservations) {
-      if (r.visitDate !== selectedDate) continue;
+    for (const r of confirmedReservations) {
+      if (r.visitDate !== selectedDate || r.assignedAdminUserId == null) {
+        continue;
+      }
       let inner = map.get(r.reservedStart);
       if (!inner) {
         inner = new Map();
@@ -623,7 +671,18 @@ export default function AdminSchedulePage() {
       inner.set(r.assignedAdminUserId, r);
     }
     return map;
-  }, [monthReservations, selectedDate]);
+  }, [confirmedReservations, selectedDate]);
+
+  const pendingByTime = useMemo(() => {
+    const map = new Map<string, ScheduleReservation[]>();
+    for (const r of pendingReservations) {
+      if (r.visitDate !== selectedDate) continue;
+      const list = map.get(r.reservedStart) ?? [];
+      list.push(r);
+      map.set(r.reservedStart, list);
+    }
+    return map;
+  }, [pendingReservations, selectedDate]);
 
   const visibleTimes = useMemo(() => {
     if (!mineOnlyView || myAdminUserId == null) return BUSINESS_TIME_SLOTS;
@@ -735,6 +794,9 @@ export default function AdminSchedulePage() {
                   const visibleRows = mineOnlyView
                     ? rows.filter((r) => r.isMe)
                     : rows;
+                  const pendingItems = mineOnlyView
+                    ? []
+                    : (pendingByTime.get(time) ?? []);
                   const mine = draftMine.has(time);
                   const others = all.filter(
                     (s) => s.adminUserId !== myAdminUserId,
@@ -756,7 +818,11 @@ export default function AdminSchedulePage() {
                       key={time}
                       type="button"
                       $variant={variant}
-                      disabled={!canEditDay && visibleRows.length === 0}
+                      disabled={
+                        !canEditDay &&
+                        visibleRows.length === 0 &&
+                        pendingItems.length === 0
+                      }
                       onClick={() => {
                         if (!canEditDay) return;
                         toggleSlot(time);
@@ -771,7 +837,9 @@ export default function AdminSchedulePage() {
                         ) : null}
                       </SlotHeader>
                       <SlotWorkers>
-                        {visibleRows.length === 0 && canEditDay ? (
+                        {visibleRows.length === 0 &&
+                        pendingItems.length === 0 &&
+                        canEditDay ? (
                           <SlotMeta>클릭하여 등록</SlotMeta>
                         ) : (
                           visibleRows.map((row) => (
@@ -790,6 +858,19 @@ export default function AdminSchedulePage() {
                             </WorkerLine>
                           ))
                         )}
+                        {pendingItems.map((r) => (
+                          <WorkerLine key={`${time}-pending-${r.id}`}>
+                            <PendingGuestLink
+                              href={`/admin/miracle10/${r.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              ⋯ {r.customerName} 미확정
+                              {STATUS_LABELS[r.status as Miracle10Status]
+                                ? `·${STATUS_LABELS[r.status as Miracle10Status]}`
+                                : ""}
+                            </PendingGuestLink>
+                          </WorkerLine>
+                        ))}
                       </SlotWorkers>
                     </SlotChip>
                   );
@@ -799,27 +880,30 @@ export default function AdminSchedulePage() {
               {!canEditDay ? (
                 <Hint>과거 날짜는 조회만 가능합니다.</Hint>
               ) : (
-                <BtnRow>
-                  <Button type="button" onClick={registerAll} disabled={saving}>
-                    전체 등록
-                  </Button>
-                  <Button type="button" onClick={unregisterAll} disabled={saving}>
-                    내 슬롯 전체 해제
-                  </Button>
-                  <Button
-                    type="button"
-                    $primary
-                    onClick={saveDay}
-                    disabled={saving || !hasChanges}
-                  >
-                    {saving ? "저장 중…" : "저장"}
-                  </Button>
-                </BtnRow>
+                <>
+                  <BtnRow>
+                    <Button type="button" onClick={registerAll} disabled={saving}>
+                      전체 등록
+                    </Button>
+                    <Button type="button" onClick={unregisterAll} disabled={saving}>
+                      내 슬롯 전체 해제
+                    </Button>
+                    <Button
+                      type="button"
+                      $primary
+                      onClick={saveDay}
+                      disabled={saving || !hasChanges}
+                    >
+                      {saving ? "저장 중…" : "저장"}
+                    </Button>
+                  </BtnRow>
+                  {error ? <InlineError role="alert">{error}</InlineError> : null}
+                </>
               )}
 
               <Hint>
-                보라색·굵게 = 본인 근무 · 초록 링크 = 확정 손님 · 칩 우측 =
-                확정/근무자 수
+                파란 테두리·굵게 = 본인 근무 · 초록 링크 = 확정 손님 · 회색
+                점선 = 미확정 신청(자리 차감 없음) · 칩 우측 = 확정/근무자 수
               </Hint>
             </>
           )}

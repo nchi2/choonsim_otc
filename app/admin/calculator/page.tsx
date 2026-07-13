@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "reac
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import BmbUsdtTicker from "@/app/page/components/BmbUsdtTicker";
+import { marginFloorKrw } from "@/lib/otc-estimate";
 
 const Page = styled.div`
   max-width: 960px;
@@ -59,9 +60,10 @@ const Input = styled.input`
 `;
 
 const Chip = styled.button<{ $active: boolean }>`
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.9rem;
+  min-height: 2.5rem;
   border-radius: 999px;
-  border: 1px solid ${(p) => (p.$active ? "#4f46e5" : "#e5e7eb")};
+  border: 1px solid ${(p) => (p.$active ? "#4338ca" : "#e5e7eb")};
   background: ${(p) => (p.$active ? "#eef2ff" : "#fff")};
   color: ${(p) => (p.$active ? "#4338ca" : "#374151")};
   font-size: 0.8rem;
@@ -80,7 +82,8 @@ const SegmentButton = styled.button<{
   $active: boolean;
   $tone: "buy" | "sell";
 }>`
-  padding: 0.5rem 1.1rem;
+  padding: 0.6rem 1.2rem;
+  min-height: 2.75rem;
   border: none;
   font-size: 0.9rem;
   font-weight: 700;
@@ -285,20 +288,21 @@ const SummaryCell = styled.div`
 `;
 
 const SummaryLabel = styled.div`
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #6b7280;
   margin-bottom: 0.2rem;
 `;
 
 const SummaryValue = styled.div<{ $accent?: boolean; $hero?: boolean }>`
-  font-size: ${(p) => (p.$hero ? "1.7rem" : "1.35rem")};
-  font-weight: 900;
+  font-size: ${(p) => (p.$hero ? "1.7rem" : "1.2rem")};
+  font-weight: ${(p) => (p.$hero ? 900 : 800)};
   line-height: 1.1;
-  color: ${(p) => (p.$accent ? "#15803d" : "#111827")};
+  color: ${(p) =>
+    p.$accent ? "#15803d" : p.$hero ? "#312e81" : "#111827"};
 
   @media (min-width: 768px) {
-    font-size: ${(p) => (p.$hero ? "2.1rem" : "1.35rem")};
+    font-size: ${(p) => (p.$hero ? "2.1rem" : "1.2rem")};
   }
 `;
 
@@ -388,18 +392,19 @@ const Tabs = styled.div`
 `;
 
 const TabButton = styled.button<{ $active: boolean }>`
-  padding: 0.55rem 1.1rem;
+  padding: 0.65rem 1.1rem;
+  min-height: 2.75rem;
   border: none;
   background: none;
   font-size: 0.88rem;
   font-weight: ${(p) => (p.$active ? 800 : 600)};
-  color: ${(p) => (p.$active ? "#111827" : "#9ca3af")};
-  border-bottom: 2px solid ${(p) => (p.$active ? "#111827" : "transparent")};
+  color: ${(p) => (p.$active ? "#4338ca" : "#9ca3af")};
+  border-bottom: 2px solid ${(p) => (p.$active ? "#4338ca" : "transparent")};
   margin-bottom: -2px;
   cursor: pointer;
   transition: color 0.12s ease;
   &:hover {
-    color: #374151;
+    color: ${(p) => (p.$active ? "#4338ca" : "#374151")};
   }
 `;
 
@@ -420,14 +425,14 @@ const VwapInfoLine = styled.div`
   }
 `;
 
-/** 손님가(최종 결과) 박스 — 가장 강조. 진한 테두리·흰 배경·큰 값. */
+/** 손님가(최종 결과) 박스 — 화면에서 가장 강조되는 "답". */
 const FinalBox = styled.div`
-  border: 2px solid #111827;
+  border: 2px solid #4338ca;
   border-radius: 14px;
-  background: #fff;
+  background: linear-gradient(180deg, #fbfbff 0%, #fff 45%);
   padding: 1.1rem 1.3rem;
   margin-top: 0.85rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 10px rgba(67, 56, 202, 0.1);
 `;
 
 /** 호가 평단가 — 참고 기준(원가). 최종가로 오인되지 않게 절제된 박스. */
@@ -1056,8 +1061,8 @@ export default function AdminCalculatorPage() {
   const [quantityInput, setQuantityInput] = useState(String(DEFAULT_QTY));
   const [krwInput, setKrwInput] = useState("");
   const [direction, setDirection] = useState<Direction>("buy");
-  // 단가 산정 탭 — 기본 "현재가 기준". 탭마다 마진을 따로 둔다.
-  const [priceTab, setPriceTab] = useState<"current" | "vwap">("current");
+  // 단가 산정 탭 — 기본 "평단가 기준". 탭마다 마진을 따로 둔다.
+  const [priceTab, setPriceTab] = useState<"current" | "vwap">("vwap");
   const [marginCur, setMarginCur] = useState(1);
   const [customCur, setCustomCur] = useState("");
   const [marginVwap, setMarginVwap] = useState(1);
@@ -1298,6 +1303,21 @@ export default function AdminCalculatorPage() {
   const profitTabKrw =
     profitTabUsdt != null && effectiveUsdtKrw != null
       ? profitTabUsdt * effectiveUsdtKrw
+      : null;
+
+  // 마진 하한 참고 — 손님 estimate와 동일한 하한((수량/10)×3만원).
+  // 계산기 산식은 기존 유지하고, 활성 탭 차익이 하한에 못 미치면 참고로만 표시.
+  const floorKrw = data ? marginFloorKrw(data.quantity) : null;
+  const floorShortfall =
+    floorKrw != null &&
+    floorKrw > 0 &&
+    profitTabKrw != null &&
+    profitTabKrw < floorKrw;
+  // 하한을 채우는 참고 단가 = 기준가 ± 하한/수량 (buy는 +, sell은 −)
+  const floorRefPriceKrw =
+    floorShortfall && baseUsdt != null && effectiveUsdtKrw != null && data
+      ? baseUsdt * effectiveUsdtKrw +
+        ((isBuy ? 1 : -1) * floorKrw) / data.quantity
       : null;
 
   // 복사 텍스트용 — VWAP 기준 / 현재가 기준 차익 둘 다(산식 기존 그대로).
@@ -1999,6 +2019,20 @@ export default function AdminCalculatorPage() {
             </SummaryCell>
           </SummaryGrid>
         </FinalBox>
+
+        {floorShortfall && floorKrw != null ? (
+          <WarnBanner style={{ marginTop: "0.7rem", marginBottom: 0 }}>
+            <WarnMark>⚠</WarnMark>
+            <span>
+              마진 하한 미달 (참고) — 차익{" "}
+              {profitTabKrw != null ? `${fmtKrw(profitTabKrw)}원` : "—"} &lt;
+              하한 {fmtKrw(floorKrw)}원 (10모당 3만원).
+              {floorRefPriceKrw != null
+                ? ` 하한 충족 참고 단가: ${fmtKrw(floorRefPriceKrw)}원/개.`
+                : ""}
+            </span>
+          </WarnBanner>
+        ) : null}
 
         {vwapGapPct != null && Math.abs(vwapGapPct) >= 0.05 ? (
           <SectionHint style={{ margin: "0.7rem 0 0" }}>

@@ -150,6 +150,17 @@ model OtcOrder {
   isSbmbMember Boolean @default(false)
   memo         String?
 
+  // 거래 기록 (운영자 작업 화면, 전부 nullable — 기존 데이터 안전)
+  p2pExperienceConfirmed Boolean? // 일정 확정 시 "P2P 거래 앱 판매 경험 확인" 체크 여부
+  dealQuantity           Int? // 실제 거래 수량 (기본 = 신청 수량)
+  dealUnitPriceKrw       Decimal? @db.Decimal(18, 2) // 단가(원) — 계산 결과 기입 후 흥정 반영 수정 가능
+  dealUnitPriceUsdt      Decimal? @db.Decimal(18, 6) // 단가(USDT)
+  dealCoinTotalKrw       Decimal? @db.Decimal(18, 2) // 코인 총액(원) = 수량 × 단가
+  paperWalletCount       Int? // 종이지갑 장수 (기본 = 수량/10)
+  paperWalletKrw         Decimal? @db.Decimal(18, 2) // 종이지갑 가격(원) = 장수 × 20 USDT × 환율
+  dealTotalKrw           Decimal? @db.Decimal(18, 2) // 총 가격(원) = 코인 총액 + 지갑 가격
+  receiveWalletAddresses String[] @default([]) // 수령 지갑주소 목록 (QR 연속 스캔 — 종이지갑 여러 장)
+
   agreePrivacy Boolean @default(false)
   agreeRisk    Boolean @default(false)
   agreeP2p     Boolean @default(false)

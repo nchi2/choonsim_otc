@@ -8,8 +8,17 @@ import {
   MIRACLE10_STATUSES,
   STATUS_COLORS,
   STATUS_LABELS,
+  formatVisitBrief,
   type Miracle10Status,
 } from "@/lib/miracle10-status";
+import {
+  FilterTab,
+  FilterTabCount,
+  StateBox,
+  StatusBadge,
+  ToolbarButton,
+  adminColors,
+} from "@/components/admin/ui";
 
 const Page = styled.div`
   max-width: 1000px;
@@ -36,53 +45,17 @@ const Tabs = styled.div`
   flex-wrap: wrap;
 `;
 
-const Tab = styled.button<{ $active: boolean }>`
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid ${(p) => (p.$active ? "#111827" : "#e5e7eb")};
-  background: ${(p) => (p.$active ? "#111827" : "#fff")};
-  color: ${(p) => (p.$active ? "#fff" : "#374151")};
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-`;
-
-const TabCount = styled.span<{ $active: boolean }>`
-  margin-left: 0.25rem;
-  font-weight: 700;
-  color: ${(p) => (p.$active ? "rgba(255,255,255,0.85)" : "#6b7280")};
-`;
-
-const RefreshButton = styled.button`
-  padding: 0.45rem 0.9rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  white-space: nowrap;
-  &:hover {
-    background: #f9fafb;
-  }
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
 const Table = styled.div`
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: 12px;
+  background: #fff;
   overflow: hidden;
 `;
 
 const HeadRow = styled.div`
   display: grid;
-  grid-template-columns: 64px 1fr 1fr 80px 110px 140px 120px;
+  grid-template-columns: 64px 1fr 1fr 72px 100px 100px 140px 120px;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: #f9fafb;
@@ -96,7 +69,7 @@ const HeadRow = styled.div`
 
 const Row = styled(Link)`
   display: grid;
-  grid-template-columns: 64px 1fr 1fr 80px 110px 140px 120px;
+  grid-template-columns: 64px 1fr 1fr 72px 100px 100px 140px 120px;
   gap: 0.5rem;
   padding: 0.85rem 1rem;
   border-top: 1px solid #f1f5f9;
@@ -118,27 +91,34 @@ const Hide = styled.span`
   }
 `;
 
-const Badge = styled.span<{ $color: string }>`
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff;
-  background: ${(p) => p.$color};
-  white-space: nowrap;
-`;
-
-const Empty = styled.div`
-  padding: 3rem;
-  text-align: center;
-  color: #6b7280;
-`;
-
 const ListMeta = styled.div`
-  margin-bottom: 8px;
-  color: #6b7280;
-  font-size: 13px;
+  margin-bottom: 0.5rem;
+  color: ${adminColors.textMuted};
+  font-size: 0.8rem;
+`;
+
+const EditorCell = styled(Hide)`
+  font-size: 0.75rem;
+  color: ${adminColors.textMuted};
+`;
+
+const VisitCell = styled(Hide)`
+  font-size: 0.78rem;
+  color: ${adminColors.textSub};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+/* 모바일 — 방문 일정을 이름 아래 한 줄로 병기 */
+const VisitSubMobile = styled.span`
+  display: none;
+  @media (max-width: 640px) {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: ${adminColors.textMuted};
+  }
 `;
 
 interface Item {
@@ -148,6 +128,8 @@ interface Item {
   quantity: number;
   visitType: string | null;
   visitDate: string | null;
+  reservedStart: string | null;
+  visitTimeSlot: string | null;
   isSbmbMember: boolean;
   lastEditedBy: string | null;
   lastEditedByName: string | null;
@@ -252,28 +234,30 @@ function Miracle10AdminPageInner() {
       <Toolbar>
         <Tabs>
           {STATUS_TAB_ORDER.map((tab) => (
-            <Tab
+            <FilterTab
               key={tab}
               type="button"
               $active={filter === tab}
               onClick={() => setFilter(tab)}
             >
               {TAB_LABELS[tab]}
-              <TabCount $active={filter === tab}>{tabCount(tab)}</TabCount>
-            </Tab>
+              <FilterTabCount $active={filter === tab}>
+                {tabCount(tab)}
+              </FilterTabCount>
+            </FilterTab>
           ))}
         </Tabs>
-        <RefreshButton
+        <ToolbarButton
           type="button"
           onClick={() => load(true)}
           disabled={loading || refreshing}
         >
           {refreshing ? "새로고침 중..." : "새로고침"}
-        </RefreshButton>
+        </ToolbarButton>
       </Toolbar>
 
-      {loading && <Empty>불러오는 중...</Empty>}
-      {error && <Empty style={{ color: "#dc2626" }}>{error}</Empty>}
+      {loading && <StateBox $variant="loading">불러오는 중…</StateBox>}
+      {error && <StateBox $variant="error">{error}</StateBox>}
 
       {!loading && !error && (
         <>
@@ -287,41 +271,49 @@ function Miracle10AdminPageInner() {
               <span>이름</span>
               <Hide>연락처</Hide>
               <span>수량</span>
+              <Hide>방문</Hide>
               <Hide>접수일</Hide>
               <Hide>최종 수정</Hide>
               <span>상태</span>
             </HeadRow>
             {filteredItems.length === 0 ? (
-              <Empty>
+              <StateBox $variant="empty">
                 {filter === "ALL"
                   ? "신청이 없습니다."
                   : `${TAB_LABELS[filter]} 상태 신청이 없습니다.`}
-              </Empty>
+              </StateBox>
             ) : (
-              filteredItems.map((it) => (
+              filteredItems.map((it) => {
+                const visitBrief = formatVisitBrief(it);
+                return (
                 <Row key={it.id} href={`/admin/miracle10/${it.id}`}>
                   <span>#{it.id}</span>
                   <span>
                     {it.nameMasked}
                     {it.isSbmbMember ? " · SBMB" : ""}
+                    {visitBrief !== "-" ? (
+                      <VisitSubMobile>{visitBrief}</VisitSubMobile>
+                    ) : null}
                   </span>
                   <Hide>{it.contactMasked}</Hide>
                   <span>{it.quantity}모</span>
+                  <VisitCell title={visitBrief}>{visitBrief}</VisitCell>
                   <Hide>
                     {new Date(it.createdAt).toLocaleDateString("ko-KR")}
                   </Hide>
-                  <Hide style={{ fontSize: 12, color: "#6b7280" }}>
+                  <EditorCell>
                     {it.lastEditedByName && it.lastEditedAt
                       ? `${it.lastEditedByName} · ${new Date(it.lastEditedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
                       : "-"}
-                  </Hide>
+                  </EditorCell>
                   <span>
-                    <Badge $color={STATUS_COLORS[it.status]}>
+                    <StatusBadge $color={STATUS_COLORS[it.status]}>
                       {STATUS_LABELS[it.status]}
-                    </Badge>
+                    </StatusBadge>
                   </span>
                 </Row>
-              ))
+                );
+              })
             )}
           </Table>
         </>
@@ -332,7 +324,7 @@ function Miracle10AdminPageInner() {
 
 export default function Miracle10AdminPage() {
   return (
-    <Suspense fallback={<Empty>불러오는 중…</Empty>}>
+    <Suspense fallback={<StateBox $variant="loading">불러오는 중…</StateBox>}>
       <Miracle10AdminPageInner />
     </Suspense>
   );

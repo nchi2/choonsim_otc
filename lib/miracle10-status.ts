@@ -17,8 +17,9 @@ export const STATUS_LABELS: Record<Miracle10Status, string> = {
   CANCELED: "취소",
 };
 
+// 접수(PENDING)=주황: 어드민 셸 알림 배지·대시보드 접수 카드와 같은 계열로 통일.
 export const STATUS_COLORS: Record<Miracle10Status, string> = {
-  PENDING: "#9333ea",
+  PENDING: "#ea580c",
   CONTACTED: "#2563eb",
   VERIFIED: "#0d9488",
   COMPLETED: "#64748b",
@@ -32,6 +33,29 @@ export function canAdminEditSchedule(status: Miracle10Status): boolean {
     status === "CONTACTED" ||
     status === "VERIFIED"
   );
+}
+
+/**
+ * 목록용 방문 일정 한 줄 요약.
+ * RESERVED(또는 기타)=일정 있으면 "7/1 16:00", 없으면 "-".
+ * WALK_IN="워크인", 일정 지정됐으면 "워크인 7/1 16:00".
+ * 시간은 reservedStart(30분) 우선, 레거시 visitTimeSlot 폴백.
+ */
+export function formatVisitBrief(item: {
+  visitType: string | null;
+  visitDate: string | null;
+  reservedStart?: string | null;
+  visitTimeSlot?: string | null;
+}): string {
+  const d = item.visitDate?.trim() ?? "";
+  const date =
+    d.length >= 10 ? `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : null;
+  const time = item.reservedStart?.trim() || item.visitTimeSlot?.trim() || "";
+  const sched = date ? (time ? `${date} ${time}` : date) : null;
+  if (item.visitType === "WALK_IN") {
+    return sched ? `워크인 ${sched}` : "워크인";
+  }
+  return sched ?? "-";
 }
 
 /** 운영자 UI — 방문 방식 표시 (WALK_IN 일정 지정 여부 포함). */

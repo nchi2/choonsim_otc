@@ -3,37 +3,41 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
+import { adminColors } from "@/components/admin/ui";
 
 const Container = styled.div`
-  min-height: calc(100vh - 200px);
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
+  background: ${adminColors.bgPage};
 `;
 
 const LoginCard = styled.div`
   width: 100%;
   max-width: 400px;
   background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid ${adminColors.border};
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06);
   padding: 2rem;
 
   @media (min-width: 768px) {
-    padding: 3rem;
+    padding: 2.5rem;
   }
 `;
 
 const Title = styled.h1`
   font-size: 1.5rem;
-  font-weight: bold;
+  font-weight: 800;
   margin-bottom: 0.5rem;
-  color: #111827;
+  color: ${adminColors.text};
   text-align: center;
 
   @media (min-width: 768px) {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 `;
 
@@ -71,36 +75,38 @@ const Input = styled.input`
 
   &:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: ${adminColors.primary};
+    box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.12);
   }
 `;
 
 const ErrorMessage = styled.div`
-  color: #dc2626;
+  color: ${adminColors.dangerTextStrong};
   font-size: 0.875rem;
-  padding: 0.5rem;
-  background-color: #fef2f2;
-  border-radius: 6px;
+  font-weight: 600;
+  padding: 0.6rem 0.85rem;
+  background-color: ${adminColors.dangerSoft};
+  border: 1px solid ${adminColors.dangerBorder};
+  border-radius: 8px;
 `;
 
 const SubmitButton = styled.button`
   padding: 0.75rem 1.5rem;
-  background-color: #3b82f6;
+  background-color: ${adminColors.primary};
   color: #ffffff;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   transition: background-color 0.2s;
 
   &:hover:not(:disabled) {
-    background-color: #2563eb;
+    background-color: ${adminColors.primaryHover};
   }
 
   &:disabled {
-    background-color: #9ca3af;
+    opacity: 0.55;
     cursor: not-allowed;
   }
 `;

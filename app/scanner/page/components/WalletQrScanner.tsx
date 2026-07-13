@@ -23,6 +23,8 @@ export interface WalletQrScannerProps {
   continuous?: boolean;
   /** 증가할 때마다 성공 플래시 표시 */
   successFlashTick?: number;
+  /** 기본 안내 문구 재정의 — 잔고 조회 없는 화면(어드민 주소 기입 등)용 */
+  idleHint?: string;
 }
 
 const SCAN_FAIL_HINT_MS = 12_000;
@@ -139,7 +141,10 @@ export function WalletQrScanner({
   paused,
   continuous = false,
   successFlashTick = 0,
+  idleHint,
 }: WalletQrScannerProps) {
+  const defaultHint =
+    idleHint ?? (continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const debounceRef = useRef<{ addr: string; t: number }>({
@@ -154,15 +159,13 @@ export function WalletQrScanner({
   const [error, setError] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
   const [videoDevices, setVideoDevices] = useState<VideoDevice[]>([]);
-  const [hintText, setHintText] = useState(
-    continuous ? CONTINUOUS_HINT : DEFAULT_HINT,
-  );
+  const [hintText, setHintText] = useState(defaultHint);
   const [restartCounter, setRestartCounter] = useState(0);
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
 
   useEffect(() => {
-    setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
-  }, [continuous]);
+    setHintText(defaultHint);
+  }, [defaultHint]);
 
   useEffect(() => {
     if (successFlashTick <= 0) return;
@@ -180,11 +183,11 @@ export function WalletQrScanner({
 
   const resetScanFailTimer = useCallback(() => {
     clearScanFailTimer();
-    setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
+    setHintText(defaultHint);
     scanFailTimerRef.current = setTimeout(() => {
       setHintText(FAIL_HINT);
     }, SCAN_FAIL_HINT_MS);
-  }, [clearScanFailTimer, continuous]);
+  }, [clearScanFailTimer, defaultHint]);
 
   const stop = useCallback(() => {
     controlsRef.current?.stop();
@@ -383,7 +386,7 @@ export function WalletQrScanner({
                 type="button"
                 onClick={() => {
                   setError(null);
-                  setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
+                  setHintText(defaultHint);
                   setCameraActive(true);
                 }}
               >
@@ -427,7 +430,7 @@ export function WalletQrScanner({
                 stop();
                 setError(null);
                 clearScanFailTimer();
-                setHintText(continuous ? CONTINUOUS_HINT : DEFAULT_HINT);
+                setHintText(defaultHint);
               }}
             >
               카메라 끄기

@@ -41,6 +41,106 @@ function parseOfficeId(v: unknown): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+// 거래 기록 필드 — 요청에 없으면 미변경, null이면 비우기, 값이면 저장.
+interface DealUpdateData {
+  p2pExperienceConfirmed?: boolean | null;
+  dealQuantity?: number | null;
+  dealUnitPriceKrw?: number | null;
+  dealUnitPriceUsdt?: number | null;
+  dealCoinTotalKrw?: number | null;
+  paperWalletCount?: number | null;
+  paperWalletKrw?: number | null;
+  dealTotalKrw?: number | null;
+  receiveWalletAddresses?: string[];
+}
+
+type NumericDealKey = Exclude<
+  keyof DealUpdateData,
+  "p2pExperienceConfirmed" | "receiveWalletAddresses"
+>;
+
+const MAX_RECEIVE_ADDRESSES = 100;
+
+const DEAL_NUMBER_FIELDS: {
+  key: NumericDealKey;
+  int?: boolean;
+  min: number;
+  max: number;
+}[] = [
+  { key: "dealQuantity", int: true, min: 1, max: 1_000_000 },
+  { key: "dealUnitPriceKrw", min: 0, max: 1e14 },
+  { key: "dealUnitPriceUsdt", min: 0, max: 1e10 },
+  { key: "dealCoinTotalKrw", min: 0, max: 1e14 },
+  { key: "paperWalletCount", int: true, min: 0, max: 1_000_000 },
+  { key: "paperWalletKrw", min: 0, max: 1e14 },
+  { key: "dealTotalKrw", min: 0, max: 1e14 },
+];
+
+function parseDealInput(
+  body: Record<string, unknown>,
+): { ok: true; data: DealUpdateData } | { ok: false; error: string } {
+  const data: DealUpdateData = {};
+
+  for (const { key, int, min, max } of DEAL_NUMBER_FIELDS) {
+    if (!(key in body)) continue;
+    const v = body[key];
+    if (v === null) {
+      data[key] = null;
+      continue;
+    }
+    const n = typeof v === "number" ? v : Number(v);
+    if (
+      !Number.isFinite(n) ||
+      (int && !Number.isInteger(n)) ||
+      n < min ||
+      n > max
+    ) {
+      return { ok: false, error: `${key} 값이 올바르지 않습니다.` };
+    }
+    data[key] = n;
+  }
+
+  if ("p2pExperienceConfirmed" in body) {
+    const v = body.p2pExperienceConfirmed;
+    if (v !== null && typeof v !== "boolean") {
+      return { ok: false, error: "p2pExperienceConfirmed 값이 올바르지 않습니다." };
+    }
+    data.p2pExperienceConfirmed = v;
+  }
+
+  if ("receiveWalletAddresses" in body) {
+    const v = body.receiveWalletAddresses;
+    if (v === null) {
+      data.receiveWalletAddresses = [];
+    } else if (!Array.isArray(v) || v.length > MAX_RECEIVE_ADDRESSES) {
+      return {
+        ok: false,
+        error: "receiveWalletAddresses 값이 올바르지 않습니다.",
+      };
+    } else {
+      const seen = new Set<string>();
+      const list: string[] = [];
+      for (const item of v) {
+        if (typeof item !== "string" || item.trim().length > 200) {
+          return {
+            ok: false,
+            error: "receiveWalletAddresses 값이 올바르지 않습니다.",
+          };
+        }
+        const t = item.trim();
+        if (!t) continue;
+        const key = t.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(t);
+      }
+      data.receiveWalletAddresses = list;
+    }
+  }
+
+  return { ok: true, data };
+}
+
 
 function parseScheduleInput(body: {
   visitDate?: unknown;
@@ -122,7 +222,7 @@ export async function PATCH(
     visitDate?: unknown;
     reservedStart?: unknown;
     officeId?: unknown;
-  };
+  } & Record<string, unknown>;
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -136,6 +236,13 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: scheduleInput.error }, { status: 400 });
   }
 
+  const dealInput = parseDealInput(body);
+  if (!dealInput.ok) {
+    return NextResponse.json({ ok: false, error: dealInput.error }, { status: 400 });
+  }
+  const dealData = dealInput.data;
+  const hasDeal = Object.keys(dealData).length > 0;
+
   let newStatus: OrderStatus | null = null;
   if (hasStatus) {
     const status = typeof body.status === "string" ? body.status : "";
@@ -145,7 +252,7 @@ export async function PATCH(
     newStatus = status as OrderStatus;
   }
 
-  if (!newStatus && !scheduleInput) {
+  if (!newStatus && !scheduleInput && !hasDeal) {
     return NextResponse.json({ ok: false, error: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
@@ -228,6 +335,13 @@ export async function PATCH(
           await tx.otcOrder.update({
             where: { id },
             data: editor,
+          });
+        }
+
+        if (hasDeal) {
+          await tx.otcOrder.update({
+            where: { id },
+            data: { ...dealData, ...editor },
           });
         }
 

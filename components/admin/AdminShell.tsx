@@ -8,6 +8,7 @@ import {
   AdminSessionProvider,
   type AdminSession,
 } from "@/components/admin/AdminSessionContext";
+import { adminColors } from "@/components/admin/ui";
 
 const NAV_ITEMS = [
   {
@@ -90,12 +91,13 @@ const SideLink = styled(Link)<{ $active: boolean }>`
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: ${(p) => (p.$active ? 700 : 600)};
-  color: ${(p) => (p.$active ? "#111827" : "#6b7280")};
-  background: ${(p) => (p.$active ? "#f3f4f6" : "transparent")};
+  color: ${(p) => (p.$active ? adminColors.primary : adminColors.textMuted)};
+  background: ${(p) => (p.$active ? adminColors.primarySoft : "transparent")};
   text-decoration: none;
   &:hover {
-    color: #111827;
-    background: #f9fafb;
+    color: ${(p) => (p.$active ? adminColors.primary : adminColors.text)};
+    background: ${(p) =>
+      p.$active ? adminColors.primarySoft : adminColors.bgSubtle};
   }
 `;
 
@@ -110,9 +112,9 @@ const PendingBadge = styled.span`
   height: 1.25rem;
   padding: 0 0.35rem;
   border-radius: 999px;
-  background: #f97316;
+  background: ${adminColors.alert};
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.25rem;
   text-align: center;
@@ -132,7 +134,7 @@ const TopBar = styled.header`
   gap: 0.75rem;
   flex-wrap: wrap;
   padding: 1rem 1rem 0.75rem;
-  background: #f9fafb;
+  background: #fff;
   border-bottom: 1px solid #e5e7eb;
 
   @media (min-width: 768px) {
@@ -216,8 +218,19 @@ const TabLink = styled(Link)<{ $active: boolean }>`
   min-height: 3.5rem;
   font-size: 0.7rem;
   font-weight: ${(p) => (p.$active ? 700 : 600)};
-  color: ${(p) => (p.$active ? "#111827" : "#9ca3af")};
+  color: ${(p) => (p.$active ? adminColors.primary : adminColors.textFaint)};
   text-decoration: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 25%;
+    right: 25%;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: ${(p) => (p.$active ? adminColors.primary : "transparent")};
+  }
 `;
 
 const TabBadge = styled.span`
@@ -228,9 +241,9 @@ const TabBadge = styled.span`
   height: 1rem;
   padding: 0 0.25rem;
   border-radius: 999px;
-  background: #f97316;
+  background: ${adminColors.alert};
   color: #fff;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   font-weight: 800;
   line-height: 1rem;
   text-align: center;

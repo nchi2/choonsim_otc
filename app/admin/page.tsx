@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
+import { StateBox, adminColors } from "@/components/admin/ui";
+
 const Page = styled.div`
   max-width: 960px;
   margin: 0 auto;
@@ -30,39 +32,44 @@ const StatCard = styled.div`
 
 const PendingStatCard = styled(Link)<{ $highlight: boolean }>`
   display: block;
-  border: 1px solid ${(p) => (p.$highlight ? "#fb7185" : "#e5e7eb")};
+  border: 1px solid
+    ${(p) => (p.$highlight ? adminColors.alertBorder : adminColors.border)};
   border-radius: 12px;
-  background: ${(p) => (p.$highlight ? "#fff1f2" : "#fff")};
+  background: ${(p) => (p.$highlight ? adminColors.alertSoft : "#fff")};
   padding: 1rem 1.1rem;
   text-decoration: none;
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
   &:hover {
-    border-color: ${(p) => (p.$highlight ? "#f43f5e" : "#d1d5db")};
+    border-color: ${(p) =>
+      p.$highlight ? adminColors.alert : adminColors.borderInput};
     box-shadow: ${(p) =>
-      p.$highlight ? "0 4px 14px rgba(244, 63, 94, 0.12)" : "none"};
+      p.$highlight ? "0 4px 14px rgba(234, 88, 12, 0.14)" : "none"};
   }
 `;
 
 const StatLabel = styled.div<{ $accent?: boolean }>`
   font-size: 0.75rem;
   font-weight: 600;
-  color: ${(p) => (p.$accent ? "#e11d48" : "#6b7280")};
+  color: ${(p) =>
+    p.$accent ? adminColors.alertTextStrong : adminColors.textMuted};
   margin-bottom: 0.35rem;
 `;
 
 const StatValue = styled.div<{ $accent?: boolean }>`
   font-size: 1.5rem;
   font-weight: 800;
-  color: ${(p) => (p.$accent ? "#be123c" : "#111827")};
+  color: ${(p) => (p.$accent ? "#9a3412" : adminColors.text)};
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  color: #374151;
-  margin: 0 0 1rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: ${adminColors.textMuted};
+  margin: 0 0 0.85rem;
 `;
 
 const MenuGrid = styled.div`
@@ -84,8 +91,8 @@ const MenuCard = styled(Link)`
     border-color 0.15s,
     box-shadow 0.15s;
   &:hover {
-    border-color: #c7d2fe;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.08);
+    border-color: ${adminColors.primaryBorder};
+    box-shadow: 0 4px 14px rgba(67, 56, 202, 0.08);
   }
 `;
 
@@ -101,11 +108,6 @@ const MenuDesc = styled.span`
   line-height: 1.5;
 `;
 
-const Empty = styled.div`
-  padding: 2rem;
-  text-align: center;
-  color: #6b7280;
-`;
 
 interface Stats {
   total: number;
@@ -156,8 +158,8 @@ export default function AdminHubPage() {
 
   return (
     <Page>
-      {loading && <Empty>불러오는 중...</Empty>}
-      {error && <Empty style={{ color: "#dc2626" }}>{error}</Empty>}
+      {loading && <StateBox $variant="loading">불러오는 중…</StateBox>}
+      {error && <StateBox $variant="error">{error}</StateBox>}
 
       {!loading && !error && stats && (
         <>
@@ -200,6 +202,10 @@ export default function AdminHubPage() {
               <MenuDesc>
                 신청 목록·상세 조회, 상태 변경, 최종 수정자 확인
               </MenuDesc>
+            </MenuCard>
+            <MenuCard href="/admin/otc-requests">
+              <MenuTitle>BMB 구매·판매 신청</MenuTitle>
+              <MenuDesc>OTC 구매·판매 신청 목록 조회</MenuDesc>
             </MenuCard>
             <MenuCard href="/admin/calculator">
               <MenuTitle>OTC 단가 계산기</MenuTitle>

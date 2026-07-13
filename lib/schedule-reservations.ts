@@ -1,15 +1,24 @@
 import { prisma } from "@/lib/prisma";
+import { OrderStatus } from "@/app/generated/prisma/client";
 import { verifiedAssignedOrderWhere } from "@/lib/available-slots";
 
 export interface ScheduleReservationItem {
   id: number;
   visitDate: string;
   reservedStart: string;
-  assignedAdminUserId: number;
+  /** 미확정(접수·연락완료) 건은 배정 운영자가 없다. */
+  assignedAdminUserId: number | null;
   customerName: string;
+  status: OrderStatus;
+  /** true = VERIFIED + 배정 완료(정원 차감 대상). false = 표시 전용 미확정. */
+  confirmed: boolean;
 }
 
-/** 어드민 스케줄 — (사무실, 기간) 확정 배정 예약 목록. */
+/**
+ * 어드민 스케줄 — (사무실, 기간) 캘린더 표시용 예약 목록.
+ * 확정(VERIFIED+배정)과 함께 일정이 잡힌 미확정(PENDING·CONTACTED) 건도 반환한다.
+ * 정원 차감(taken)은 여전히 verifiedAssignedOrderWhere 기준 — 미확정은 표시만.
+ */
 export async function getScheduleReservations(
   officeId: number,
   from: string,
@@ -17,15 +26,20 @@ export async function getScheduleReservations(
 ): Promise<ScheduleReservationItem[]> {
   const rows = await prisma.otcOrder.findMany({
     where: {
-      ...verifiedAssignedOrderWhere,
       officeId,
       visitDate: { gte: from, lte: to },
+      reservedStart: { not: null },
+      OR: [
+        verifiedAssignedOrderWhere,
+        { status: { in: [OrderStatus.PENDING, OrderStatus.CONTACTED] } },
+      ],
     },
     select: {
       id: true,
       visitDate: true,
       reservedStart: true,
       assignedAdminUserId: true,
+      status: true,
       customer: { select: { name: true } },
     },
     orderBy: [{ visitDate: "asc" }, { reservedStart: "asc" }, { id: "asc" }],
@@ -35,7 +49,10 @@ export async function getScheduleReservations(
     id: r.id,
     visitDate: r.visitDate!,
     reservedStart: r.reservedStart!,
-    assignedAdminUserId: r.assignedAdminUserId!,
+    assignedAdminUserId: r.assignedAdminUserId,
     customerName: r.customer.name,
+    status: r.status,
+    confirmed:
+      r.status === OrderStatus.VERIFIED && r.assignedAdminUserId != null,
   }));
 }
