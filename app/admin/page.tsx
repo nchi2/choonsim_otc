@@ -117,6 +117,7 @@ interface Stats {
   completed: number;
   canceled: number;
   active: number;
+  walletStock: number;
 }
 
 export default function AdminHubPage() {
@@ -164,14 +165,14 @@ export default function AdminHubPage() {
       {!loading && !error && stats && (
         <>
           <StatsGrid>
-            <StatCard>
+            <PendingStatCard href="/admin/miracle10?tab=ALL" $highlight={false}>
               <StatLabel>총 신청</StatLabel>
               <StatValue>{stats.total}</StatValue>
-            </StatCard>
-            <StatCard>
+            </PendingStatCard>
+            <PendingStatCard href="/admin/miracle10?tab=ALL" $highlight={false}>
               <StatLabel>진행 중</StatLabel>
               <StatValue>{stats.active}</StatValue>
-            </StatCard>
+            </PendingStatCard>
             <PendingStatCard
               href="/admin/miracle10?tab=PENDING"
               $highlight={stats.pending > 0}
@@ -179,14 +180,27 @@ export default function AdminHubPage() {
               <StatLabel $accent={stats.pending > 0}>접수</StatLabel>
               <StatValue $accent={stats.pending > 0}>{stats.pending}</StatValue>
             </PendingStatCard>
-            <StatCard>
+            <PendingStatCard
+              href="/admin/miracle10?tab=COMPLETED"
+              $highlight={false}
+            >
               <StatLabel>완료</StatLabel>
               <StatValue>{stats.completed}</StatValue>
-            </StatCard>
-            <StatCard>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/miracle10?tab=CANCELED"
+              $highlight={false}
+            >
               <StatLabel>취소</StatLabel>
               <StatValue>{stats.canceled}</StatValue>
-            </StatCard>
+            </PendingStatCard>
+            <PendingStatCard
+              href="/admin/wallet-inventory"
+              $highlight={false}
+            >
+              <StatLabel>지갑 재고</StatLabel>
+              <StatValue>{stats.walletStock}장</StatValue>
+            </PendingStatCard>
           </StatsGrid>
 
           <SectionTitle>메뉴</SectionTitle>
@@ -212,6 +226,10 @@ export default function AdminHubPage() {
               <MenuDesc>
                 LBANK 호가 VWAP, USDT 환율, 마진 적용 매입가 시뮬레이션
               </MenuDesc>
+            </MenuCard>
+            <MenuCard href="/admin/wallet-inventory">
+              <MenuTitle>종이지갑 재고</MenuTitle>
+              <MenuDesc>입고·불출 원장 기록, 현재 재고 확인</MenuDesc>
             </MenuCard>
           </MenuGrid>
         </>

@@ -7,6 +7,7 @@ import styled from "styled-components";
 import { useAdminSession } from "@/components/admin/AdminSessionContext";
 import MonthCalendar, {
   defaultCalendarMaxDate,
+  type MonthCalendarDayEvent,
   type MonthCalendarDayMeta,
 } from "@/components/admin/MonthCalendar";
 import { formatKstYmdLong, monthBoundsKst, todayKst } from "@/lib/kst";
@@ -23,7 +24,7 @@ import {
 } from "@/lib/miracle10-status";
 
 const Page = styled.div`
-  max-width: 960px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 0.5rem 1rem 1rem;
 
@@ -59,8 +60,9 @@ const Layout = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.25rem;
+  /* 캘린더(상세 표시)를 편집 패널보다 넓게 */
   @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     align-items: start;
   }
 `;
@@ -540,21 +542,8 @@ export default function AdminSchedulePage() {
       }
     }
 
-    for (const r of confirmedReservations) {
-      if (mineOnlyView && r.assignedAdminUserId !== myAdminUserId) continue;
-      const m = ensure(r.visitDate);
-      if (r.assignedAdminUserId === myAdminUserId) {
-        m.myReservationCount = (m.myReservationCount ?? 0) + 1;
-      }
-    }
-
-    // 미확정(접수·연락완료)은 배정 운영자가 없어 "내 것만" 모드에서는 숨긴다.
-    if (!mineOnlyView) {
-      for (const r of pendingReservations) {
-        const m = ensure(r.visitDate);
-        m.pendingReservationCount = (m.pendingReservationCount ?? 0) + 1;
-      }
-    }
+    // 예약(확정·미확정)은 셀 안 일정 항목(dayEvents)으로 직접 표시하므로
+    // 배지는 근무 정보(내 슬롯·근무자 수)만 유지.
 
     if (!mineOnlyView) {
       for (const d of Object.keys(meta)) {
@@ -566,13 +555,36 @@ export default function AdminSchedulePage() {
     }
 
     return meta;
-  }, [
-    monthSlots,
-    confirmedReservations,
-    pendingReservations,
-    myAdminUserId,
-    mineOnlyView,
-  ]);
+  }, [monthSlots, myAdminUserId, mineOnlyView]);
+
+  // 셀 안 일정 항목 — 확정=진하게 / 미확정=회색·점선. 시간순, 동시간엔 확정 먼저.
+  const dayEvents = useMemo(() => {
+    const map: Record<string, MonthCalendarDayEvent[]> = {};
+    const push = (r: ScheduleReservation, confirmed: boolean) => {
+      (map[r.visitDate] ??= []).push({
+        key: `${confirmed ? "c" : "p"}-${r.id}`,
+        time: r.reservedStart,
+        label: r.customerName,
+        confirmed,
+      });
+    };
+    for (const r of confirmedReservations) {
+      if (mineOnlyView && r.assignedAdminUserId !== myAdminUserId) continue;
+      push(r, true);
+    }
+    // 미확정은 배정 운영자가 없어 "내 것만" 모드에서는 숨긴다.
+    if (!mineOnlyView) {
+      for (const r of pendingReservations) push(r, false);
+    }
+    for (const d of Object.keys(map)) {
+      map[d].sort(
+        (a, b) =>
+          a.time.localeCompare(b.time) ||
+          Number(b.confirmed) - Number(a.confirmed),
+      );
+    }
+    return map;
+  }, [confirmedReservations, pendingReservations, mineOnlyView, myAdminUserId]);
 
   const canEditDay = isSlotRegistrationAllowed(selectedDate);
 
@@ -748,12 +760,16 @@ export default function AdminSchedulePage() {
       <Layout>
         <Card>
           <PanelTitle>캘린더 (KST)</PanelTitle>
-          <PanelSub>날짜를 선택하면 슬롯을 편집합니다.</PanelSub>
+          <PanelSub>
+            날짜를 선택하면 슬롯을 편집합니다. 초록 굵게 = 확정 예약 · 회색
+            점선 = 미확정 신청 · 넘치면 +N건.
+          </PanelSub>
           <MonthCalendar
             valueDate={selectedDate}
             minDate={minDate}
             maxDate={maxDate}
             dayMeta={dayMeta}
+            dayEvents={dayEvents}
             isDateEnabled={isScheduleDateEnabled}
             onSelect={handleDateSelect}
             onMonthChange={handleMonthChange}

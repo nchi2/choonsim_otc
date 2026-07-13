@@ -59,6 +59,7 @@ model AdminUser {
 
   workSlots      WorkSlot[]
   assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
+  walletLedgers  PaperWalletLedger[] @relation("WalletLedgerAdmin")
 }
 
 // 사무실 — enum 대신 테이블(지점 추가·활성화 관리).
@@ -173,10 +174,38 @@ model OtcOrder {
   customerId Int
   customer   Customer @relation(fields: [customerId], references: [id])
 
+  walletLedgers PaperWalletLedger[] @relation("WalletLedgerOrder")
+
   @@index([status])
   @@index([createdAt])
   @@index([kind])
   @@index([customerId])
+}
+
+// 종이지갑(EVM 지갑) 재고 원장 — 입고(IN)/불출(OUT) 행 누적, 재고 = IN 합 − OUT 합.
+// type은 String("IN"|"OUT") — API에서 검증 (OtcRequest.status와 같은 패턴).
+model PaperWalletLedger {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  type      String // "IN" 입고 | "OUT" 불출
+  count     Int // 장수 — 항상 양수, 부호는 type으로 해석
+  entryDate String // 실물 입출고 날짜 YYYY-MM-DD (KST)
+  memo      String?
+
+  // 등록자/담당 운영자 — 계정 삭제돼도 원장 보존(SetNull + 이름 스냅샷)
+  adminUserId Int?
+  adminUser   AdminUser? @relation("WalletLedgerAdmin", fields: [adminUserId], references: [id])
+  adminName   String
+
+  // 불출 — 수령 신청건(10모) 연결(선택) + 수령자 이름 스냅샷
+  orderId      Int?
+  order        OtcOrder? @relation("WalletLedgerOrder", fields: [orderId], references: [id])
+  receiverName String?
+
+  @@index([type])
+  @@index([entryDate])
+  @@index([orderId])
 }
 
 // BMB 매수/판매 OTC 신청 — 10모 OtcOrder와 독립.
@@ -206,7 +235,14 @@ model OtcRequest {
   buyerAccountNo      String? // 매수자 계좌 — 계좌번호
   buyerAccountHolder  String? // 매수자 계좌 — 예금주
   memo           String?
+  // 값은 lib/otc-request-status.ts에서 검증 (String 유지 — 기존 데이터 안전)
   status         String   @default("PENDING")
+
+  // 운영자 작업 기록 — 10모 OtcOrder와 동일 패턴
+  adminMemo        String? // 운영자 메모 (손님 제출 memo와 분리)
+  lastEditedBy     String?
+  lastEditedByName String?
+  lastEditedAt     DateTime?
 
   @@index([status])
   @@index([createdAt])

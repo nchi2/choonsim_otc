@@ -90,6 +90,12 @@ const Field = styled.div`
   &:first-of-type {
     border-top: none;
   }
+
+  /* 초소형 화면 — 라벨 위, 값 아래 */
+  @media (max-width: 420px) {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
 `;
 
 const Key = styled.span`
@@ -388,6 +394,17 @@ const SmallBtn = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+const SmallLinkBtn = styled(Link)`
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #4338ca;
+  background: #fff;
+  color: #4338ca;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
 `;
 
 const FloorNote = styled.span`
@@ -1737,6 +1754,14 @@ function DealRecordSection({
         >
           {saving ? "저장 중…" : "저장"}
         </PrimaryActionBtn>
+        {walletCount != null && walletCount > 0 ? (
+          <SmallLinkBtn
+            href={`/admin/wallet-inventory?type=OUT&orderId=${order.id}&count=${walletCount}&receiver=${encodeURIComponent(order.customer.name)}`}
+            title="종이지갑 전달 후 재고 원장에 불출을 기록하세요 (자동 기록 아님)"
+          >
+            재고 불출 등록 →
+          </SmallLinkBtn>
+        ) : null}
         {saveMsg ? (
           <SaveMsg $error={saveMsg.error}>{saveMsg.text}</SaveMsg>
         ) : null}

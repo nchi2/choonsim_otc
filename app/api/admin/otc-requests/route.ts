@@ -24,6 +24,8 @@ export async function GET() {
         status: true,
         visitDate: true,
         reservedStart: true,
+        lastEditedByName: true,
+        lastEditedAt: true,
         office: { select: { name: true } },
       },
     });
@@ -41,6 +43,8 @@ export async function GET() {
         status: it.status,
         visitDate: it.visitDate,
         reservedStart: it.reservedStart,
+        lastEditedByName: it.lastEditedByName,
+        lastEditedAt: it.lastEditedAt ? it.lastEditedAt.toISOString() : null,
         officeName: it.office?.name ?? null,
       })),
     });

@@ -51,6 +51,8 @@ const Table = styled.div`
   border-radius: 12px;
   background: #fff;
   overflow: hidden;
+  /* 중간 폭(태블릿)에서 컬럼 압축으로 겹치지 않게 가로 스크롤 허용 */
+  overflow-x: auto;
 `;
 
 const HeadRow = styled.div`
@@ -62,6 +64,9 @@ const HeadRow = styled.div`
   font-size: 0.75rem;
   font-weight: 700;
   color: #6b7280;
+  @media (min-width: 641px) {
+    min-width: 860px;
+  }
   @media (max-width: 640px) {
     grid-template-columns: 48px 1fr 70px 96px;
   }
@@ -79,6 +84,9 @@ const Row = styled(Link)`
   align-items: center;
   &:hover {
     background: #fafafa;
+  }
+  @media (min-width: 641px) {
+    min-width: 860px;
   }
   @media (max-width: 640px) {
     grid-template-columns: 48px 1fr 70px 96px;
@@ -121,6 +129,27 @@ const VisitSubMobile = styled.span`
   }
 `;
 
+/* 정렬 가능한 컬럼 헤더 — 활성 컬럼은 인디고 + 방향 화살표 */
+const SortHead = styled.button<{ $active: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${(p) => (p.$active ? adminColors.primary : "#6b7280")};
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+
+  &:hover {
+    color: ${adminColors.primary};
+  }
+`;
+
 interface Item {
   id: number;
   createdAt: string;
@@ -139,6 +168,51 @@ interface Item {
 }
 
 type StatusFilter = "ALL" | Miracle10Status;
+
+type SortKey =
+  | "id"
+  | "name"
+  | "quantity"
+  | "visit"
+  | "createdAt"
+  | "edited"
+  | "status";
+
+/** 컬럼 첫 클릭 방향 — 날짜류는 최신 먼저, 나머지는 오름차순. */
+const SORT_DEFAULT_DIR: Record<SortKey, 1 | -1> = {
+  id: 1,
+  name: 1,
+  quantity: 1,
+  visit: 1,
+  createdAt: -1,
+  edited: -1,
+  status: 1,
+};
+
+/**
+ * 정렬 키 값 — null이면 방향과 무관하게 항상 뒤로 보낸다.
+ * 방문일: "YYYY-MM-DD HH:MM" 문자열 비교. 일정 없는 건 null(미지정).
+ */
+function sortValue(it: Item, key: SortKey): number | string | null {
+  switch (key) {
+    case "id":
+      return it.id;
+    case "name":
+      return it.nameMasked;
+    case "quantity":
+      return it.quantity;
+    case "createdAt":
+      return Date.parse(it.createdAt);
+    case "edited":
+      return it.lastEditedAt ? Date.parse(it.lastEditedAt) : null;
+    case "status":
+      return MIRACLE10_STATUSES.indexOf(it.status);
+    case "visit":
+      return it.visitDate
+        ? `${it.visitDate} ${it.reservedStart || it.visitTimeSlot || ""}`
+        : null;
+  }
+}
 
 /** 탭 순서 — 처리 우선 상태 먼저, 전체는 맨 끝. */
 const STATUS_TAB_ORDER: StatusFilter[] = [
@@ -221,6 +295,57 @@ function Miracle10AdminPageInner() {
     return allItems.filter((it) => it.status === filter);
   }, [allItems, filter]);
 
+  // 정렬 — 탭 필터 결과 안에서 클라이언트 정렬. 기본 = 접수일 최신순(API 순서와 동일).
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
+    key: "createdAt",
+    dir: -1,
+  });
+
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: (prev.dir * -1) as 1 | -1 }
+        : { key, dir: SORT_DEFAULT_DIR[key] },
+    );
+  };
+
+  const sortedItems = useMemo(() => {
+    const { key, dir } = sort;
+    return [...filteredItems].sort((a, b) => {
+      const va = sortValue(a, key);
+      const vb = sortValue(b, key);
+      // 미지정(null)은 방향과 무관하게 뒤로. 방문일 무지정끼리는 워크인을 앞에.
+      if (va == null || vb == null) {
+        if (va != null) return -1;
+        if (vb != null) return 1;
+        if (key === "visit") {
+          const ra = a.visitType === "WALK_IN" ? 0 : 1;
+          const rb = b.visitType === "WALK_IN" ? 0 : 1;
+          if (ra !== rb) return ra - rb;
+        }
+        return b.id - a.id;
+      }
+      let c =
+        typeof va === "string"
+          ? va.localeCompare(vb as string, "ko")
+          : (va as number) - (vb as number);
+      if (c === 0) c = a.id - b.id;
+      return c * dir;
+    });
+  }, [filteredItems, sort]);
+
+  const sortHead = (key: SortKey, label: string) => (
+    <SortHead
+      type="button"
+      $active={sort.key === key}
+      onClick={() => toggleSort(key)}
+      aria-label={`${label} 정렬`}
+    >
+      {label}
+      {sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+    </SortHead>
+  );
+
   const tabCount = useCallback(
     (tab: StatusFilter) => {
       if (tab === "ALL") return allItems.length;
@@ -267,14 +392,14 @@ function Miracle10AdminPageInner() {
           </ListMeta>
           <Table>
             <HeadRow>
-              <span>번호</span>
-              <span>이름</span>
+              <span>{sortHead("id", "번호")}</span>
+              <span>{sortHead("name", "이름")}</span>
               <Hide>연락처</Hide>
-              <span>수량</span>
-              <Hide>방문</Hide>
-              <Hide>접수일</Hide>
-              <Hide>최종 수정</Hide>
-              <span>상태</span>
+              <span>{sortHead("quantity", "수량")}</span>
+              <Hide>{sortHead("visit", "방문")}</Hide>
+              <Hide>{sortHead("createdAt", "접수일")}</Hide>
+              <Hide>{sortHead("edited", "최종 수정")}</Hide>
+              <span>{sortHead("status", "상태")}</span>
             </HeadRow>
             {filteredItems.length === 0 ? (
               <StateBox $variant="empty">
@@ -283,7 +408,7 @@ function Miracle10AdminPageInner() {
                   : `${TAB_LABELS[filter]} 상태 신청이 없습니다.`}
               </StateBox>
             ) : (
-              filteredItems.map((it) => {
+              sortedItems.map((it) => {
                 const visitBrief = formatVisitBrief(it);
                 return (
                 <Row key={it.id} href={`/admin/miracle10/${it.id}`}>

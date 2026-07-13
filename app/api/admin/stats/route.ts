@@ -12,7 +12,7 @@ export async function GET() {
 
   try {
     const base = { kind: OrderKind.MIRACLE10 };
-    const [total, pending, contacted, verified, completed, canceled] =
+    const [total, pending, contacted, verified, completed, canceled, ledger] =
       await Promise.all([
         prisma.otcOrder.count({ where: base }),
         prisma.otcOrder.count({
@@ -30,13 +30,28 @@ export async function GET() {
         prisma.otcOrder.count({
           where: { ...base, status: OrderStatus.CANCELED },
         }),
+        prisma.paperWalletLedger.groupBy({
+          by: ["type"],
+          _sum: { count: true },
+        }),
       ]);
 
     const active = total - completed - canceled;
+    const walletIn = ledger.find((g) => g.type === "IN")?._sum.count ?? 0;
+    const walletOut = ledger.find((g) => g.type === "OUT")?._sum.count ?? 0;
 
     return NextResponse.json({
       ok: true,
-      stats: { total, pending, contacted, verified, completed, canceled, active },
+      stats: {
+        total,
+        pending,
+        contacted,
+        verified,
+        completed,
+        canceled,
+        active,
+        walletStock: walletIn - walletOut,
+      },
     });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

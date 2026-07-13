@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import {
@@ -11,6 +12,10 @@ import {
   ToolbarButton,
   adminColors,
 } from "@/components/admin/ui";
+import {
+  otcRequestStatusColor,
+  otcRequestStatusLabel,
+} from "@/lib/otc-request-status";
 
 const Page = styled.div`
   max-width: 1100px;
@@ -49,6 +54,8 @@ const Table = styled.div`
   border-radius: 12px;
   background: #fff;
   overflow: hidden;
+  /* 중간 폭(태블릿)에서 컬럼 압축으로 겹치지 않게 가로 스크롤 허용 */
+  overflow-x: auto;
 `;
 
 const HeadRow = styled.div`
@@ -61,12 +68,15 @@ const HeadRow = styled.div`
   font-weight: 700;
   color: ${adminColors.textMuted};
 
+  @media (min-width: 641px) {
+    min-width: 800px;
+  }
   @media (max-width: 640px) {
     grid-template-columns: 48px 56px 1fr 88px;
   }
 `;
 
-const Row = styled.div`
+const Row = styled(Link)`
   display: grid;
   grid-template-columns: 56px 60px 1fr 1fr 64px 96px 88px 96px;
   gap: 0.5rem;
@@ -75,7 +85,15 @@ const Row = styled.div`
   font-size: 0.85rem;
   color: ${adminColors.text};
   align-items: center;
+  text-decoration: none;
 
+  &:hover {
+    background: #fafafa;
+  }
+
+  @media (min-width: 641px) {
+    min-width: 800px;
+  }
   @media (max-width: 640px) {
     grid-template-columns: 48px 56px 1fr 88px;
   }
@@ -84,6 +102,17 @@ const Row = styled.div`
 const Hide = styled.span`
   @media (max-width: 640px) {
     display: none;
+  }
+`;
+
+/* 모바일 — 숨긴 수량·희망가를 이름 아래 한 줄로 병기 (10모 목록과 동일 패턴) */
+const SubMobile = styled.span`
+  display: none;
+  @media (max-width: 640px) {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: ${adminColors.textMuted};
   }
 `;
 
@@ -106,16 +135,6 @@ const TAB_LABELS: Record<SideFilter, string> = {
   BUY: "구매",
   SELL: "판매",
 };
-
-// 표시 전용 상태 라벨 — OtcRequest.status는 아직 자유 문자열(기본 PENDING).
-// 알려진 값만 한글화하고 모르는 값은 원문 그대로.
-const REQUEST_STATUS_LABELS: Record<string, { label: string; color: string }> =
-  {
-    PENDING: { label: "접수", color: "#ea580c" },
-    CONTACTED: { label: "연락완료", color: "#2563eb" },
-    COMPLETED: { label: "완료", color: "#64748b" },
-    CANCELED: { label: "취소", color: "#dc2626" },
-  };
 
 interface Item {
   id: number;
@@ -237,16 +256,23 @@ export default function AdminOtcRequestsPage() {
                 <Hide>접수일</Hide>
               </HeadRow>
               {filtered.map((it) => {
-                const status = REQUEST_STATUS_LABELS[it.status];
                 return (
-                  <Row key={it.id}>
+                  <Row key={it.id} href={`/admin/otc-requests/${it.id}`}>
                     <span>#{it.id}</span>
                     <span>
                       <SideBadge $side={it.side}>
                         {it.side === "SELL" ? "판매" : "구매"}
                       </SideBadge>
                     </span>
-                    <span>{it.name}</span>
+                    <span>
+                      {it.name}
+                      <SubMobile>
+                        {it.quantity.toLocaleString("ko-KR")}개 ·{" "}
+                        {it.desiredPrice != null
+                          ? `${it.desiredPrice.toLocaleString("ko-KR")}원`
+                          : "가격 미정"}
+                      </SubMobile>
+                    </span>
                     <Hide>{it.contact}</Hide>
                     <Hide>{it.quantity}</Hide>
                     <Hide>
@@ -255,13 +281,9 @@ export default function AdminOtcRequestsPage() {
                         : "미정"}
                     </Hide>
                     <span>
-                      {status ? (
-                        <StatusBadge $color={status.color}>
-                          {status.label}
-                        </StatusBadge>
-                      ) : (
-                        it.status
-                      )}
+                      <StatusBadge $color={otcRequestStatusColor(it.status)}>
+                        {otcRequestStatusLabel(it.status)}
+                      </StatusBadge>
                     </span>
                     <Hide>
                       {new Date(it.createdAt).toLocaleDateString("ko-KR")}

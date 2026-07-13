@@ -22,6 +22,17 @@ export interface MonthCalendarDayMeta {
   hideWorkerCount?: boolean;
 }
 
+/** 날짜 셀 안에 직접 표시하는 일정 항목 (어드민 스케줄 상세 모드). */
+export interface MonthCalendarDayEvent {
+  key: string | number;
+  /** "HH:MM" */
+  time: string;
+  /** 이름 등 — 모바일에서는 앞 글자만 표시 */
+  label: string;
+  /** true=확정(진하게) / false=미확정(회색·점선) */
+  confirmed: boolean;
+}
+
 export interface MonthCalendarProps {
   valueDate: string;
   minDate: string;
@@ -29,6 +40,13 @@ export interface MonthCalendarProps {
   onSelect: (dateStr: string) => void;
   isDateEnabled?: (dateStr: string) => boolean;
   dayMeta?: Record<string, MonthCalendarDayMeta>;
+  /**
+   * 지정 시 상세 모드 — 셀이 커지고 일정 항목을 셀 안에 직접 표시.
+   * 미지정이면 기존(배지만) 레이아웃 그대로 (공개 모달 등 다른 사용처 영향 없음).
+   */
+  dayEvents?: Record<string, MonthCalendarDayEvent[]>;
+  /** 상세 모드에서 셀당 최대 표시 일정 수 — 초과분은 "+N건" (기본 3) */
+  maxEventsPerDay?: number;
   onMonthChange?: (year: number, month: number) => void;
 }
 
@@ -47,8 +65,11 @@ export default function MonthCalendar({
   onSelect,
   isDateEnabled,
   dayMeta,
+  dayEvents,
+  maxEventsPerDay = 3,
   onMonthChange,
 }: MonthCalendarProps) {
+  const detailed = dayEvents != null;
   const initial = isKstYmd(valueDate)
     ? { y: Number(valueDate.slice(0, 4)), m: Number(valueDate.slice(5, 7)) - 1 }
     : (() => {
@@ -144,7 +165,7 @@ export default function MonthCalendar({
       <CalGrid>
         {cells.map((ymd, idx) =>
           ymd ? (
-            <CalDayWrap key={ymd}>
+            <CalDayWrap key={ymd} $detailed={detailed}>
               <CalDay
                 type="button"
                 disabled={!isEnabled(ymd)}
@@ -181,9 +202,34 @@ export default function MonthCalendar({
                   ) : null}
                 </DayBadgeRow>
               ) : null}
+              {detailed && (dayEvents?.[ymd]?.length ?? 0) > 0 ? (
+                <DayEventList
+                  onClick={() => isEnabled(ymd) && onSelect(ymd)}
+                  $clickable={isEnabled(ymd)}
+                >
+                  {dayEvents![ymd].slice(0, maxEventsPerDay).map((ev) => (
+                    <DayEventItem
+                      key={ev.key}
+                      $confirmed={ev.confirmed}
+                      title={`${ev.time} ${ev.label} ${ev.confirmed ? "확정" : "미확정"}`}
+                    >
+                      <EvTime>{ev.time}</EvTime>
+                      <EvLabelFull>{ev.label}</EvLabelFull>
+                      <EvLabelShort aria-hidden="true">
+                        {ev.label.slice(0, 1)}
+                      </EvLabelShort>
+                    </DayEventItem>
+                  ))}
+                  {dayEvents![ymd].length > maxEventsPerDay ? (
+                    <DayEventMore>
+                      +{dayEvents![ymd].length - maxEventsPerDay}건
+                    </DayEventMore>
+                  ) : null}
+                </DayEventList>
+              ) : null}
             </CalDayWrap>
           ) : (
-            <CalEmpty key={`e-${idx}`} aria-hidden="true" />
+            <CalEmpty key={`e-${idx}`} aria-hidden="true" $detailed={detailed} />
           ),
         )}
       </CalGrid>
@@ -267,16 +313,24 @@ const CalGrid = styled.div`
   gap: 2px;
 `;
 
-const CalDayWrap = styled.div`
+const CalDayWrap = styled.div<{ $detailed?: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 52px;
+  min-height: ${(p) => (p.$detailed ? "88px" : "52px")};
   min-width: 0;
+  ${(p) =>
+    p.$detailed
+      ? `
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+  padding: 2px 2px 4px;
+  `
+      : ""}
 `;
 
-const CalEmpty = styled.div`
-  min-height: 52px;
+const CalEmpty = styled.div<{ $detailed?: boolean }>`
+  min-height: ${(p) => (p.$detailed ? "88px" : "52px")};
 `;
 
 const CalDay = styled.button<{
@@ -361,4 +415,64 @@ const DayBadge = styled.span<{
           : "#f3f4f6"};
   border: ${(p) =>
     p.$tone === "pending" ? "1px dashed #9ca3af" : "1px solid transparent"};
+`;
+
+/* ── 상세 모드 — 셀 안 일정 항목 ── */
+
+const DayEventList = styled.div<{ $clickable: boolean }>`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-top: 3px;
+  cursor: ${(p) => (p.$clickable ? "pointer" : "default")};
+`;
+
+const DayEventItem = styled.div<{ $confirmed: boolean }>`
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  width: 100%;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 0.64rem;
+  line-height: 1.4;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 1px ${(p) => (p.$confirmed ? "solid transparent" : "dashed #9ca3af")};
+  background: ${(p) => (p.$confirmed ? "#ccfbf1" : "#ffffff")};
+  color: ${(p) => (p.$confirmed ? "#0f766e" : "#6b7280")};
+  font-weight: ${(p) => (p.$confirmed ? 700 : 500)};
+`;
+
+const EvTime = styled.span`
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+`;
+
+const EvLabelFull = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media (max-width: 640px) {
+    display: none;
+  }
+`;
+
+/* 모바일 — 셀이 좁아 이름 앞 글자만 */
+const EvLabelShort = styled.span`
+  display: none;
+
+  @media (max-width: 640px) {
+    display: inline;
+  }
+`;
+
+const DayEventMore = styled.div`
+  width: 100%;
+  padding: 0 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #6b7280;
 `;

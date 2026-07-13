@@ -47,6 +47,13 @@ const NAV_ITEMS = [
     title: "BMB OTC 단가 계산기",
     showPendingBadge: false,
   },
+  {
+    href: "/admin/wallet-inventory",
+    label: "지갑 재고",
+    shortLabel: "재고",
+    title: "종이지갑 재고 장부",
+    showPendingBadge: false,
+  },
 ] as const;
 
 const Shell = styled.div`
