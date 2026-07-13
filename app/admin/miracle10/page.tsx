@@ -12,11 +12,13 @@ import {
   type Miracle10Status,
 } from "@/lib/miracle10-status";
 import {
+  CommentBadge,
   FilterTab,
   FilterTabCount,
   StateBox,
   StatusBadge,
   ToolbarButton,
+  UnreadBadge,
   adminColors,
 } from "@/components/admin/ui";
 
@@ -165,6 +167,8 @@ interface Item {
   lastEditedAt: string | null;
   nameMasked: string;
   contactMasked: string;
+  commentCount: number;
+  unreadCommentCount: number;
 }
 
 type StatusFilter = "ALL" | Miracle10Status;
@@ -416,6 +420,16 @@ function Miracle10AdminPageInner() {
                   <span>
                     {it.nameMasked}
                     {it.isSbmbMember ? " · SBMB" : ""}
+                    {it.commentCount > 0 ? (
+                      <CommentBadge>💬{it.commentCount}</CommentBadge>
+                    ) : null}
+                    {it.unreadCommentCount > 0 ? (
+                      <UnreadBadge
+                        title={`안 읽은 코멘트 ${it.unreadCommentCount}개`}
+                      >
+                        {it.unreadCommentCount}
+                      </UnreadBadge>
+                    ) : null}
                     {visitBrief !== "-" ? (
                       <VisitSubMobile>{visitBrief}</VisitSubMobile>
                     ) : null}

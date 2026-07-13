@@ -204,6 +204,34 @@ export const StateBox = styled.div<{ $variant?: "loading" | "empty" | "error" }>
     p.$variant === "error" ? adminColors.dangerSoft : "transparent"};
 `;
 
+/** 목록 행 코멘트 수 배지 — 💬N. */
+export const CommentBadge = styled.span`
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: ${adminColors.bgHover};
+  color: ${adminColors.textMuted};
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+`;
+
+/** 안 읽은 코멘트 수 — 빨강 배지. */
+export const UnreadBadge = styled.span`
+  display: inline-block;
+  margin-left: 0.25rem;
+  min-width: 1.1rem;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: ${adminColors.danger};
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+`;
+
 /** 인라인 에러 배너 — 작업 지점 근처에 배치. */
 export const InlineError = styled.p`
   margin: 0.6rem 0 0;

@@ -759,10 +759,10 @@ export default function AdminSchedulePage() {
 
       <Layout>
         <Card>
-          <PanelTitle>캘린더 (KST)</PanelTitle>
+          <PanelTitle>일정 캘린더 (KST)</PanelTitle>
           <PanelSub>
-            날짜를 선택하면 슬롯을 편집합니다. 초록 굵게 = 확정 예약 · 회색
-            점선 = 미확정 신청 · 넘치면 +N건.
+            신청 일정을 한눈에 — 초록 굵게 = 확정 · 회색 점선 = 미확정 ·
+            넘치면 +N건. 날짜를 누르면 오른쪽에서 그날 근무·예약을 관리합니다.
           </PanelSub>
           <MonthCalendar
             valueDate={selectedDate}
@@ -785,7 +785,8 @@ export default function AdminSchedulePage() {
             {selectedOffice ? ` · ${selectedOffice.name}` : ""}
           </PanelTitle>
           <PanelSub>
-            영업 {OFFICE_HOURS.start}–{OFFICE_HOURS.end} · 30분 단위
+            영업 {OFFICE_HOURS.start}–{OFFICE_HOURS.end} · 30분 단위 — 시간
+            칩을 눌러 내 근무를 등록/해제합니다.
           </PanelSub>
 
           {!isBusinessDayKst(selectedDate) ? (

@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderKind, OrderStatus, Prisma } from "@/app/generated/prisma/client";
 import { getAdminUser, maskContact, maskName } from "@/lib/admin-guard";
+import { getCommentBadges } from "@/lib/order-comments";
 
 export const runtime = "nodejs";
 
 const VALID_STATUS = new Set(Object.values(OrderStatus));
 
 export async function GET(request: Request) {
-  if (!(await getAdminUser())) {
+  const admin = await getAdminUser();
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -48,6 +50,12 @@ export async function GET(request: Request) {
       }),
     ]);
 
+    const badges = await getCommentBadges(
+      admin.adminUserId,
+      "MIRACLE10",
+      orders.map((o) => o.id),
+    );
+
     // 목록에서는 식별정보를 마스킹해 노출 최소화.
     const items = orders.map((o) => ({
       id: o.id,
@@ -64,6 +72,8 @@ export async function GET(request: Request) {
       lastEditedAt: o.lastEditedAt,
       nameMasked: maskName(o.customer.name),
       contactMasked: maskContact(o.customer.contact),
+      commentCount: badges.get(o.id)?.count ?? 0,
+      unreadCommentCount: badges.get(o.id)?.unread ?? 0,
     }));
 
     return NextResponse.json({ ok: true, total, limit, offset, items });

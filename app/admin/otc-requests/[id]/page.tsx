@@ -13,6 +13,7 @@ import {
 } from "@/lib/otc-request-status";
 import { formatKstYmdLong } from "@/lib/kst";
 import { StateBox, adminColors } from "@/components/admin/ui";
+import { CommentsSection } from "@/components/admin/CommentsSection";
 
 const Page = styled.div`
   max-width: 720px;
@@ -550,6 +551,8 @@ export default function OtcRequestDetailPage({
           </Val>
         </Field>
       </Card>
+
+      <CommentsSection targetType="OTC_REQUEST" targetId={data.id} />
     </Page>
   );
 }

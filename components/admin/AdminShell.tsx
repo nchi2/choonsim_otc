@@ -21,9 +21,9 @@ const NAV_ITEMS = [
   },
   {
     href: "/admin/schedule",
-    label: "근무·예약",
-    shortLabel: "근무",
-    title: "근무 슬롯 등록",
+    label: "일정 캘린더",
+    shortLabel: "일정",
+    title: "일정·근무 캘린더",
     showPendingBadge: false,
   },
   {
@@ -49,9 +49,9 @@ const NAV_ITEMS = [
   },
   {
     href: "/admin/wallet-inventory",
-    label: "지갑 재고",
+    label: "10모 지갑 재고",
     shortLabel: "재고",
-    title: "종이지갑 재고 장부",
+    title: "10모의 기적 지갑 재고",
     showPendingBadge: false,
   },
 ] as const;

@@ -60,6 +60,8 @@ model AdminUser {
   workSlots      WorkSlot[]
   assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
   walletLedgers  PaperWalletLedger[] @relation("WalletLedgerAdmin")
+  comments       OrderComment[] @relation("CommentAuthor")
+  commentReads   CommentReadState[] @relation("CommentReader")
 }
 
 // 사무실 — enum 대신 테이블(지점 추가·활성화 관리).
@@ -248,4 +250,36 @@ model OtcRequest {
   @@index([status])
   @@index([createdAt])
   @@index([side])
+}
+
+// 신청 건 운영자 코멘트 — 10모(OtcOrder)·OTC(OtcRequest) 공용, targetType+targetId 참조.
+// 신규 테이블(기존 데이터 영향 없음). 작성자 삭제 시 SetNull + 이름 스냅샷 보존.
+model OrderComment {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targetType String // "MIRACLE10" | "OTC_REQUEST" — lib/order-comments.ts에서 검증
+  targetId   Int
+
+  authorId   Int?
+  author     AdminUser? @relation("CommentAuthor", fields: [authorId], references: [id])
+  authorName String // 표시 스냅샷
+
+  body     String
+  editedAt DateTime? // 수정된 코멘트 표시용
+
+  @@index([targetType, targetId])
+}
+
+// 운영자×신청건 마지막 읽은 시각 — 안읽음 배지 계산용.
+model CommentReadState {
+  id          Int       @id @default(autoincrement())
+  adminUserId Int
+  adminUser   AdminUser @relation("CommentReader", fields: [adminUserId], references: [id], onDelete: Cascade)
+  targetType  String
+  targetId    Int
+  lastReadAt  DateTime
+
+  @@unique([adminUserId, targetType, targetId])
 }

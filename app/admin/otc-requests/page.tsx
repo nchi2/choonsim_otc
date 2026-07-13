@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import {
+  CommentBadge,
   FilterTab,
   FilterTabCount,
   StateBox,
   StatusBadge,
   ToolbarButton,
+  UnreadBadge,
   adminColors,
 } from "@/components/admin/ui";
 import {
@@ -156,6 +158,8 @@ interface Item {
   quantity: number;
   desiredPrice: number | null;
   status: string;
+  commentCount: number;
+  unreadCommentCount: number;
 }
 
 function AdminOtcRequestsPageInner() {
@@ -325,6 +329,16 @@ function AdminOtcRequestsPageInner() {
                     </span>
                     <span>
                       {it.name}
+                      {it.commentCount > 0 ? (
+                        <CommentBadge>💬{it.commentCount}</CommentBadge>
+                      ) : null}
+                      {it.unreadCommentCount > 0 ? (
+                        <UnreadBadge
+                          title={`안 읽은 코멘트 ${it.unreadCommentCount}개`}
+                        >
+                          {it.unreadCommentCount}
+                        </UnreadBadge>
+                      ) : null}
                       <SubMobile>
                         {it.quantity.toLocaleString("ko-KR")}개 ·{" "}
                         {it.desiredPrice != null

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/admin-guard";
+import { getCommentBadges } from "@/lib/order-comments";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  if (!(await getAdminUser())) {
+  const admin = await getAdminUser();
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -30,6 +32,12 @@ export async function GET() {
       },
     });
 
+    const badges = await getCommentBadges(
+      admin.adminUserId,
+      "OTC_REQUEST",
+      items.map((it) => it.id),
+    );
+
     return NextResponse.json({
       ok: true,
       items: items.map((it) => ({
@@ -46,6 +54,8 @@ export async function GET() {
         lastEditedByName: it.lastEditedByName,
         lastEditedAt: it.lastEditedAt ? it.lastEditedAt.toISOString() : null,
         officeName: it.office?.name ?? null,
+        commentCount: badges.get(it.id)?.count ?? 0,
+        unreadCommentCount: badges.get(it.id)?.unread ?? 0,
       })),
     });
   } catch (err) {

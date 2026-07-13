@@ -31,6 +31,7 @@ import { isBusinessDayKst } from "@/lib/work-schedule";
 import { WalletQrScanner } from "@/app/scanner/page/components/WalletQrScanner";
 import { addressDedupKey } from "@/app/scanner/lib/utils";
 import { StateBox } from "@/components/admin/ui";
+import { CommentsSection } from "@/components/admin/CommentsSection";
 
 const Page = styled.div`
   max-width: 720px;
@@ -993,6 +994,8 @@ export default function Miracle10DetailPage({
           </Val>
         </Field>
       </Card>
+
+      <CommentsSection targetType="MIRACLE10" targetId={data.id} />
     </Page>
   );
 }
