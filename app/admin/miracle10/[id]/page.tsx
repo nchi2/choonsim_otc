@@ -32,6 +32,7 @@ import { WalletQrScanner } from "@/app/scanner/page/components/WalletQrScanner";
 import { addressDedupKey } from "@/app/scanner/lib/utils";
 import { CommentsSection } from "@/components/admin/CommentsSection";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
+import { adminColors } from "@/components/admin/ui";
 import { ErrorState, Skeleton } from "@/components/admin/States";
 import { invalidate } from "@/lib/admin-data";
 import {
@@ -363,20 +364,224 @@ const GhostBtn = styled.button`
   cursor: pointer;
 `;
 
-const ManualStatusDivider = styled.div`
-  margin: 1rem 0 0.6rem;
-  border-top: 1px dashed #e5e7eb;
-  padding-top: 0.6rem;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  font-weight: 600;
-`;
-
 const CompleteWarnText = styled.p`
   margin: 0.6rem 0 0;
   font-size: 0.8rem;
   font-weight: 700;
   color: #dc2626;
+`;
+
+/* ── 접기 (상태 직접 변경 · 거래 기록 · 접수 정보) ── */
+
+const CollapseCard = styled.div`
+  border: 1px solid ${adminColors.border};
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+`;
+
+const CollapseHeader = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: ${adminColors.textSub};
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: ${adminColors.bgSubtle};
+  }
+`;
+
+const CollapseBody = styled.div`
+  padding: 0 1.5rem 1.25rem;
+`;
+
+/* 카드 안에서 쓰는 내장형 접기 (상태 직접 변경) */
+const InlineCollapseHeader = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 0.6rem 0 0;
+  border: none;
+  border-top: 1px dashed ${adminColors.border};
+  width: 100%;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${adminColors.textFaint};
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: ${adminColors.textSub};
+  }
+`;
+
+/* ── 연락 체크리스트 ── */
+
+const ChecklistBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+`;
+
+const ChecklistItem = styled.div<{ $done?: boolean }>`
+  border: 1px solid
+    ${(p) => (p.$done ? "#99f6e4" : adminColors.border)};
+  background: ${(p) => (p.$done ? adminColors.successSoft : "#fff")};
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+`;
+
+const ChecklistMain = styled.label`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: ${adminColors.text};
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+    flex-shrink: 0;
+    accent-color: ${adminColors.success};
+  }
+`;
+
+const ChecklistSub = styled.div`
+  margin: 0.45rem 0 0 1.6rem;
+  font-size: 0.8rem;
+  color: ${adminColors.textMuted};
+  line-height: 1.55;
+`;
+
+const RequiredMark = styled.span`
+  margin-left: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: ${adminColors.alertTextStrong};
+`;
+
+const OwnedInput = styled.input`
+  width: 4rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid ${adminColors.borderInput};
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-align: right;
+`;
+
+const CancelMiniBtn = styled.button`
+  margin-left: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid ${adminColors.dangerBorder};
+  background: #fff;
+  color: ${adminColors.danger};
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+/* 3단 토글 — 필요/불필요/미확인(둘 다 해제) */
+const TriRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+`;
+
+const TriGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: ${adminColors.textSub};
+`;
+
+const TriBtn = styled.button<{ $active: boolean; $tone: "yes" | "no" }>`
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid
+    ${(p) =>
+      p.$active
+        ? p.$tone === "yes"
+          ? adminColors.success
+          : adminColors.textMuted
+        : adminColors.borderInput};
+  background: ${(p) =>
+    p.$active
+      ? p.$tone === "yes"
+        ? adminColors.successSoft
+        : adminColors.bgHover
+      : "#fff"};
+  color: ${(p) =>
+    p.$active
+      ? p.$tone === "yes"
+        ? adminColors.success
+        : adminColors.textSub
+      : adminColors.textFaint};
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+/* 작은 텍스트 링크 (우회 · 확정 없이 저장) */
+const InlineTextLink = styled.button`
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  color: ${adminColors.textFaint};
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+
+  &:hover {
+    color: ${adminColors.textSub};
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const P2pOkBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: ${adminColors.successSoft};
+  color: ${adminColors.success};
+  font-size: 0.78rem;
+  font-weight: 700;
+`;
+
+/* 사전 파악 요약 */
+const PreCheckFaint = styled.span`
+  color: ${adminColors.textFaint};
+`;
+
+const MiniEditBtn = styled.button`
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid ${adminColors.borderInput};
+  background: #fff;
+  color: ${adminColors.textMuted};
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
 `;
 
 const TestToggleLabel = styled.label`
@@ -753,6 +958,8 @@ export default function Miracle10DetailPage({
   const [p2pChecked, setP2pChecked] = useState(false);
   // 완료 시 거래 기록 미작성 경고 (경고만 — 진행은 허용)
   const [completeWarn, setCompleteWarn] = useState(false);
+  // 상태 직접 변경 접기 (예외 처리용 — 기본 닫힘)
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -910,34 +1117,55 @@ export default function Miracle10DetailPage({
         <SectionTitle>다음 액션</SectionTitle>
 
         {data.status === "PENDING" ? (
+          <ContactChecklist
+            order={data}
+            saving={saving}
+            onComplete={(extra) => changeStatus("CONTACTED", extra)}
+            onBypass={(extra) => {
+              if (
+                window.confirm(
+                  "필수 항목 확인 없이 연락완료로 넘어갑니다. 입력·체크한 내용은 저장됩니다.",
+                )
+              ) {
+                changeStatus("CONTACTED", extra);
+              }
+            }}
+            onCancelOrder={() => {
+              if (
+                window.confirm(
+                  "P2P 판매 이력이 없어 이용 불가 안내 후 취소 처리합니다. 진행할까요?",
+                )
+              ) {
+                changeStatus("CANCELED");
+              }
+            }}
+          />
+        ) : null}
+
+        {data.status === "CONTACTED" && data.p2pExperienceConfirmed === true ? (
           <>
             <NextActionRow>
-              <TelLinkBtn
-                href={`tel:${data.customer.contact.replace(/[^+\d]/g, "")}`}
-              >
-                📞 {data.customer.contact}
-              </TelLinkBtn>
               <PrimaryActionBtn
                 disabled={saving}
-                onClick={() => changeStatus("CONTACTED")}
+                onClick={() =>
+                  changeStatus("VERIFIED", { p2pExperienceConfirmed: true })
+                }
               >
-                연락 완료 처리
+                {saving ? "확정 중…" : "일정 확정"}
               </PrimaryActionBtn>
+              <P2pOkBadge>P2P 확인됨 ✓</P2pOkBadge>
             </NextActionRow>
             <ActionHint>
-              연락해서 아래 「방문 일정」을 확정해주세요. 일정까지 정해지면
-              방문 일정의 「일정 확정」 버튼으로 바로 확정할 수 있습니다.
-              <br />
-              <strong style={{ color: "#b91c1c" }}>
-                ※ P2P 거래 앱에서 판매 이력이 있으면 이용이 불가합니다 — 통화
-                시 꼭 확인하세요.
-              </strong>{" "}
-              (확정 단계에서 확인 체크로 기록됩니다)
+              연락 단계에서 P2P 판매 이력이 확인된 건입니다. 확정 시 세션
+              운영자에게 배정되고 캘린더 정원에 반영됩니다.
+              {data.officeId == null || !data.visitDate || !data.reservedStart
+                ? " ⚠ 방문 일정이 아직 완전히 지정되지 않았습니다 — 아래 「방문 일정」에서 지정 후 확정을 권장합니다."
+                : ""}
             </ActionHint>
           </>
         ) : null}
 
-        {data.status === "CONTACTED" ? (
+        {data.status === "CONTACTED" && data.p2pExperienceConfirmed !== true ? (
           verifyOpen ? (
             <ConfirmBox>
               <CheckLabel>
@@ -1025,20 +1253,6 @@ export default function Miracle10DetailPage({
           </ActionHint>
         ) : null}
 
-        <ManualStatusDivider>상태 직접 변경</ManualStatusDivider>
-        <StatusButtons>
-          {MIRACLE10_STATUSES.map((s) => (
-            <StatusButton
-              key={s}
-              $active={data.status === s}
-              $color={STATUS_COLORS[s]}
-              disabled={saving || data.status === s}
-              onClick={() => changeStatus(s)}
-            >
-              {STATUS_LABELS[s]}
-            </StatusButton>
-          ))}
-        </StatusButtons>
         {completeWarn ? (
           <CompleteWarnText role="alert">
             거래 기록을 먼저 작성해주세요. 아래 「거래 기록」에서 단가·총액을
@@ -1046,19 +1260,45 @@ export default function Miracle10DetailPage({
           </CompleteWarnText>
         ) : null}
 
-        <TestToggleLabel>
-          <input
-            type="checkbox"
-            checked={data.isTest}
-            disabled={saving}
-            onChange={(e) => toggleTest(e.target.checked)}
-          />
-          테스트 데이터 (목록·집계·공개 예약 자리에서 제외)
-        </TestToggleLabel>
+        {/* 예외 처리용 — 기본 접힘 (다음 액션과 역할 중복 해소) */}
+        <InlineCollapseHeader
+          type="button"
+          aria-expanded={statusMenuOpen}
+          onClick={() => setStatusMenuOpen((o) => !o)}
+        >
+          {statusMenuOpen ? "▾" : "▸"} 상태 직접 변경
+        </InlineCollapseHeader>
+        {statusMenuOpen ? (
+          <>
+            <StatusButtons style={{ marginTop: "0.6rem" }}>
+              {MIRACLE10_STATUSES.map((s) => (
+                <StatusButton
+                  key={s}
+                  $active={data.status === s}
+                  $color={STATUS_COLORS[s]}
+                  disabled={saving || data.status === s}
+                  onClick={() => changeStatus(s)}
+                >
+                  {STATUS_LABELS[s]}
+                </StatusButton>
+              ))}
+            </StatusButtons>
+            <TestToggleLabel>
+              <input
+                type="checkbox"
+                checked={data.isTest}
+                disabled={saving}
+                onChange={(e) => toggleTest(e.target.checked)}
+              />
+              테스트 데이터 (목록·집계·공개 예약 자리에서 제외)
+            </TestToggleLabel>
+          </>
+        ) : null}
       </ActionCard>
 
+      {/* 신청인 + 신청 내용 병합 카드 */}
       <Card>
-        <SectionTitle>신청인</SectionTitle>
+        <SectionTitle>신청인 · 신청 내용</SectionTitle>
         <Field>
           <Key>이름</Key>
           <Val>{data.customer.name}</Val>
@@ -1079,10 +1319,6 @@ export default function Miracle10DetailPage({
               : "미완료"}
           </Val>
         </Field>
-      </Card>
-
-      <Card>
-        <SectionTitle>신청 내용</SectionTitle>
         <Field>
           <Key>수량</Key>
           <Val>{data.quantity}모 ({data.asset ?? "BMB"})</Val>
@@ -1095,6 +1331,16 @@ export default function Miracle10DetailPage({
           <Key>방문 방식</Key>
           <Val>{visitTypeLabel}</Val>
         </Field>
+        <Field>
+          <Key>메모</Key>
+          <Val>{data.memo || "-"}</Val>
+        </Field>
+        {/* 사전 파악 — 별도 섹션 대신 요약 한 줄 + 인라인 편집 (체크리스트가 입력 지점) */}
+        <PreCheckField order={data} saving={saving} onSaved={load} />
+      </Card>
+
+      {/* 방문 일정 — 독립 카드 */}
+      <Card>
         {showScheduleEditor ? (
           <VisitScheduleEditor
             orderId={data.id}
@@ -1103,15 +1349,12 @@ export default function Miracle10DetailPage({
             status={data.status}
             visitDate={data.visitDate}
             reservedStart={data.reservedStart}
+            p2pConfirmed={data.p2pExperienceConfirmed === true}
             onSaved={load}
-            onMarkContacted={
-              data.status === "PENDING"
-                ? () => changeStatus("CONTACTED")
-                : undefined
-            }
           />
         ) : (
           <>
+            <SectionTitle>방문 일정</SectionTitle>
             <Field>
               <Key>방문 희망일</Key>
               <Val>
@@ -1130,32 +1373,28 @@ export default function Miracle10DetailPage({
             </Field>
           </>
         )}
-        <Field>
-          <Key>메모</Key>
-          <Val>{data.memo || "-"}</Val>
-        </Field>
       </Card>
 
-      <DealRecordSection order={data} onSaved={load} />
+      {/* 거래 기록 — VERIFIED 이상이면 자동 펼침 */}
+      <Collapsible
+        title="거래 기록"
+        defaultOpen={
+          data.status === "VERIFIED" || data.status === "COMPLETED"
+        }
+      >
+        <DealRecordSection order={data} onSaved={load} />
+      </Collapsible>
 
-      <Card>
-        <SectionTitle>사전 파악</SectionTitle>
-        <Field>
-          <Key>USDT 필요</Key>
-          <Val>{data.needUsdt || "-"}</Val>
-        </Field>
-        <Field>
-          <Key>BMB 필요</Key>
-          <Val>{data.needBmb || "-"}</Val>
-        </Field>
-        <Field>
-          <Key>면대면 인증 필요</Key>
-          <Val>{data.needFaceAuth || "-"}</Val>
-        </Field>
-      </Card>
+      <CommentsSection
+        key={data.id}
+        targetType="MIRACLE10"
+        targetId={data.id}
+        initialComments={comments}
+        myAdminUserId={myAdminUserId}
+      />
 
-      <Card>
-        <SectionTitle>동의 / 접수</SectionTitle>
+      {/* 접수 정보 — 읽기 전용 메타, 기본 접힘 */}
+      <Collapsible title="접수 정보" defaultOpen={false}>
         <Field>
           <Key>개인정보 동의</Key>
           <Val>{data.agreePrivacy ? "동의" : "미동의"}</Val>
@@ -1176,16 +1415,347 @@ export default function Miracle10DetailPage({
               : "-"}
           </Val>
         </Field>
-      </Card>
-
-      <CommentsSection
-        key={data.id}
-        targetType="MIRACLE10"
-        targetId={data.id}
-        initialComments={comments}
-        myAdminUserId={myAdminUserId}
-      />
+      </Collapsible>
     </Page>
+  );
+}
+
+/* ── 접기 컨테이너 ── */
+
+function Collapsible({
+  title,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  defaultOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <CollapseCard>
+      <CollapseHeader
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span aria-hidden>{open ? "▾" : "▸"}</span> {title}
+      </CollapseHeader>
+      {open ? <CollapseBody>{children}</CollapseBody> : null}
+    </CollapseCard>
+  );
+}
+
+/* ── 사전 파악 3단 값 공용 ── */
+
+type TriValue = "yes" | "no" | null;
+
+function triFromField(v: string | null): TriValue {
+  return v === "yes" || v === "no" ? v : null;
+}
+
+const PRECHECK_LABELS: { key: "needFaceAuth" | "needUsdt" | "needBmb"; label: string }[] = [
+  { key: "needFaceAuth", label: "대면 인증" },
+  { key: "needUsdt", label: "USDT 준비" },
+  { key: "needBmb", label: "BMB 준비" },
+];
+
+function TriToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: TriValue;
+  onChange: (v: TriValue) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <>
+      <TriBtn
+        type="button"
+        $active={value === "yes"}
+        $tone="yes"
+        disabled={disabled}
+        onClick={() => onChange(value === "yes" ? null : "yes")}
+      >
+        필요
+      </TriBtn>
+      <TriBtn
+        type="button"
+        $active={value === "no"}
+        $tone="no"
+        disabled={disabled}
+        onClick={() => onChange(value === "no" ? null : "no")}
+      >
+        불필요
+      </TriBtn>
+    </>
+  );
+}
+
+/* ── 연락 체크리스트 (PENDING 다음 액션) ── */
+
+function ContactChecklist({
+  order,
+  saving,
+  onComplete,
+  onBypass,
+  onCancelOrder,
+}: {
+  order: Detail;
+  saving: boolean;
+  onComplete: (extra: Record<string, unknown>) => void;
+  onBypass: (extra: Record<string, unknown>) => void;
+  onCancelOrder: () => void;
+}) {
+  // ① P2P — 저장값이 true면 체크된 상태로 시작
+  const [p2pOk, setP2pOk] = useState(order.p2pExperienceConfirmed === true);
+  // ② 종이지갑 안내 — 세션 로컬 확인 상태만 (저장·추론하지 않음)
+  const [walletOk, setWalletOk] = useState(false);
+  const [ownedInput, setOwnedInput] = useState(
+    order.ownedPaperWalletCount != null
+      ? String(order.ownedPaperWalletCount)
+      : "0",
+  );
+  const [ownedTouched, setOwnedTouched] = useState(false);
+  // ③④⑤ 3단 — 기존 값 반영
+  const [needFaceAuth, setNeedFaceAuth] = useState<TriValue>(
+    triFromField(order.needFaceAuth),
+  );
+  const [needUsdt, setNeedUsdt] = useState<TriValue>(
+    triFromField(order.needUsdt),
+  );
+  const [needBmb, setNeedBmb] = useState<TriValue>(triFromField(order.needBmb));
+
+  const owned = (() => {
+    const n = Number(ownedInput.trim());
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  })();
+  const needTotal = Math.ceil(order.quantity / MO_PER_PAPER_WALLET);
+  const toPrepare = paperWalletCountToPrepare(order.quantity, owned ?? 0);
+
+  const canComplete = p2pOk && walletOk && owned != null;
+
+  /** 입력·체크한 것만 payload에 담는다 — 안 채운 필드는 미전송(null 유지) */
+  const buildPayload = (): Record<string, unknown> => {
+    const extra: Record<string, unknown> = {};
+    if (p2pOk) extra.p2pExperienceConfirmed = true;
+    if (owned != null && (ownedTouched || order.ownedPaperWalletCount != null)) {
+      extra.ownedPaperWalletCount = owned;
+    }
+    if (needFaceAuth != null) extra.needFaceAuth = needFaceAuth;
+    if (needUsdt != null) extra.needUsdt = needUsdt;
+    if (needBmb != null) extra.needBmb = needBmb;
+    return extra;
+  };
+
+  const triState = { needFaceAuth, needUsdt, needBmb } as const;
+  const triSetters = {
+    needFaceAuth: setNeedFaceAuth,
+    needUsdt: setNeedUsdt,
+    needBmb: setNeedBmb,
+  } as const;
+
+  return (
+    <ChecklistBox>
+      <NextActionRow>
+        <TelLinkBtn href={`tel:${order.customer.contact.replace(/[^+\d]/g, "")}`}>
+          📞 {order.customer.contact}
+        </TelLinkBtn>
+      </NextActionRow>
+
+      <ChecklistItem $done={p2pOk}>
+        <ChecklistMain>
+          <input
+            type="checkbox"
+            checked={p2pOk}
+            onChange={(e) => setP2pOk(e.target.checked)}
+          />
+          1. P2P 거래소 판매 이력 있음
+          <RequiredMark>필수</RequiredMark>
+        </ChecklistMain>
+        {!p2pOk ? (
+          <ChecklistSub>
+            이력이 없으면 이용이 불가합니다 — 안내 후
+            <CancelMiniBtn type="button" disabled={saving} onClick={onCancelOrder}>
+              취소 처리
+            </CancelMiniBtn>{" "}
+            또는 보류하세요.
+          </ChecklistSub>
+        ) : null}
+      </ChecklistItem>
+
+      <ChecklistItem $done={walletOk}>
+        <ChecklistMain>
+          <input
+            type="checkbox"
+            checked={walletOk}
+            onChange={(e) => setWalletOk(e.target.checked)}
+          />
+          2. 종이지갑 안내
+          <RequiredMark>필수</RequiredMark>
+        </ChecklistMain>
+        <ChecklistSub>
+          신청 {order.quantity}모 → 필요 {needTotal}장 · 이미 보유{" "}
+          <OwnedInput
+            inputMode="numeric"
+            value={ownedInput}
+            onChange={(e) => {
+              setOwnedInput(e.target.value);
+              setOwnedTouched(true);
+            }}
+            aria-label="이미 보유한 종이지갑 장수"
+          />
+          장 → 우리가 준비 <strong>{owned != null ? toPrepare : "—"}장</strong>
+          <br />
+          보유분은 재고 소요에서 제외됩니다.
+          {owned == null ? " (보유 장수를 숫자로 입력하세요)" : ""}
+        </ChecklistSub>
+      </ChecklistItem>
+
+      <ChecklistItem>
+        <TriRow>
+          {PRECHECK_LABELS.map(({ key, label }, i) => (
+            <TriGroup key={key}>
+              <span>
+                {i + 3}. {label}
+              </span>
+              <TriToggle
+                value={triState[key]}
+                onChange={(v) => triSetters[key](v)}
+                disabled={saving}
+              />
+            </TriGroup>
+          ))}
+        </TriRow>
+        <ChecklistSub style={{ margin: "0.4rem 0 0" }}>
+          선택 항목 — 미선택 시 「미확인」으로 남습니다.
+        </ChecklistSub>
+      </ChecklistItem>
+
+      <NextActionRow>
+        <PrimaryActionBtn
+          disabled={saving || !canComplete}
+          onClick={() => onComplete(buildPayload())}
+        >
+          {saving ? "처리 중…" : "연락 완료 처리"}
+        </PrimaryActionBtn>
+      </NextActionRow>
+      <InlineTextLink
+        type="button"
+        disabled={saving}
+        onClick={() => onBypass(buildPayload())}
+      >
+        체크 없이 연락완료 처리
+      </InlineTextLink>
+    </ChecklistBox>
+  );
+}
+
+/* ── 사전 파악 요약 + 인라인 편집 (신청 내용 카드 안) ── */
+
+function PreCheckField({
+  order,
+  saving,
+  onSaved,
+}: {
+  order: Detail;
+  saving: boolean;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [values, setValues] = useState<Record<string, TriValue>>({
+    needFaceAuth: triFromField(order.needFaceAuth),
+    needUsdt: triFromField(order.needUsdt),
+    needBmb: triFromField(order.needBmb),
+  });
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/miracle10/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          needFaceAuth: values.needFaceAuth,
+          needUsdt: values.needUsdt,
+          needBmb: values.needBmb,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "저장 실패");
+      setEditing(false);
+      invalidateAfterMiracle10Change();
+      onSaved();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "저장에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const summaryParts: React.ReactNode[] = [];
+  for (const { key, label } of PRECHECK_LABELS) {
+    const v = triFromField(order[key]);
+    if (v === "yes") summaryParts.push(<span key={key}>{label} 필요</span>);
+    else if (v === "no")
+      summaryParts.push(<PreCheckFaint key={key}>{label} 불필요</PreCheckFaint>);
+  }
+
+  return (
+    <Field>
+      <Key>사전 파악</Key>
+      <Val>
+        {editing ? (
+          <span style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <TriRow>
+              {PRECHECK_LABELS.map(({ key, label }) => (
+                <TriGroup key={key}>
+                  <span>{label}</span>
+                  <TriToggle
+                    value={values[key]}
+                    onChange={(v) => setValues((prev) => ({ ...prev, [key]: v }))}
+                    disabled={busy}
+                  />
+                </TriGroup>
+              ))}
+            </TriRow>
+            <span>
+              <MiniEditBtn type="button" disabled={busy} onClick={save}>
+                {busy ? "저장 중…" : "저장"}
+              </MiniEditBtn>
+              <MiniEditBtn
+                type="button"
+                disabled={busy}
+                onClick={() => setEditing(false)}
+              >
+                취소
+              </MiniEditBtn>
+            </span>
+          </span>
+        ) : (
+          <>
+            {summaryParts.length > 0
+              ? summaryParts.map((part, i) => (
+                  <span key={i}>
+                    {i > 0 ? " · " : ""}
+                    {part}
+                  </span>
+                ))
+              : "-"}
+            <MiniEditBtn
+              type="button"
+              disabled={saving}
+              onClick={() => setEditing(true)}
+            >
+              수정
+            </MiniEditBtn>
+          </>
+        )}
+      </Val>
+    </Field>
   );
 }
 
@@ -1196,9 +1766,9 @@ interface VisitScheduleEditorProps {
   status: Miracle10Status;
   visitDate: string | null;
   reservedStart: string | null;
+  /** 연락 단계에서 P2P 확인 완료 — true면 확정 시 확인 단계 스킵 */
+  p2pConfirmed: boolean;
   onSaved: () => void;
-  /** PENDING 건 — 「연락 완료」 상태 전환 버튼 (일정 없이 연락만 남긴 경우) */
-  onMarkContacted?: () => void;
 }
 
 function VisitScheduleEditor({
@@ -1208,8 +1778,8 @@ function VisitScheduleEditor({
   status,
   visitDate,
   reservedStart,
+  p2pConfirmed,
   onSaved,
-  onMarkContacted,
 }: VisitScheduleEditorProps) {
   const minDate = todayKst();
   const [draftOfficeId, setDraftOfficeId] = useState<number | null>(officeId);
@@ -1479,7 +2049,9 @@ function VisitScheduleEditor({
                 slot.startTime === reservedStart && draftDate === visitDate;
               const selectable = slot.available || isCurrent;
               const active = draftStart === slot.startTime;
-              const showLastSpot = selectable && slot.remaining === 1;
+              // 누가 차서 정말 마지막일 때만 — 캐파 1·전 슬롯 기본 상태(taken 0)에선 노이즈
+              const showLastSpot =
+                selectable && slot.remaining === 1 && slot.taken > 0;
               return (
                 <SlotChip
                   key={slot.startTime}
@@ -1551,27 +2123,31 @@ function VisitScheduleEditor({
               type="button"
               style={{ marginTop: 0 }}
               disabled={!canConfirm || saving}
-              onClick={() => setConfirmOpen(true)}
+              onClick={() => {
+                // 연락 단계에서 P2P가 이미 확인됐으면 확인 단계 스킵
+                if (p2pConfirmed) {
+                  saveSchedule(true);
+                } else {
+                  setConfirmOpen(true);
+                }
+              }}
             >
-              일정 확정
+              {saving ? "확정 중…" : "일정 확정"}
             </SaveScheduleBtn>
-            <GhostBtn
+            {p2pConfirmed ? <P2pOkBadge>P2P 확인됨 ✓</P2pOkBadge> : null}
+          </ScheduleBtnRow>
+          <div style={{ marginTop: "0.5rem" }}>
+            <InlineTextLink
               type="button"
               disabled={!canSaveDraft || saving}
               onClick={() => saveSchedule(false)}
+              title="상태를 바꾸지 않고 일정만 저장 — 캘린더에 미확정으로 표시됩니다"
             >
-              {saving ? "저장 중…" : "임시 저장 (미확정)"}
-            </GhostBtn>
-            {onMarkContacted ? (
-              <GhostBtn type="button" disabled={saving} onClick={onMarkContacted}>
-                연락 완료로 변경
-              </GhostBtn>
-            ) : null}
-          </ScheduleBtnRow>
+              확정 없이 저장
+            </InlineTextLink>
+          </div>
           <ActionHint>
             「일정 확정」 = 일정 저장 + 상태 전환(운영자 배정·정원 반영).
-            일정을 못 정했거나 문자로 연락만 남겼다면 → 「연락 완료」 상태로
-            변경하세요.
           </ActionHint>
         </>
       )}
@@ -1856,8 +2432,7 @@ function DealRecordSection({
   };
 
   return (
-    <Card>
-      <SectionTitle>거래 기록</SectionTitle>
+    <div>
       {order.status === "VERIFIED" ? (
         <NextStepNote>
           다음 단계 — 호가 평단가 기준으로 「계산 결과 기입」을 눌러 단가를
@@ -1866,7 +2441,7 @@ function DealRecordSection({
         </NextStepNote>
       ) : null}
       <SectionSub>
-        평단가(호가 VWAP) 기준 + 마진 하한(10모당 3만원) 계산기입니다. 「계산
+        호가 소진 평단가 기준 + 마진 하한(10모당 3만원) 계산기입니다. 「계산
         결과 기입」 후 흥정에 맞게 단가를 수정하고 저장하세요.
       </SectionSub>
 
@@ -1883,7 +2458,7 @@ function DealRecordSection({
           <CalcRow>
             <span>
               호가 평단가
-              {calc.source === "ticker" ? " (현재가 대체)" : " (VWAP)"}
+              {calc.source === "ticker" ? " (현재가 대체)" : ""}
             </span>
             <strong>
               {fmtKrw(
@@ -2113,6 +2688,6 @@ function DealRecordSection({
           <SaveMsg $error={saveMsg.error}>{saveMsg.text}</SaveMsg>
         ) : null}
       </RecordFootRow>
-    </Card>
+    </div>
   );
 }

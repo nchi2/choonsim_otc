@@ -889,7 +889,7 @@ const LIQUIDITY_THRESHOLDS = {
   tightPct: 30,
   /** 수량이 일거래량의 이 비율(%) 초과 → 호가만으로 체결 불가 */
   blockPct: 100,
-  /** VWAP이 현재가에서 이 %(절대값) 초과 괴리 → 비현실 단가 경고 */
+  /** 호가 소진 평단가가 현재가에서 이 %(절대값) 초과 괴리 → 비현실 단가 경고 */
   vwapGapPct: 10,
 } as const;
 
@@ -1234,7 +1234,7 @@ export default function AdminCalculatorPage() {
 
   // 탭별 기준가 — 산식은 동일(기준가 × (1±마진)), 기준가만 탭으로 선택.
   //   현재가 기준: 손님 판매 신청 응대 — LBANK 호가가 우리 매수가가 아님.
-  //   평단가 기준: 호가를 실제 긁어 매입 — VWAP이 실제 원가.
+  //   평단가 기준: 호가를 실제 긁어 매입 — 호가 소진 평단가가 실제 원가.
   const activeMargin = priceTab === "current" ? effMarginCur : effMarginVwap;
   const baseUsdt = priceTab === "current" ? lastPriceUsdt : vwapUsdt;
 
@@ -1324,7 +1324,7 @@ export default function AdminCalculatorPage() {
         ((isBuy ? 1 : -1) * floorKrw) / data.quantity
       : null;
 
-  // 복사 텍스트용 — VWAP 기준 / 현재가 기준 차익 둘 다(산식 기존 그대로).
+  // 복사 텍스트용 — 호가 소진 평단가 기준 / 현재가 기준 차익 둘 다(산식 기존 그대로).
   const profitUsdt =
     customerPriceUsdt != null && vwapUsdt != null && data
       ? (isBuy ? customerPriceUsdt - vwapUsdt : vwapUsdt - customerPriceUsdt) *
@@ -1359,7 +1359,7 @@ export default function AdminCalculatorPage() {
           : 1 - customerPriceUsdt / lastPriceUsdt) * 100
       : null;
 
-  // VWAP vs 현재가 — 탭 정보줄용(% / 가격 단위)
+  // 호가 소진 평단가 vs 현재가 — 탭 정보줄용(% / 가격 단위)
   const vwapVsCurUsdt =
     vwapUsdt != null && lastPriceUsdt != null ? vwapUsdt - lastPriceUsdt : null;
 
@@ -1410,7 +1410,7 @@ export default function AdminCalculatorPage() {
           ? "tight"
           : null;
 
-  // [2] VWAP 괴리 경고 — VWAP이 현재가에서 ±임계 초과
+  // [2] 호가 소진 평단가 괴리 경고 — 현재가에서 ±임계 초과
   const vwapGapPct =
     vwapUsdt != null && lastPriceUsdt != null && lastPriceUsdt > 0
       ? ((vwapUsdt - lastPriceUsdt) / lastPriceUsdt) * 100

@@ -490,7 +490,7 @@ export default function AdminHubPage() {
         </MenuCard>
         <MenuCard href="/admin/calculator">
           <MenuTitle>OTC 단가 계산기</MenuTitle>
-          <MenuDesc>호가 VWAP·환율·마진 시뮬레이션</MenuDesc>
+          <MenuDesc>호가 평단가·환율·마진 시뮬레이션</MenuDesc>
         </MenuCard>
         <MenuCard href="/admin/wallet-inventory">
           <MenuTitle>10모의 기적 지갑 재고</MenuTitle>
