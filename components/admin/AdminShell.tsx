@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -13,6 +13,32 @@ import {
   type AdminPageHeader,
 } from "@/components/admin/AdminPageHeaderContext";
 import { adminColors } from "@/components/admin/ui";
+import {
+  fetchAdminJson,
+  isFresh,
+  prefetch,
+  useAdminData,
+} from "@/lib/admin-data";
+import {
+  DASHBOARD_KEY,
+  DASHBOARD_TTL,
+  INVENTORY_KEY,
+  INVENTORY_TTL,
+  LIST_TTL,
+  OFFICES_KEY,
+  OFFICES_TTL,
+  STATS_KEY,
+  STATS_TTL,
+  dashboardFetcher,
+  inventoryFetcher,
+  miracle10ListKey,
+  miracle10ListUrl,
+  officesFetcher,
+  otcListKey,
+  otcListUrl,
+  statsFetcher,
+  type AdminStatsData,
+} from "@/lib/admin-fetchers";
 
 /** 데스크탑 사이드바 항목 */
 const SIDE_ITEMS = [
@@ -416,10 +442,27 @@ function resolvePageTitle(pathname: string): string {
   return "운영";
 }
 
-interface BadgeState {
-  pending: number;
-  otcPending: number;
-  commentUnread: number;
+/** 내비 링크 hover/touchstart 시 해당 화면 API를 캐시에 선주입 (B-5). */
+function prefetchForHref(href: string) {
+  if (href === "/admin") {
+    prefetch(DASHBOARD_KEY, dashboardFetcher, DASHBOARD_TTL);
+  } else if (href === "/admin/requests") {
+    prefetch(
+      miracle10ListKey("PENDING", false),
+      () => fetchAdminJson(miracle10ListUrl("PENDING", false)),
+      LIST_TTL,
+    );
+    prefetch(
+      otcListKey("ALL", false),
+      () => fetchAdminJson(otcListUrl("ALL", false)),
+      LIST_TTL,
+    );
+  } else if (href === "/admin/schedule") {
+    prefetch(OFFICES_KEY, officesFetcher, OFFICES_TTL);
+  } else if (href === "/admin/wallet-inventory") {
+    prefetch(INVENTORY_KEY, inventoryFetcher, INVENTORY_TTL);
+    prefetch(STATS_KEY, statsFetcher, STATS_TTL);
+  }
 }
 
 export default function AdminShell({
@@ -435,14 +478,16 @@ export default function AdminShell({
     displayName: null,
     loading: true,
   });
-  const [badge, setBadge] = useState<BadgeState>({
-    pending: 0,
-    otcPending: 0,
-    commentUnread: 0,
-  });
   const [pageHeader, setPageHeader] = useState<AdminPageHeader | null>(null);
 
   const headerApi = useMemo(() => ({ setHeader: setPageHeader }), []);
+
+  // 배지·벨 — 캐시 공유 (대시보드 응답이 admin:stats를 채우면 별도 호출 없음, B-2)
+  const { data: stats, refresh: refreshStats } = useAdminData<AdminStatsData>(
+    STATS_KEY,
+    statsFetcher,
+    { ttl: STATS_TTL },
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -477,43 +522,21 @@ export default function AdminShell({
     };
   }, [router]);
 
-  const fetchBadges = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/stats");
-      const json = res.ok ? await res.json() : null;
-      if (json?.ok) {
-        setBadge({
-          pending: json.stats?.pending ?? 0,
-          otcPending: json.stats?.otcPending ?? 0,
-          commentUnread: json.stats?.commentUnread ?? 0,
-        });
-      }
-    } catch {
-      /* 배지는 부가 UI — 실패 시 기존 값 유지 */
-    }
-  }, []);
-
-  // 라우트 이동 시 즉시 1회
+  // 라우트 이동 시 — 캐시가 fresh면 스킵 (중복 호출 제거)
   useEffect(() => {
-    fetchBadges();
-  }, [pathname, fetchBadges]);
+    if (!isFresh(STATS_KEY, STATS_TTL)) refreshStats();
+  }, [pathname, refreshStats]);
 
-  // 45초 폴링 — 탭이 백그라운드면 건너뛰고, 포커스 복귀 시 즉시 1회
+  // 45초 폴링 — fresh면 스킵, 백그라운드면 중단 (포커스 복귀 revalidate는 훅이 처리)
   useEffect(() => {
     const timer = setInterval(() => {
-      if (!document.hidden) fetchBadges();
+      if (!document.hidden && !isFresh(STATS_KEY, STATS_TTL)) refreshStats();
     }, BADGE_POLL_MS);
-    const onVisibility = () => {
-      if (!document.hidden) fetchBadges();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [fetchBadges]);
+    return () => clearInterval(timer);
+  }, [refreshStats]);
 
-  const requestBadgeCount = badge.pending + badge.otcPending;
+  const requestBadgeCount = (stats?.pending ?? 0) + (stats?.otcPending ?? 0);
+  const commentUnread = stats?.commentUnread ?? 0;
   const defaultTitle = useMemo(() => resolvePageTitle(pathname), [pathname]);
 
   const handleLogout = async () => {
@@ -532,6 +555,9 @@ export default function AdminShell({
                 <SideLink
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
+                  onMouseEnter={() => prefetchForHref(item.href)}
+                  onTouchStart={() => prefetchForHref(item.href)}
                   $active={navActive(pathname, item.href, item.exact)}
                 >
                   <SideLinkLabel>{item.label}</SideLinkLabel>
@@ -554,21 +580,21 @@ export default function AdminShell({
                 <BellButton
                   type="button"
                   disabled
-                  $dim={badge.commentUnread === 0}
+                  $dim={commentUnread === 0}
                   aria-label={
-                    badge.commentUnread > 0
-                      ? `안 읽은 코멘트 ${badge.commentUnread}개`
+                    commentUnread > 0
+                      ? `안 읽은 코멘트 ${commentUnread}개`
                       : "알림 없음"
                   }
                   title={
-                    badge.commentUnread > 0
-                      ? `안 읽은 코멘트 ${badge.commentUnread}개`
+                    commentUnread > 0
+                      ? `안 읽은 코멘트 ${commentUnread}개`
                       : "알림 없음"
                   }
                 >
                   <BellIcon />
-                  {badge.commentUnread > 0 ? (
-                    <BellBadge>{badge.commentUnread}</BellBadge>
+                  {commentUnread > 0 ? (
+                    <BellBadge>{commentUnread}</BellBadge>
                   ) : null}
                 </BellButton>
                 <ProfileLink href="/admin/profile" aria-label="내 프로필">
@@ -603,6 +629,9 @@ export default function AdminShell({
               <TabLink
                 key={item.href}
                 href={item.href}
+                prefetch={true}
+                onMouseEnter={() => prefetchForHref(item.href)}
+                onTouchStart={() => prefetchForHref(item.href)}
                 $active={navActive(pathname, item.href, item.exact)}
               >
                 {item.badge && requestBadgeCount > 0 ? (

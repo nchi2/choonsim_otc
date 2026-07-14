@@ -1191,8 +1191,12 @@ export default function AdminCalculatorPage() {
     }
   }, [effectiveQuantity, direction, inputMode, router]);
 
+  // 400ms 디바운스 — 수량 타이핑 키스트로크마다 otc-calc를 부르지 않게 (B-6)
   useEffect(() => {
-    fetchCalc();
+    const timer = setTimeout(() => {
+      fetchCalc();
+    }, 400);
+    return () => clearTimeout(timer);
   }, [fetchCalc]);
 
   // 시장 지표는 수량과 무관(5분 캐시). 마운트 1회 + 새로고침 시에만 호출.

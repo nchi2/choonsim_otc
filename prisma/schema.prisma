@@ -165,6 +165,9 @@ model OtcOrder {
   // 테스트 데이터 — 목록·집계·배지·공개 정원(taken)에서 기본 제외 (?includeTest=1)
   isTest Boolean @default(false)
 
+  // 손님이 이미 보유한 종이지갑 장수 (연락 단계 확인) — 준비 장수 = ceil(수량/10) − 보유
+  ownedPaperWalletCount Int?
+
   // 거래 기록 (운영자 작업 화면, 전부 nullable — 기존 데이터 안전)
   p2pExperienceConfirmed Boolean? // 일정 확정 시 "P2P 거래 앱 판매 경험 확인" 체크 여부
   dealQuantity           Int? // 실제 거래 수량 (기본 = 신청 수량)
@@ -216,6 +219,9 @@ model PaperWalletLedger {
   status         String? // ORDER: "PENDING" | "RECEIVED" | "CANCELED"
   expectedDate   DateTime? // 예상 도착일
   linkedLedgerId Int? // 입고 확정 시 생성된 IN 원장 id
+
+  // IN 전용 — 입고 시 스캔한 지갑 주소 배열 ["0x...", ...] (개별 지갑 엔티티는 만들지 않음)
+  walletAddresses Json?
 
   // 등록자/담당 운영자 — 계정 삭제돼도 원장 보존(SetNull + 이름 스냅샷)
   adminUserId Int?

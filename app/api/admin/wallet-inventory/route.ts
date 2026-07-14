@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/app/generated/prisma/client";
 import { getAdminUser } from "@/lib/admin-guard";
 import { isKstYmd, todayKst } from "@/lib/kst";
-import { computeWalletTotals, isLedgerType } from "@/lib/wallet-inventory";
+import {
+  computeWalletTotals,
+  isLedgerType,
+  parseWalletAddresses,
+} from "@/lib/wallet-inventory";
 
 export const runtime = "nodejs";
 
@@ -33,6 +38,7 @@ export async function GET() {
           status: true,
           expectedDate: true,
           linkedLedgerId: true,
+          walletAddresses: true,
         },
       }),
     ]);
@@ -121,6 +127,19 @@ export async function POST(request: Request) {
     }
   }
 
+  // IN 직접 등록 — 스캔한 지갑 주소 배열 저장(선택)
+  let walletAddresses: string[] | null = null;
+  if (type === "IN") {
+    const parsed = parseWalletAddresses(body.walletAddresses);
+    if (parsed === "invalid") {
+      return NextResponse.json(
+        { ok: false, error: "walletAddresses 값이 올바르지 않습니다." },
+        { status: 400 },
+      );
+    }
+    walletAddresses = parsed;
+  }
+
   // ORDER(발주) — 예상 도착일(선택, YYYY-MM-DD → KST 자정). 재고와 무관한 기록.
   let expectedDate: Date | null = null;
   if (type === "ORDER" && body.expectedDate !== undefined && body.expectedDate !== null && body.expectedDate !== "") {
@@ -162,6 +181,12 @@ export async function POST(request: Request) {
         orderId,
         receiverName,
         ...(type === "ORDER" ? { status: "PENDING", expectedDate } : {}),
+        ...(walletAddresses
+          ? {
+              walletAddresses:
+                walletAddresses as unknown as Prisma.InputJsonValue,
+            }
+          : {}),
       },
       select: { id: true },
     });

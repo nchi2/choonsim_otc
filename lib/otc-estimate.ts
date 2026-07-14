@@ -19,6 +19,22 @@ export function defaultPaperWalletCount(quantity: number): number {
   return Math.ceil(quantity / MO_PER_PAPER_WALLET);
 }
 
+/**
+ * 우리가 준비할 종이지갑 장수 = ceil(수량/10) − 손님 보유분, 최소 0.
+ * defaultPaperWalletCount는 공개 페이지 공유라 시그니처 불변 — 신규 함수로 추가.
+ */
+export function paperWalletCountToPrepare(
+  quantity: number,
+  ownedCount: number | null | undefined,
+): number {
+  const base = defaultPaperWalletCount(quantity);
+  const owned =
+    ownedCount != null && Number.isFinite(ownedCount) && ownedCount > 0
+      ? Math.floor(ownedCount)
+      : 0;
+  return Math.max(0, base - owned);
+}
+
 /** 종이지갑 가격(원) = 장수 × 20 USDT × 환율. */
 export function paperWalletPriceKrw(count: number, usdtKrw: number): number {
   if (!Number.isFinite(count) || count <= 0) return 0;

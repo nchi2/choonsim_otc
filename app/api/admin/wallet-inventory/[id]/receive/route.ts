@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/app/generated/prisma/client";
 import { getAdminUser } from "@/lib/admin-guard";
 import { todayKst } from "@/lib/kst";
-import { computeWalletTotals } from "@/lib/wallet-inventory";
+import {
+  computeWalletTotals,
+  parseWalletAddresses,
+} from "@/lib/wallet-inventory";
 
 export const runtime = "nodejs";
 
 // 발주 입고 확정 — ORDER(PENDING) → IN 원장 생성 + RECEIVED + linkedLedgerId. 한 트랜잭션.
-// 실수량이 발주량과 다를 수 있어 body.count로 덮어쓰기 허용.
+// 실수량: 우선순위 body.count(수동 덮어쓰기) > 스캔 주소 수 > 발주 수량.
+// 스캔 수와 count가 달라도 막지 않는다(경고는 클라 UI).
 export async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -49,6 +54,14 @@ export async function POST(
     overrideCount = n;
   }
 
+  const walletAddresses = parseWalletAddresses(body.walletAddresses);
+  if (walletAddresses === "invalid") {
+    return NextResponse.json(
+      { ok: false, error: "walletAddresses 값이 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.paperWalletLedger.findUnique({
@@ -68,7 +81,9 @@ export async function POST(
         return { error: "이미 처리된 발주입니다.", status: 400 } as const;
       }
 
-      const count = overrideCount ?? order.count;
+      // 스캔한 주소 개수 = 실수량 자동 반영, 수동 count가 있으면 그 값 우선
+      const count =
+        overrideCount ?? walletAddresses?.length ?? order.count;
 
       const inEntry = await tx.paperWalletLedger.create({
         data: {
@@ -80,6 +95,12 @@ export async function POST(
           }`,
           adminUserId: admin.adminUserId,
           adminName: admin.displayName || admin.username,
+          ...(walletAddresses
+            ? {
+                walletAddresses:
+                  walletAddresses as unknown as Prisma.InputJsonValue,
+              }
+            : {}),
         },
         select: { id: true },
       });

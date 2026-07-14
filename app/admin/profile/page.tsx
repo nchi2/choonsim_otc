@@ -3,13 +3,23 @@
 // 내 프로필 — 1덩이 API 사용: GET/PATCH /api/admin/profile, POST /api/admin/profile/password.
 // 정산 계좌는 본인 전용(세션 uid) — 다른 운영자에게 보이지 않는다.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
-import { useAdminSession } from "@/components/admin/AdminSessionContext";
 import { addDaysKstYmd, todayKst } from "@/lib/kst";
-import { StateBox, adminColors } from "@/components/admin/ui";
+import { adminColors } from "@/components/admin/ui";
+import { ErrorState, Skeleton } from "@/components/admin/States";
+import { useAdminData } from "@/lib/admin-data";
+import {
+  DASHBOARD_KEY,
+  DASHBOARD_TTL,
+  MYSLOTS_TTL,
+  dashboardFetcher,
+  myslotsFetcher,
+  myslotsKey,
+  type DashboardData,
+} from "@/lib/admin-fetchers";
 
 const Page = styled.div`
   max-width: 720px;
@@ -211,7 +221,6 @@ function maskAccountNo(no: string): string {
 
 export default function AdminProfilePage() {
   const router = useRouter();
-  const { adminUserId } = useAdminSession();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,11 +247,33 @@ export default function AdminProfilePage() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
-  // 오늘 일정 + 내 근무 슬롯 요약
-  const [today, setToday] = useState<
-    { orderId: number; time: string; name: string; officeName: string | null }[] | null
-  >(null);
-  const [slotSummary, setSlotSummary] = useState<string[] | null>(null);
+  // 오늘 일정(dashboard 캐시 공유) + 내 근무 슬롯(확장 work-slots API 1회, 캐시)
+  const dashboard = useAdminData<DashboardData>(
+    DASHBOARD_KEY,
+    dashboardFetcher,
+    { ttl: DASHBOARD_TTL },
+  );
+  const today = dashboard.data?.todayMySchedule ?? null;
+
+  const weekFrom = todayKst();
+  const weekTo = addDaysKstYmd(weekFrom, 7);
+  const myslots = useAdminData<
+    { date: string; startTime: string; officeName: string }[]
+  >(myslotsKey(weekFrom), myslotsFetcher(weekFrom, weekTo), {
+    ttl: MYSLOTS_TTL,
+  });
+
+  const slotSummary = useMemo(() => {
+    if (myslots.data == null) return null;
+    const byKey = new Map<string, number>();
+    for (const s of myslots.data) {
+      const k = `${s.date} · ${s.officeName}`;
+      byKey.set(k, (byKey.get(k) ?? 0) + 1);
+    }
+    return [...byKey.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, n]) => `${k} — ${n}슬롯`);
+  }, [myslots.data]);
 
   const applyProfile = useCallback((p: Profile) => {
     setProfile(p);
@@ -280,55 +311,6 @@ export default function AdminProfilePage() {
       cancelled = true;
     };
   }, [router, applyProfile]);
-
-  // 오늘 일정(dashboard 재사용) + 이번 주 내 근무 슬롯(기존 work-slots API 재사용)
-  useEffect(() => {
-    if (adminUserId == null) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/dashboard");
-        const json = await res.json();
-        if (!res.ok || !json.ok) throw new Error();
-        if (!cancelled) setToday(json.todayMySchedule ?? []);
-
-        const from = todayKst();
-        const to = addDaysKstYmd(from, 7) ?? from;
-        const offices = (json.offices as { id: number; name: string }[]) ?? [];
-        const perOffice = await Promise.all(
-          offices.map(async (office) => {
-            const r = await fetch(
-              `/api/admin/work-slots?officeId=${office.id}&from=${from}&to=${to}`,
-            );
-            const j = await r.json();
-            if (!r.ok || !j.ok) return [];
-            return (j.items as { adminUserId: number; date: string }[])
-              .filter((s) => s.adminUserId === adminUserId)
-              .map((s) => ({ date: s.date, officeName: office.name }));
-          }),
-        );
-        if (cancelled) return;
-        const byKey = new Map<string, number>();
-        for (const s of perOffice.flat()) {
-          const k = `${s.date} · ${s.officeName}`;
-          byKey.set(k, (byKey.get(k) ?? 0) + 1);
-        }
-        setSlotSummary(
-          [...byKey.entries()]
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([k, n]) => `${k} — ${n}슬롯`),
-        );
-      } catch {
-        if (!cancelled) {
-          setToday((prev) => prev ?? []);
-          setSlotSummary((prev) => prev ?? []);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [adminUserId]);
 
   const saveInfo = async () => {
     if (infoSaving) return;
@@ -424,14 +406,14 @@ export default function AdminProfilePage() {
   if (loading) {
     return (
       <Page>
-        <StateBox $variant="loading">불러오는 중…</StateBox>
+        <Skeleton variant="card" count={3} />
       </Page>
     );
   }
   if (error || !profile) {
     return (
       <Page>
-        <StateBox $variant="error">{error ?? "오류가 발생했습니다."}</StateBox>
+        <ErrorState message={error ?? undefined} />
       </Page>
     );
   }

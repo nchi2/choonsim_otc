@@ -12,11 +12,19 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
-import { StateBox, ToolbarButton, adminColors } from "@/components/admin/ui";
+import { ToolbarButton, adminColors } from "@/components/admin/ui";
+import { Skeleton } from "@/components/admin/States";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
 import { Miracle10List } from "@/components/admin/requests/Miracle10List";
 import { OtcRequestList } from "@/components/admin/requests/OtcRequestList";
 import { ListSection } from "@/components/admin/requests/list-ui";
+import { invalidate, useAdminData } from "@/lib/admin-data";
+import {
+  STATS_KEY,
+  STATS_TTL,
+  statsFetcher,
+  type AdminStatsData,
+} from "@/lib/admin-fetchers";
 
 type SegmentType = "miracle10" | "otc";
 
@@ -66,11 +74,6 @@ function RequestsPageInner() {
   const [type, setType] = useState<SegmentType>(() =>
     searchParams.get("type") === "otc" ? "otc" : "miracle10",
   );
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [pendingBadges, setPendingBadges] = useState({
-    miracle10: 0,
-    otc: 0,
-  });
 
   // ?type= 직접 진입/변경 반영
   useEffect(() => {
@@ -83,27 +86,22 @@ function RequestsPageInner() {
     router.replace(`/admin/requests?type=${next}`, { scroll: false });
   };
 
-  // 세그먼트 배지 = 접수 대기 건수 (stats 재사용)
-  const fetchBadges = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/stats");
-      const json = res.ok ? await res.json() : null;
-      if (json?.ok) {
-        setPendingBadges({
-          miracle10: json.stats?.pending ?? 0,
-          otc: json.stats?.otcPending ?? 0,
-        });
-      }
-    } catch {
-      /* 배지는 부가 UI */
-    }
+  // 세그먼트 배지 = 접수 대기 건수 — 셸과 같은 admin:stats 캐시 공유 (중복 호출 없음)
+  const { data: stats } = useAdminData<AdminStatsData>(
+    STATS_KEY,
+    statsFetcher,
+    { ttl: STATS_TTL },
+  );
+  const pendingBadges = {
+    miracle10: stats?.pending ?? 0,
+    otc: stats?.otcPending ?? 0,
+  };
+
+  // 새로고침 = 목록·집계 캐시 무효화 → 마운트된 훅들이 알아서 재검증
+  const refresh = useCallback(() => {
+    invalidate("admin:list");
+    invalidate(STATS_KEY);
   }, []);
-
-  useEffect(() => {
-    fetchBadges();
-  }, [fetchBadges, refreshTick]);
-
-  const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
 
   const headerActions = useMemo(
     () => (
@@ -154,16 +152,10 @@ function RequestsPageInner() {
       </SegmentRow>
 
       <SegmentPanel $hidden={type !== "miracle10"}>
-        <Miracle10List
-          initialStatus={initialM10Status}
-          refreshTick={refreshTick}
-        />
+        <Miracle10List initialStatus={initialM10Status} />
       </SegmentPanel>
       <SegmentPanel $hidden={type !== "otc"}>
-        <OtcRequestList
-          initialStatus={initialOtcStatus}
-          refreshTick={refreshTick}
-        />
+        <OtcRequestList initialStatus={initialOtcStatus} />
       </SegmentPanel>
     </ListSection>
   );
@@ -171,7 +163,13 @@ function RequestsPageInner() {
 
 export default function AdminRequestsPage() {
   return (
-    <Suspense fallback={<StateBox $variant="loading">불러오는 중…</StateBox>}>
+    <Suspense
+      fallback={
+        <ListSection>
+          <Skeleton variant="table" count={6} />
+        </ListSection>
+      }
+    >
       <RequestsPageInner />
     </Suspense>
   );

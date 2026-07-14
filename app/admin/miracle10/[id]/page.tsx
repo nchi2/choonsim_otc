@@ -24,15 +24,30 @@ import {
   MO_PER_PAPER_WALLET,
   PAPER_WALLET_UNIT_USDT,
   computeCustomerEstimate,
-  defaultPaperWalletCount,
+  paperWalletCountToPrepare,
   paperWalletPriceKrw,
 } from "@/lib/otc-estimate";
 import { isBusinessDayKst } from "@/lib/work-schedule";
 import { WalletQrScanner } from "@/app/scanner/page/components/WalletQrScanner";
 import { addressDedupKey } from "@/app/scanner/lib/utils";
-import { StateBox } from "@/components/admin/ui";
 import { CommentsSection } from "@/components/admin/CommentsSection";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
+import { ErrorState, Skeleton } from "@/components/admin/States";
+import { invalidate } from "@/lib/admin-data";
+import {
+  DASHBOARD_KEY,
+  INVENTORY_KEY,
+  STATS_KEY,
+} from "@/lib/admin-fetchers";
+
+/** 10모 변경 액션 후 캐시 무효화 (invalidate 매핑 표 준수) */
+function invalidateAfterMiracle10Change(opts?: { inventory?: boolean }) {
+  invalidate("admin:list:miracle10");
+  invalidate(STATS_KEY);
+  invalidate(DASHBOARD_KEY);
+  invalidate("admin:calendar");
+  if (opts?.inventory) invalidate(INVENTORY_KEY);
+}
 
 const Page = styled.div`
   max-width: 720px;
@@ -364,6 +379,23 @@ const CompleteWarnText = styled.p`
   color: #dc2626;
 `;
 
+const TestToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed #e5e7eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+
+  input {
+    margin: 0;
+  }
+`;
+
 /* ── 거래 기록 (내장 계산기) ── */
 
 const CalcBox = styled.div`
@@ -635,6 +667,16 @@ interface ReceiveWallet {
   isOurs: boolean;
 }
 
+/** 상세 응답에 병합된 코멘트 (CommentsSection 초기 데이터) */
+interface DetailComment {
+  id: number;
+  createdAt: string;
+  editedAt: string | null;
+  authorId: number | null;
+  authorName: string;
+  body: string;
+}
+
 interface AvailableSlot {
   startTime: string;
   capacity: number;
@@ -682,6 +724,8 @@ interface Detail {
   paperWalletKrw: string | number | null;
   dealTotalKrw: string | number | null;
   receiveWallets: ReceiveWallet[];
+  isTest: boolean;
+  ownedPaperWalletCount: number | null;
   customer: {
     id: number;
     name: string;
@@ -699,6 +743,8 @@ export default function Miracle10DetailPage({
   const { id } = use(params);
   const router = useRouter();
   const [data, setData] = useState<Detail | null>(null);
+  const [comments, setComments] = useState<DetailComment[]>([]);
+  const [myAdminUserId, setMyAdminUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -722,6 +768,12 @@ export default function Miracle10DetailPage({
         throw new Error(json.error || "불러오지 못했습니다.");
       }
       setData(json.order);
+      setComments(json.comments ?? []);
+      setMyAdminUserId(json.myAdminUserId ?? null);
+      // 상세 열람 = 읽음 처리(서버) → 목록·셸 안읽음 배지 즉시 반영
+      invalidate("admin:list:miracle10");
+      invalidate(STATS_KEY);
+      invalidate(DASHBOARD_KEY);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
@@ -732,6 +784,27 @@ export default function Miracle10DetailPage({
   useEffect(() => {
     load();
   }, [load]);
+
+  // 테스트 플래그 토글 — status를 함께 보내지 않는다 (배정/자동불출 경로 회피)
+  const toggleTest = async (next: boolean) => {
+    if (!data || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/miracle10/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isTest: next }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "변경 실패");
+      invalidateAfterMiracle10Change();
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "변경에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // 셸이 유일한 제목 소유자 — 배지 포함 제목을 헤더로 전달 (본문 h1 없음)
   const headerTitle = useMemo(
@@ -792,6 +865,9 @@ export default function Miracle10DetailPage({
       ) {
         alert("이 신청의 불출 기록이 이미 있어 자동 불출은 생략되었습니다.");
       }
+      invalidateAfterMiracle10Change({
+        inventory: status === "COMPLETED",
+      });
       await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : "상태 변경에 실패했습니다.");
@@ -803,13 +879,13 @@ export default function Miracle10DetailPage({
   if (loading)
     return (
       <Page>
-        <StateBox $variant="loading">불러오는 중…</StateBox>
+        <Skeleton variant="card" count={3} />
       </Page>
     );
   if (error)
     return (
       <Page>
-        <StateBox $variant="error">{error}</StateBox>
+        <ErrorState message={error} onRetry={load} />
       </Page>
     );
   if (!data) return null;
@@ -969,6 +1045,16 @@ export default function Miracle10DetailPage({
             저장한 뒤 완료 처리하는 것을 권장합니다.
           </CompleteWarnText>
         ) : null}
+
+        <TestToggleLabel>
+          <input
+            type="checkbox"
+            checked={data.isTest}
+            disabled={saving}
+            onChange={(e) => toggleTest(e.target.checked)}
+          />
+          테스트 데이터 (목록·집계·공개 예약 자리에서 제외)
+        </TestToggleLabel>
       </ActionCard>
 
       <Card>
@@ -1092,7 +1178,13 @@ export default function Miracle10DetailPage({
         </Field>
       </Card>
 
-      <CommentsSection targetType="MIRACLE10" targetId={data.id} />
+      <CommentsSection
+        key={data.id}
+        targetType="MIRACLE10"
+        targetId={data.id}
+        initialComments={comments}
+        myAdminUserId={myAdminUserId}
+      />
     </Page>
   );
 }
@@ -1285,6 +1377,7 @@ function VisitScheduleEditor({
       }
       setConfirmOpen(false);
       setP2pChecked(false);
+      invalidateAfterMiracle10Change();
       onSaved();
     } catch (e) {
       setScheduleError(
@@ -1546,8 +1639,12 @@ function DealRecordSection({
     const n = decToNum(order.dealUnitPriceUsdt);
     return n != null ? String(n) : "";
   });
+  // 프리필 = 준비 장수(손님 보유분 차감) — 저장값이 있으면 그 값 우선
   const [walletCountInput, setWalletCountInput] = useState(() =>
-    String(order.paperWalletCount ?? defaultPaperWalletCount(initialQty)),
+    String(
+      order.paperWalletCount ??
+        paperWalletCountToPrepare(initialQty, order.ownedPaperWalletCount),
+    ),
   );
   // 수령 지갑 — 여러 장(연속 스캔·직접 입력) + 주소별 「우리 지갑」 여부. dedup 키는 소문자 기준.
   const [wallets, setWallets] = useState<ReceiveWallet[]>(
@@ -1746,6 +1843,7 @@ function DealRecordSection({
         throw new Error(json.error || "저장 실패");
       }
       setSaveMsg({ text: "저장되었습니다." });
+      invalidateAfterMiracle10Change();
       onSaved();
     } catch (e) {
       setSaveMsg({

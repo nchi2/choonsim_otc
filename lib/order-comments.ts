@@ -71,6 +71,64 @@ export async function getCommentBadges(
   return map;
 }
 
+export interface CommentItem {
+  id: number;
+  createdAt: Date;
+  editedAt: Date | null;
+  authorId: number | null;
+  authorName: string;
+  body: string;
+}
+
+/** 대상 건의 코멘트 목록 + 내 안읽음 수 (읽음 처리 전 기준). */
+export async function getCommentsForTarget(
+  adminUserId: number,
+  targetType: CommentTargetType,
+  targetId: number,
+): Promise<{ comments: CommentItem[]; unreadCount: number }> {
+  const [comments, read] = await Promise.all([
+    prisma.orderComment.findMany({
+      where: { targetType, targetId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        createdAt: true,
+        editedAt: true,
+        authorId: true,
+        authorName: true,
+        body: true,
+      },
+    }),
+    prisma.commentReadState.findUnique({
+      where: {
+        adminUserId_targetType_targetId: { adminUserId, targetType, targetId },
+      },
+      select: { lastReadAt: true },
+    }),
+  ]);
+  const lastReadMs = read?.lastReadAt.getTime() ?? 0;
+  const unreadCount = comments.filter((c) =>
+    isUnreadComment(c, lastReadMs, adminUserId),
+  ).length;
+  return { comments, unreadCount };
+}
+
+/** 읽음 처리 — 지금 시점까지 읽은 것으로 기록 (상세 열람·코멘트 작성 시). */
+export async function markCommentsRead(
+  adminUserId: number,
+  targetType: CommentTargetType,
+  targetId: number,
+): Promise<void> {
+  const now = new Date();
+  await prisma.commentReadState.upsert({
+    where: {
+      adminUserId_targetType_targetId: { adminUserId, targetType, targetId },
+    },
+    update: { lastReadAt: now },
+    create: { adminUserId, targetType, targetId, lastReadAt: now },
+  });
+}
+
 /**
  * 내 전역 안읽음 코멘트 총합 (모든 신청 종류 합산) — 헤더 벨·배지용.
  * Prisma 쿼리 2회(병렬) + 공용 판정 규칙. 데이터 규모(수십 건)상 충분,

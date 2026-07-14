@@ -9,6 +9,10 @@ import { isKstYmd, todayKst } from "@/lib/kst";
 import { canAdminEditSchedule, type Miracle10Status } from "@/lib/miracle10-status";
 import { isAllowedSlotTime, isBusinessDayKst } from "@/lib/work-schedule";
 import {
+  getCommentsForTarget,
+  markCommentsRead,
+} from "@/lib/order-comments";
+import {
   CAPACITY_FULL_MESSAGE,
   orderHasSlotReservation,
   prepareVerifyAssignment,
@@ -61,13 +65,25 @@ interface DealUpdateData {
   paperWalletCount?: number | null;
   paperWalletKrw?: number | null;
   dealTotalKrw?: number | null;
+  ownedPaperWalletCount?: number | null;
   receiveWallets?: ReceiveWallet[];
+  // 연락 단계 체크리스트 — 서버 강제 없음(전화 못 받는 경우 존재), status만 보내도 통과.
+  needUsdt?: string | null;
+  needBmb?: string | null;
+  needFaceAuth?: string | null;
 }
 
-type NumericDealKey = Exclude<
-  keyof DealUpdateData,
-  "p2pExperienceConfirmed" | "receiveWallets"
->;
+type NumericDealKey =
+  | "dealQuantity"
+  | "dealUnitPriceKrw"
+  | "dealUnitPriceUsdt"
+  | "dealCoinTotalKrw"
+  | "paperWalletCount"
+  | "paperWalletKrw"
+  | "dealTotalKrw"
+  | "ownedPaperWalletCount";
+
+const CHECKLIST_TEXT_FIELDS = ["needUsdt", "needBmb", "needFaceAuth"] as const;
 
 const MAX_RECEIVE_ADDRESSES = 100;
 
@@ -84,6 +100,7 @@ const DEAL_NUMBER_FIELDS: {
   { key: "paperWalletCount", int: true, min: 0, max: 1_000_000 },
   { key: "paperWalletKrw", min: 0, max: 1e14 },
   { key: "dealTotalKrw", min: 0, max: 1e14 },
+  { key: "ownedPaperWalletCount", int: true, min: 0, max: 100_000 },
 ];
 
 function parseDealInput(
@@ -116,6 +133,19 @@ function parseDealInput(
       return { ok: false, error: "p2pExperienceConfirmed 값이 올바르지 않습니다." };
     }
     data.p2pExperienceConfirmed = v;
+  }
+
+  // 연락 체크리스트 답 (yes/no/unsure 등 자유 문자열)
+  for (const key of CHECKLIST_TEXT_FIELDS) {
+    if (!(key in body)) continue;
+    const v = body[key];
+    if (v === null) {
+      data[key] = null;
+    } else if (typeof v !== "string" || v.trim().length > 20) {
+      return { ok: false, error: `${key} 값이 올바르지 않습니다.` };
+    } else {
+      data[key] = v.trim() || null;
+    }
   }
 
   if ("receiveWallets" in body) {
@@ -186,7 +216,8 @@ export async function GET(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  if (!(await getAdminUser())) {
+  const admin = await getAdminUser();
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -196,18 +227,29 @@ export async function GET(
   }
 
   try {
-    const order = await prisma.otcOrder.findUnique({
-      where: { id },
-      include: {
-        customer: {
-          select: { id: true, name: true, contact: true, verifiedAt: true, createdAt: true },
+    // 코멘트를 상세 응답에 병합 (HTTP 2→1) + 상세 열람 = 읽음 처리
+    const [order, commentData] = await Promise.all([
+      prisma.otcOrder.findUnique({
+        where: { id },
+        include: {
+          customer: {
+            select: { id: true, name: true, contact: true, verifiedAt: true, createdAt: true },
+          },
         },
-      },
-    });
+      }),
+      getCommentsForTarget(admin.adminUserId, "MIRACLE10", id),
+    ]);
     if (!order) {
       return NextResponse.json({ ok: false, error: "신청을 찾을 수 없습니다." }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, order });
+    await markCommentsRead(admin.adminUserId, "MIRACLE10", id);
+    return NextResponse.json({
+      ok: true,
+      order,
+      comments: commentData.comments,
+      unreadCount: commentData.unreadCount,
+      myAdminUserId: admin.adminUserId,
+    });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[admin/miracle10/:id] detail failed", id, code);

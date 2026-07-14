@@ -188,21 +188,8 @@ export const StatusBadge = styled.span<{ $color: string }>`
   white-space: nowrap;
 `;
 
-/**
- * 로딩/빈/에러 공통 표시.
- * variant: "loading" | "empty" | "error"
- */
-export const StateBox = styled.div<{ $variant?: "loading" | "empty" | "error" }>`
-  padding: 2.5rem 1rem;
-  text-align: center;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  border-radius: 12px;
-  color: ${(p) =>
-    p.$variant === "error" ? adminColors.danger : adminColors.textMuted};
-  background: ${(p) =>
-    p.$variant === "error" ? adminColors.dangerSoft : "transparent"};
-`;
+// StateBox는 components/admin/States.tsx의 Skeleton/RefreshingBar/ErrorState/EmptyState로
+// 대체·제거됨 (3덩이 B-4) — 새 코드는 States 4종만 사용할 것.
 
 /** 목록 행 코멘트 수 배지 — 💬N. */
 export const CommentBadge = styled.span`

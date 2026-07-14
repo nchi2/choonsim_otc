@@ -12,9 +12,29 @@ import {
   type OtcRequestStatus,
 } from "@/lib/otc-request-status";
 import { formatKstYmdLong } from "@/lib/kst";
-import { StateBox, adminColors } from "@/components/admin/ui";
+import { adminColors } from "@/components/admin/ui";
 import { CommentsSection } from "@/components/admin/CommentsSection";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
+import { ErrorState, Skeleton } from "@/components/admin/States";
+import { invalidate } from "@/lib/admin-data";
+import { DASHBOARD_KEY, STATS_KEY } from "@/lib/admin-fetchers";
+
+/** OTC 변경 액션 후 캐시 무효화 — 캘린더는 OtcRequest 미표시라 제외 (확인됨) */
+function invalidateAfterOtcChange() {
+  invalidate("admin:list:otc");
+  invalidate(STATS_KEY);
+  invalidate(DASHBOARD_KEY);
+}
+
+/** 상세 응답에 병합된 코멘트 */
+interface DetailComment {
+  id: number;
+  createdAt: string;
+  editedAt: string | null;
+  authorId: number | null;
+  authorName: string;
+  body: string;
+}
 
 const Page = styled.div`
   max-width: 720px;
@@ -186,6 +206,23 @@ const StatusButton = styled.button<{ $active: boolean; $color: string }>`
   }
 `;
 
+const TestToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed #e5e7eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+
+  input {
+    margin: 0;
+  }
+`;
+
 const EditGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -267,6 +304,7 @@ interface Detail {
   lastEditedBy: string | null;
   lastEditedByName: string | null;
   lastEditedAt: string | null;
+  isTest: boolean;
 }
 
 function formatBank(
@@ -290,6 +328,8 @@ export default function OtcRequestDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const [data, setData] = useState<Detail | null>(null);
+  const [comments, setComments] = useState<DetailComment[]>([]);
+  const [myAdminUserId, setMyAdminUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -308,6 +348,10 @@ export default function OtcRequestDetailPage({
         throw new Error(json.error || "불러오지 못했습니다.");
       }
       setData(json.request);
+      setComments(json.comments ?? []);
+      setMyAdminUserId(json.myAdminUserId ?? null);
+      // 상세 열람 = 읽음 처리(서버) → 안읽음 배지 즉시 반영
+      invalidateAfterOtcChange();
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
@@ -335,6 +379,27 @@ export default function OtcRequestDetailPage({
   );
   useAdminPageHeader(headerTitle);
 
+  // 테스트 플래그 토글 — isTest만 전송
+  const toggleTest = async (next: boolean) => {
+    if (!data || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/otc-requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isTest: next }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "변경 실패");
+      invalidateAfterOtcChange();
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "변경에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const changeStatus = async (status: OtcRequestStatus) => {
     if (!data || data.status === status || saving) return;
     setSaving(true);
@@ -348,6 +413,7 @@ export default function OtcRequestDetailPage({
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "상태 변경 실패");
       }
+      invalidateAfterOtcChange();
       await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : "상태 변경에 실패했습니다.");
@@ -359,13 +425,13 @@ export default function OtcRequestDetailPage({
   if (loading)
     return (
       <Page>
-        <StateBox $variant="loading">불러오는 중…</StateBox>
+        <Skeleton variant="card" count={3} />
       </Page>
     );
   if (error)
     return (
       <Page>
-        <StateBox $variant="error">{error}</StateBox>
+        <ErrorState message={error} onRetry={load} />
       </Page>
     );
   if (!data) return null;
@@ -465,6 +531,16 @@ export default function OtcRequestDetailPage({
             </StatusButton>
           ))}
         </StatusButtons>
+
+        <TestToggleLabel>
+          <input
+            type="checkbox"
+            checked={data.isTest}
+            disabled={saving}
+            onChange={(e) => toggleTest(e.target.checked)}
+          />
+          테스트 데이터 (목록·집계에서 제외)
+        </TestToggleLabel>
       </ActionCard>
 
       <Card>
@@ -553,7 +629,13 @@ export default function OtcRequestDetailPage({
         </Field>
       </Card>
 
-      <CommentsSection targetType="OTC_REQUEST" targetId={data.id} />
+      <CommentsSection
+        key={data.id}
+        targetType="OTC_REQUEST"
+        targetId={data.id}
+        initialComments={comments}
+        myAdminUserId={myAdminUserId}
+      />
     </Page>
   );
 }
@@ -603,6 +685,7 @@ function OperatorSection({
         throw new Error(json.error || "저장 실패");
       }
       setSaveMsg({ text: "저장되었습니다." });
+      invalidateAfterOtcChange();
       onSaved();
     } catch (e) {
       setSaveMsg({

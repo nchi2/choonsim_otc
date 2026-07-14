@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { editorFieldsFromSession, getAdminUser } from "@/lib/admin-guard";
 import { isOtcRequestStatus } from "@/lib/otc-request-status";
+import {
+  getCommentsForTarget,
+  markCommentsRead,
+} from "@/lib/order-comments";
 
 export const runtime = "nodejs";
 
@@ -17,7 +21,8 @@ export async function GET(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  if (!(await getAdminUser())) {
+  const admin = await getAdminUser();
+  if (!admin) {
     return NextResponse.json(
       { ok: false, error: "unauthorized" },
       { status: 401 },
@@ -30,17 +35,28 @@ export async function GET(
   }
 
   try {
-    const request = await prisma.otcRequest.findUnique({
-      where: { id },
-      include: { office: { select: { id: true, name: true } } },
-    });
+    // 코멘트를 상세 응답에 병합 (HTTP 2→1) + 상세 열람 = 읽음 처리
+    const [request, commentData] = await Promise.all([
+      prisma.otcRequest.findUnique({
+        where: { id },
+        include: { office: { select: { id: true, name: true } } },
+      }),
+      getCommentsForTarget(admin.adminUserId, "OTC_REQUEST", id),
+    ]);
     if (!request) {
       return NextResponse.json(
         { ok: false, error: "신청을 찾을 수 없습니다." },
         { status: 404 },
       );
     }
-    return NextResponse.json({ ok: true, request });
+    await markCommentsRead(admin.adminUserId, "OTC_REQUEST", id);
+    return NextResponse.json({
+      ok: true,
+      request,
+      comments: commentData.comments,
+      unreadCount: commentData.unreadCount,
+      myAdminUserId: admin.adminUserId,
+    });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[admin/otc-requests/:id] detail failed", id, code);

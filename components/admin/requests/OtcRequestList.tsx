@@ -1,19 +1,24 @@
 "use client";
 
-// BMB 구매·판매(OTC) 신청 목록 — /admin/requests 세그먼트에서 사용 (구 /admin/otc-requests 이동분).
-// 서버 counts + ?status= 필터 + limit 50(+더 보기). 구분(구매/판매)은 로드분 내 클라 필터.
+// BMB 구매·판매(OTC) 신청 목록 — /admin/requests 세그먼트에서 사용.
+// useAdminData 캐시(첫 페이지) + 서버 counts/?status + [테스트 포함] 토글.
+// 구분(구매/판매)은 로드분 내 클라 필터.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import {
   CommentBadge,
   FilterTab,
   FilterTabCount,
-  StateBox,
   StatusBadge,
   UnreadBadge,
 } from "@/components/admin/ui";
+import {
+  EmptyState,
+  ErrorState,
+  RefreshingBar,
+  Skeleton,
+} from "@/components/admin/States";
 import {
   Hide,
   HeadRow,
@@ -23,8 +28,12 @@ import {
   SubMobile,
   Table,
   Tabs,
+  TestBadge,
   Toolbar,
 } from "@/components/admin/requests/list-ui";
+import { IncludeTestToggle } from "@/components/admin/requests/Miracle10List";
+import { fetchAdminJson, useAdminData } from "@/lib/admin-data";
+import { LIST_TTL, otcListKey, otcListUrl } from "@/lib/admin-fetchers";
 import {
   OTC_REQUEST_STATUSES,
   OTC_REQUEST_STATUS_LABELS,
@@ -33,7 +42,6 @@ import {
   type OtcRequestStatus,
 } from "@/lib/otc-request-status";
 
-const PAGE_SIZE = 50;
 const COLS = "56px 60px 1fr 1fr 64px 96px 88px 96px";
 const MOBILE_COLS = "48px 56px 1fr 88px";
 const MIN_WIDTH = 800;
@@ -75,20 +83,22 @@ interface Item {
   quantity: number;
   desiredPrice: number | null;
   status: string;
+  isTest: boolean;
   commentCount: number;
   unreadCommentCount: number;
 }
 
-type Counts = Record<string, number>;
+interface ListResponse {
+  items: Item[];
+  counts: Record<string, number>;
+  total: number;
+}
 
 export function OtcRequestList({
   initialStatus,
-  refreshTick,
 }: {
   initialStatus?: string | null;
-  refreshTick: number;
 }) {
-  const router = useRouter();
   const [sideFilter, setSideFilter] = useState<SideFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
     initialStatus === "ALL" ||
@@ -96,77 +106,49 @@ export function OtcRequestList({
       ? (initialStatus as StatusFilter)
       : "ALL",
   );
-  const [items, setItems] = useState<Item[]>([]);
-  const [counts, setCounts] = useState<Counts | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [includeTest, setIncludeTest] = useState(false);
+  const [extraItems, setExtraItems] = useState<Item[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (status: StatusFilter, offset: number) => {
-      const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(offset),
-      });
-      if (status !== "ALL") params.set("status", status);
-      const res = await fetch(`/api/admin/otc-requests?${params.toString()}`);
-      if (res.status === 401) {
-        router.push("/admin/login");
-        return null;
-      }
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "목록을 불러오지 못했습니다.");
-      }
-      return data as { items: Item[]; counts: Counts };
-    },
-    [router],
-  );
+  const cacheKey = otcListKey(statusFilter, includeTest);
+  const { data, error, isLoading, isValidating, refresh } =
+    useAdminData<ListResponse>(
+      cacheKey,
+      () =>
+        fetchAdminJson<ListResponse>(otcListUrl(statusFilter, includeTest)),
+      { ttl: LIST_TTL },
+    );
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    load(statusFilter, 0)
-      .then((data) => {
-        if (cancelled || !data) return;
-        setItems(data.items);
-        setCounts(data.counts);
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [statusFilter, refreshTick, load]);
+    setExtraItems([]);
+  }, [cacheKey]);
 
-  const loadMore = async () => {
-    if (loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const data = await load(statusFilter, items.length);
-      if (data) {
-        setItems((prev) => [...prev, ...data.items]);
-        setCounts(data.counts);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+  const items = useMemo(
+    () => [...(data?.items ?? []), ...extraItems],
+    [data, extraItems],
+  );
+  const counts = data?.counts ?? null;
 
   const filteredTotal =
     statusFilter === "ALL"
       ? (counts?.total ?? 0)
       : (counts?.[statusFilter] ?? 0);
-  const hasMore = items.length < filteredTotal;
+  const hasMore = data != null && items.length < filteredTotal;
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetchAdminJson<ListResponse>(
+        otcListUrl(statusFilter, includeTest, items.length),
+      );
+      setExtraItems((prev) => [...prev, ...res.items]);
+    } catch {
+      /* 재시도 가능 */
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const visible = useMemo(
     () =>
@@ -202,6 +184,14 @@ export function OtcRequestList({
             </FilterTab>
           ))}
         </Tabs>
+        <IncludeTestToggle>
+          <input
+            type="checkbox"
+            checked={includeTest}
+            onChange={(e) => setIncludeTest(e.target.checked)}
+          />
+          테스트 포함
+        </IncludeTestToggle>
       </Toolbar>
       <Toolbar style={{ marginTop: "-0.4rem" }}>
         <Tabs aria-label="상태 필터">
@@ -221,10 +211,16 @@ export function OtcRequestList({
         </Tabs>
       </Toolbar>
 
-      {loading && <StateBox $variant="loading">불러오는 중…</StateBox>}
-      {error && <StateBox $variant="error">{error}</StateBox>}
+      <RefreshingBar active={isValidating && data != null} />
 
-      {!loading && !error && (
+      {isLoading ? (
+        <Skeleton variant="table" count={5} />
+      ) : error && data == null ? (
+        <ErrorState
+          message={error instanceof Error ? error.message : undefined}
+          onRetry={refresh}
+        />
+      ) : (
         <>
           <ListMeta>
             {SIDE_TAB_LABELS[sideFilter]}
@@ -237,7 +233,11 @@ export function OtcRequestList({
               : ""}
           </ListMeta>
           {visible.length === 0 ? (
-            <StateBox $variant="empty">조건에 맞는 신청이 없습니다.</StateBox>
+            <EmptyState
+              icon="🗂"
+              title="조건에 맞는 신청이 없습니다"
+              desc="필터를 바꾸거나, 새 신청이 접수되면 여기에 표시됩니다."
+            />
           ) : (
             <Table>
               <HeadRow
@@ -261,6 +261,7 @@ export function OtcRequestList({
                   $cols={COLS}
                   $mobileCols={MOBILE_COLS}
                   $minWidth={MIN_WIDTH}
+                  style={it.isTest ? { opacity: 0.6 } : undefined}
                 >
                   <span>#{it.id}</span>
                   <span>
@@ -270,6 +271,7 @@ export function OtcRequestList({
                   </span>
                   <span>
                     {it.name}
+                    {it.isTest ? <TestBadge>TEST</TestBadge> : null}
                     {it.commentCount > 0 ? (
                       <CommentBadge>💬{it.commentCount}</CommentBadge>
                     ) : null}

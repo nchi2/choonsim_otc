@@ -1,10 +1,10 @@
 "use client";
 
-// 10모의 기적 신청 목록 — /admin/requests 세그먼트에서 사용 (구 /admin/miracle10 이동분).
-// 1덩이 백엔드 전환: 서버 counts + ?status= 필터 + limit 50(+더 보기).
+// 10모의 기적 신청 목록 — /admin/requests 세그먼트에서 사용.
+// useAdminData 캐시(첫 페이지) + 서버 counts/?status + [테스트 포함] 토글.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import styled from "styled-components";
 import {
   MIRACLE10_STATUSES,
   STATUS_COLORS,
@@ -16,11 +16,16 @@ import {
   CommentBadge,
   FilterTab,
   FilterTabCount,
-  StateBox,
   StatusBadge,
   UnreadBadge,
   adminColors,
 } from "@/components/admin/ui";
+import {
+  EmptyState,
+  ErrorState,
+  RefreshingBar,
+  Skeleton,
+} from "@/components/admin/States";
 import {
   Hide,
   HeadRow,
@@ -31,11 +36,16 @@ import {
   SubMobile,
   Table,
   Tabs,
+  TestBadge,
   Toolbar,
 } from "@/components/admin/requests/list-ui";
-import styled from "styled-components";
+import { fetchAdminJson, useAdminData } from "@/lib/admin-data";
+import {
+  LIST_TTL,
+  miracle10ListKey,
+  miracle10ListUrl,
+} from "@/lib/admin-fetchers";
 
-const PAGE_SIZE = 50;
 const COLS = "64px 1fr 1fr 72px 100px 100px 140px 120px";
 const MOBILE_COLS = "48px 1fr 70px 96px";
 const MIN_WIDTH = 860;
@@ -53,6 +63,22 @@ const VisitCell = styled(Hide)`
   text-overflow: ellipsis;
 `;
 
+export const IncludeTestToggle = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: ${adminColors.textMuted};
+  cursor: pointer;
+  white-space: nowrap;
+
+  input {
+    margin: 0;
+  }
+`;
+
 interface Item {
   id: number;
   createdAt: string;
@@ -63,6 +89,7 @@ interface Item {
   reservedStart: string | null;
   visitTimeSlot: string | null;
   isSbmbMember: boolean;
+  isTest: boolean;
   lastEditedByName: string | null;
   lastEditedAt: string | null;
   nameMasked: string;
@@ -71,12 +98,9 @@ interface Item {
   unreadCommentCount: number;
 }
 
-interface Counts {
-  PENDING: number;
-  CONTACTED: number;
-  VERIFIED: number;
-  COMPLETED: number;
-  CANCELED: number;
+interface ListResponse {
+  items: Item[];
+  counts: Record<string, number>;
   total: number;
 }
 
@@ -91,7 +115,6 @@ type SortKey =
   | "edited"
   | "status";
 
-/** 컬럼 첫 클릭 방향 — 날짜류는 최신 먼저, 나머지는 오름차순. */
 const SORT_DEFAULT_DIR: Record<SortKey, 1 | -1> = {
   id: 1,
   name: 1,
@@ -132,88 +155,57 @@ const TAB_LABELS: Record<StatusFilter, string> = {
 
 export function Miracle10List({
   initialStatus,
-  refreshTick,
 }: {
   initialStatus?: string | null;
-  refreshTick: number;
 }) {
-  const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>(() =>
     initialStatus === "ALL" ||
     MIRACLE10_STATUSES.includes(initialStatus as Miracle10Status)
       ? (initialStatus as StatusFilter)
       : "PENDING",
   );
-  const [items, setItems] = useState<Item[]>([]);
-  const [counts, setCounts] = useState<Counts | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [includeTest, setIncludeTest] = useState(false);
+  // 더 보기 추가분 — 캐시(첫 페이지) 밖 컴포넌트 로컬
+  const [extraItems, setExtraItems] = useState<Item[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (status: StatusFilter, offset: number) => {
-      const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(offset),
-      });
-      if (status !== "ALL") params.set("status", status);
-      const res = await fetch(`/api/admin/miracle10?${params.toString()}`);
-      if (res.status === 401) {
-        router.push("/admin/login");
-        return null;
-      }
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "목록을 불러오지 못했습니다.");
-      }
-      return data as { items: Item[]; counts: Counts; total: number };
-    },
-    [router],
-  );
+  const cacheKey = miracle10ListKey(filter, includeTest);
+  const { data, error, isLoading, isValidating, refresh } =
+    useAdminData<ListResponse>(
+      cacheKey,
+      () => fetchAdminJson<ListResponse>(miracle10ListUrl(filter, includeTest)),
+      { ttl: LIST_TTL },
+    );
 
-  // 필터 변경·새로고침 시 첫 페이지부터 다시
+  // 필터/토글 변경 시 더 보기 누적분 초기화
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    load(filter, 0)
-      .then((data) => {
-        if (cancelled || !data) return;
-        setItems(data.items);
-        setCounts(data.counts);
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [filter, refreshTick, load]);
+    setExtraItems([]);
+  }, [cacheKey]);
+
+  const items = useMemo(
+    () => [...(data?.items ?? []), ...extraItems],
+    [data, extraItems],
+  );
+  const counts = data?.counts ?? null;
+
+  const filteredTotal =
+    filter === "ALL" ? (counts?.total ?? 0) : (counts?.[filter] ?? 0);
+  const hasMore = data != null && items.length < filteredTotal;
 
   const loadMore = async () => {
     if (loadingMore) return;
     setLoadingMore(true);
     try {
-      const data = await load(filter, items.length);
-      if (data) {
-        setItems((prev) => [...prev, ...data.items]);
-        setCounts(data.counts);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      const res = await fetchAdminJson<ListResponse>(
+        miracle10ListUrl(filter, includeTest, items.length),
+      );
+      setExtraItems((prev) => [...prev, ...res.items]);
+    } catch {
+      /* 더 보기 실패 — 버튼 재시도 가능 */
     } finally {
       setLoadingMore(false);
     }
   };
-
-  const filteredTotal =
-    filter === "ALL" ? (counts?.total ?? 0) : (counts?.[filter] ?? 0);
-  const hasMore = items.length < filteredTotal;
 
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
     key: "createdAt",
@@ -285,12 +277,26 @@ export function Miracle10List({
             </FilterTab>
           ))}
         </Tabs>
+        <IncludeTestToggle>
+          <input
+            type="checkbox"
+            checked={includeTest}
+            onChange={(e) => setIncludeTest(e.target.checked)}
+          />
+          테스트 포함
+        </IncludeTestToggle>
       </Toolbar>
 
-      {loading && <StateBox $variant="loading">불러오는 중…</StateBox>}
-      {error && <StateBox $variant="error">{error}</StateBox>}
+      <RefreshingBar active={isValidating && data != null} />
 
-      {!loading && !error && (
+      {isLoading ? (
+        <Skeleton variant="table" count={6} />
+      ) : error && data == null ? (
+        <ErrorState
+          message={error instanceof Error ? error.message : undefined}
+          onRetry={refresh}
+        />
+      ) : (
         <>
           <ListMeta>
             {TAB_LABELS[filter]} {filteredTotal}건
@@ -299,25 +305,33 @@ export function Miracle10List({
               ? ` · ${items.length}건 표시 중`
               : ""}
           </ListMeta>
-          <Table>
-            <HeadRow $cols={COLS} $mobileCols={MOBILE_COLS} $minWidth={MIN_WIDTH}>
-              <span>{sortHead("id", "번호")}</span>
-              <span>{sortHead("name", "이름")}</span>
-              <Hide>연락처</Hide>
-              <span>{sortHead("quantity", "수량")}</span>
-              <Hide>{sortHead("visit", "방문")}</Hide>
-              <Hide>{sortHead("createdAt", "접수일")}</Hide>
-              <Hide>{sortHead("edited", "최종 수정")}</Hide>
-              <span>{sortHead("status", "상태")}</span>
-            </HeadRow>
-            {sortedItems.length === 0 ? (
-              <StateBox $variant="empty">
-                {filter === "ALL"
-                  ? "신청이 없습니다."
-                  : `${TAB_LABELS[filter]} 상태 신청이 없습니다.`}
-              </StateBox>
-            ) : (
-              sortedItems.map((it) => {
+          {sortedItems.length === 0 ? (
+            <EmptyState
+              icon="🗂"
+              title={
+                filter === "ALL"
+                  ? "신청이 없습니다"
+                  : `${TAB_LABELS[filter]} 상태 신청이 없습니다`
+              }
+              desc="새 신청이 접수되면 여기에 표시됩니다."
+            />
+          ) : (
+            <Table>
+              <HeadRow
+                $cols={COLS}
+                $mobileCols={MOBILE_COLS}
+                $minWidth={MIN_WIDTH}
+              >
+                <span>{sortHead("id", "번호")}</span>
+                <span>{sortHead("name", "이름")}</span>
+                <Hide>연락처</Hide>
+                <span>{sortHead("quantity", "수량")}</span>
+                <Hide>{sortHead("visit", "방문")}</Hide>
+                <Hide>{sortHead("createdAt", "접수일")}</Hide>
+                <Hide>{sortHead("edited", "최종 수정")}</Hide>
+                <span>{sortHead("status", "상태")}</span>
+              </HeadRow>
+              {sortedItems.map((it) => {
                 const visitBrief = formatVisitBrief(it);
                 return (
                   <Row
@@ -326,11 +340,13 @@ export function Miracle10List({
                     $cols={COLS}
                     $mobileCols={MOBILE_COLS}
                     $minWidth={MIN_WIDTH}
+                    style={it.isTest ? { opacity: 0.6 } : undefined}
                   >
                     <span>#{it.id}</span>
                     <span>
                       {it.nameMasked}
                       {it.isSbmbMember ? " · SBMB" : ""}
+                      {it.isTest ? <TestBadge>TEST</TestBadge> : null}
                       {it.commentCount > 0 ? (
                         <CommentBadge>💬{it.commentCount}</CommentBadge>
                       ) : null}
@@ -363,9 +379,9 @@ export function Miracle10List({
                     </span>
                   </Row>
                 );
-              })
-            )}
-          </Table>
+              })}
+            </Table>
+          )}
           {hasMore ? (
             <LoadMoreBtn
               type="button"

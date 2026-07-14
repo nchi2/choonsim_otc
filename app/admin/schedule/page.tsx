@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { useAdminSession } from "@/components/admin/AdminSessionContext";
 import MonthCalendar, {
@@ -22,6 +21,20 @@ import {
   STATUS_LABELS,
   type Miracle10Status,
 } from "@/lib/miracle10-status";
+import {
+  ErrorState,
+  RefreshingBar,
+  Skeleton,
+} from "@/components/admin/States";
+import { invalidate, useAdminData } from "@/lib/admin-data";
+import {
+  CALENDAR_TTL,
+  OFFICES_KEY,
+  OFFICES_TTL,
+  calendarFetcher,
+  calendarKey,
+  officesFetcher,
+} from "@/lib/admin-fetchers";
 
 const Page = styled.div`
   max-width: 1120px;
@@ -318,6 +331,8 @@ interface ScheduleReservation {
   status: string;
   /** true = VERIFIED+배정(정원 차감 대상), false = 미확정(표시만) */
   confirmed: boolean;
+  /** 테스트 건 — 숨기지 않고 회색·점선으로 구분 (자리를 실제로 점유 중) */
+  isTest: boolean;
 }
 
 const DISPLAY_NAME_MAX_LEN = 12;
@@ -384,49 +399,34 @@ function buildWorkerRows(
 }
 
 export default function AdminSchedulePage() {
-  const router = useRouter();
   const { adminUserId: myAdminUserId, displayName, username: myUsername } =
     useAdminSession();
-  const [offices, setOffices] = useState<Office[]>([]);
   const [officeId, setOfficeId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(todayKst());
   const [viewMonth, setViewMonth] = useState(() => {
     const t = todayKst();
     return { y: Number(t.slice(0, 4)), m: Number(t.slice(5, 7)) - 1 };
   });
-  const [monthSlots, setMonthSlots] = useState<WorkSlotItem[]>([]);
-  const [monthReservations, setMonthReservations] = useState<
-    ScheduleReservation[]
-  >([]);
   const [mineOnlyView, setMineOnlyView] = useState(false);
   const [draftMine, setDraftMine] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [slotsLoading, setSlotsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const minDate = todayKst();
   const maxDate = defaultCalendarMaxDate(minDate, 12);
 
+  // 사무실 — 5분 캐시 (상세·프리페치와 공유)
+  const officesData = useAdminData<Office[]>(OFFICES_KEY, officesFetcher, {
+    ttl: OFFICES_TTL,
+  });
+  const offices = useMemo(() => officesData.data ?? [], [officesData.data]);
+
+  // 최초 로드 시 기본 사무실 선택 (강남 우선)
   useEffect(() => {
-    fetch("/api/admin/offices")
-      .then(async (res) => {
-        if (res.status === 401) {
-          router.push("/admin/login");
-          return;
-        }
-        const json = await res.json();
-        if (!res.ok || !json.ok) throw new Error(json.error);
-        const list = json.offices as Office[];
-        setOffices(list);
-        const gangnam = list.find((o) => o.code === "GANGNAM");
-        setOfficeId(gangnam?.id ?? list[0]?.id ?? null);
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "사무실 목록 오류");
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+    if (officeId != null || offices.length === 0) return;
+    const gangnam = offices.find((o) => o.code === "GANGNAM");
+    setOfficeId(gangnam?.id ?? offices[0]?.id ?? null);
+  }, [offices, officeId]);
 
   const handleMonthChange = useCallback((y: number, m: number) => {
     setViewMonth((prev) => (prev.y === y && prev.m === m ? prev : { y, m }));
@@ -441,42 +441,36 @@ export default function AdminSchedulePage() {
     [],
   );
 
-  const fetchMonthData = useCallback(async () => {
-    if (officeId == null) return;
-    setSlotsLoading(true);
-    setError(null);
-    const { from, to } = monthBoundsKst(viewMonth.y, viewMonth.m);
-    try {
-      const [slotsRes, resRes] = await Promise.all([
-        fetch(`/api/admin/work-slots?officeId=${officeId}&from=${from}&to=${to}`),
-        fetch(
-          `/api/admin/schedule/reservations?officeId=${officeId}&from=${from}&to=${to}`,
-        ),
-      ]);
-      if (slotsRes.status === 401 || resRes.status === 401) {
-        router.push("/admin/login");
-        return;
-      }
-      const slotsJson = await slotsRes.json();
-      const resJson = await resRes.json();
-      if (!slotsRes.ok || !slotsJson.ok) {
-        throw new Error(slotsJson.error || "슬롯을 불러오지 못했습니다.");
-      }
-      if (!resRes.ok || !resJson.ok) {
-        throw new Error(resJson.error || "확정 예약을 불러오지 못했습니다.");
-      }
-      setMonthSlots(slotsJson.items as WorkSlotItem[]);
-      setMonthReservations(resJson.items as ScheduleReservation[]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "데이터 조회 오류");
-    } finally {
-      setSlotsLoading(false);
-    }
-  }, [officeId, viewMonth.y, viewMonth.m, router]);
+  // 월 데이터 — 근무 슬롯 + 예약 묶음 fetcher, 60초 캐시 (월 왕복 시 즉시 렌더)
+  const { from: monthFrom, to: monthTo } = monthBoundsKst(
+    viewMonth.y,
+    viewMonth.m,
+  );
+  const ym = `${viewMonth.y}-${String(viewMonth.m + 1).padStart(2, "0")}`;
+  const monthData = useAdminData<{
+    slots: WorkSlotItem[];
+    reservations: ScheduleReservation[];
+  }>(
+    officeId != null ? calendarKey(officeId, ym) : "admin:calendar:none",
+    officeId != null
+      ? (calendarFetcher(officeId, monthFrom, monthTo) as () => Promise<{
+          slots: WorkSlotItem[];
+          reservations: ScheduleReservation[];
+        }>)
+      : async () => ({ slots: [], reservations: [] }),
+    { ttl: CALENDAR_TTL },
+  );
 
-  useEffect(() => {
-    fetchMonthData();
-  }, [fetchMonthData]);
+  const monthSlots = useMemo(
+    () => monthData.data?.slots ?? [],
+    [monthData.data],
+  );
+  const monthReservations = useMemo(
+    () => monthData.data?.reservations ?? [],
+    [monthData.data],
+  );
+  const loading = officesData.isLoading;
+  const slotsLoading = monthData.isLoading;
 
   const daySlots = useMemo(
     () => monthSlots.filter((s) => s.date === selectedDate),
@@ -566,6 +560,7 @@ export default function AdminSchedulePage() {
         time: r.reservedStart,
         label: r.customerName,
         confirmed,
+        isTest: r.isTest,
       });
     };
     for (const r of confirmedReservations) {
@@ -651,7 +646,9 @@ export default function AdminSchedulePage() {
         }
       }
 
-      await fetchMonthData();
+      // 슬롯 변경 → 캘린더·내 근무 요약 캐시 무효화 (마운트된 훅이 재검증)
+      invalidate("admin:calendar");
+      invalidate("admin:myslots");
     } catch (e) {
       setError(e instanceof Error ? e.message : "저장 오류");
     } finally {
@@ -756,6 +753,19 @@ export default function AdminSchedulePage() {
       </Toolbar>
 
       {error ? <ErrorBox>{error}</ErrorBox> : null}
+      {monthData.error && !monthData.data ? (
+        <ErrorState
+          message={
+            monthData.error instanceof Error
+              ? monthData.error.message
+              : undefined
+          }
+          onRetry={monthData.refresh}
+        />
+      ) : null}
+      <RefreshingBar
+        active={monthData.isValidating && monthData.data != null}
+      />
 
       <Layout>
         <Card>
@@ -775,7 +785,9 @@ export default function AdminSchedulePage() {
             onMonthChange={handleMonthChange}
           />
           {slotsLoading ? (
-            <Hint>슬롯 불러오는 중…</Hint>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Skeleton variant="table" count={2} />
+            </div>
           ) : null}
         </Card>
 
@@ -866,8 +878,14 @@ export default function AdminSchedulePage() {
                                 <GuestLink
                                   href={`/admin/miracle10/${row.reservation.id}`}
                                   onClick={(e) => e.stopPropagation()}
+                                  style={
+                                    row.reservation.isTest
+                                      ? { color: adminColors.textFaint }
+                                      : undefined
+                                  }
                                 >
                                   → {row.reservation.customerName} 확정
+                                  {row.reservation.isTest ? " [TEST]" : ""}
                                 </GuestLink>
                               ) : (
                                 <SlotEmptyLabel>예약 없음</SlotEmptyLabel>
@@ -885,6 +903,7 @@ export default function AdminSchedulePage() {
                               {STATUS_LABELS[r.status as Miracle10Status]
                                 ? `·${STATUS_LABELS[r.status as Miracle10Status]}`
                                 : ""}
+                              {r.isTest ? " [TEST]" : ""}
                             </PendingGuestLink>
                           </WorkerLine>
                         ))}

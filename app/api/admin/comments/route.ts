@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/admin-guard";
 import {
   isCommentTargetType,
+  markCommentsRead,
   type CommentTargetType,
 } from "@/lib/order-comments";
 
@@ -45,20 +46,7 @@ async function targetExists(
   );
 }
 
-async function markRead(
-  adminUserId: number,
-  targetType: CommentTargetType,
-  targetId: number,
-): Promise<void> {
-  const now = new Date();
-  await prisma.commentReadState.upsert({
-    where: {
-      adminUserId_targetType_targetId: { adminUserId, targetType, targetId },
-    },
-    update: { lastReadAt: now },
-    create: { adminUserId, targetType, targetId, lastReadAt: now },
-  });
-}
+// 읽음 처리는 lib/order-comments.ts markCommentsRead 공유 (상세 GET과 동일 규칙)
 
 /** 코멘트 목록. markRead=1이면 조회 시점까지 읽음 처리(상세 열람). */
 export async function GET(request: Request) {
@@ -92,7 +80,7 @@ export async function GET(request: Request) {
     });
 
     if (searchParams.get("markRead") === "1") {
-      await markRead(admin.adminUserId, target.targetType, target.targetId);
+      await markCommentsRead(admin.adminUserId, target.targetType, target.targetId);
     }
 
     return NextResponse.json({
@@ -151,7 +139,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
 
-    await markRead(admin.adminUserId, target.targetType, target.targetId);
+    await markCommentsRead(admin.adminUserId, target.targetType, target.targetId);
 
     return NextResponse.json({ ok: true, id: comment.id });
   } catch (err) {

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { OrderKind, OrderStatus } from "@/app/generated/prisma/client";
 import { computeWalletTotals } from "@/lib/wallet-inventory";
 import { getGlobalUnreadCount } from "@/lib/order-comments";
-import { defaultPaperWalletCount } from "@/lib/otc-estimate";
+import { paperWalletCountToPrepare } from "@/lib/otc-estimate";
 
 export interface AdminStats {
   // 10모 flat 키 — AdminShell 배지 등 기존 소비처 호환. 절대 이름 바꾸지 말 것.
@@ -55,9 +55,14 @@ export async function computeAdminStats(
       computeWalletTotals(),
       getGlobalUnreadCount(adminUserId),
       // reserved: 확정(VERIFIED) 건이 전부 나가면 필요한 종이지갑 장수
+      // (손님 보유분 ownedPaperWalletCount 차감 — 거래기록에 장수가 있으면 그 값 우선)
       prisma.otcOrder.findMany({
         where: { ...m10Base, status: OrderStatus.VERIFIED },
-        select: { paperWalletCount: true, quantity: true },
+        select: {
+          paperWalletCount: true,
+          quantity: true,
+          ownedPaperWalletCount: true,
+        },
       }),
     ]);
 
@@ -83,7 +88,10 @@ export async function computeAdminStats(
   };
 
   const reserved = verifiedRows.reduce(
-    (sum, r) => sum + (r.paperWalletCount ?? defaultPaperWalletCount(r.quantity)),
+    (sum, r) =>
+      sum +
+      (r.paperWalletCount ??
+        paperWalletCountToPrepare(r.quantity, r.ownedPaperWalletCount)),
     0,
   );
 

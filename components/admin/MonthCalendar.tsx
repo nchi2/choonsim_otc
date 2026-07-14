@@ -31,6 +31,8 @@ export interface MonthCalendarDayEvent {
   label: string;
   /** true=확정(진하게) / false=미확정(회색·점선) */
   confirmed: boolean;
+  /** 테스트 건 — 회색 점선으로 구분 (선택, 기본 false) */
+  isTest?: boolean;
 }
 
 export interface MonthCalendarProps {
@@ -211,7 +213,8 @@ export default function MonthCalendar({
                     <DayEventItem
                       key={ev.key}
                       $confirmed={ev.confirmed}
-                      title={`${ev.time} ${ev.label} ${ev.confirmed ? "확정" : "미확정"}`}
+                      $test={ev.isTest === true}
+                      title={`${ev.time} ${ev.label} ${ev.confirmed ? "확정" : "미확정"}${ev.isTest ? " · 테스트" : ""}`}
                     >
                       <EvTime>{ev.time}</EvTime>
                       <EvLabelFull>{ev.label}</EvLabelFull>
@@ -428,7 +431,7 @@ const DayEventList = styled.div<{ $clickable: boolean }>`
   cursor: ${(p) => (p.$clickable ? "pointer" : "default")};
 `;
 
-const DayEventItem = styled.div<{ $confirmed: boolean }>`
+const DayEventItem = styled.div<{ $confirmed: boolean; $test?: boolean }>`
   display: flex;
   align-items: baseline;
   gap: 3px;
@@ -439,10 +442,11 @@ const DayEventItem = styled.div<{ $confirmed: boolean }>`
   line-height: 1.4;
   overflow: hidden;
   white-space: nowrap;
-  border: 1px ${(p) => (p.$confirmed ? "solid transparent" : "dashed #9ca3af")};
-  background: ${(p) => (p.$confirmed ? "#ccfbf1" : "#ffffff")};
-  color: ${(p) => (p.$confirmed ? "#0f766e" : "#6b7280")};
-  font-weight: ${(p) => (p.$confirmed ? 700 : 500)};
+  border: 1px ${(p) => (p.$confirmed && !p.$test ? "solid transparent" : "dashed #9ca3af")};
+  background: ${(p) =>
+    p.$test ? "#f3f4f6" : p.$confirmed ? "#ccfbf1" : "#ffffff"};
+  color: ${(p) => (p.$test ? "#9ca3af" : p.$confirmed ? "#0f766e" : "#6b7280")};
+  font-weight: ${(p) => (p.$confirmed && !p.$test ? 700 : 500)};
 `;
 
 const EvTime = styled.span`

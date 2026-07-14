@@ -29,7 +29,8 @@ function mapSlot(row: {
 }
 
 export async function GET(request: Request) {
-  if (!(await getAdminUser())) {
+  const admin = await getAdminUser();
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -38,9 +39,12 @@ export async function GET(request: Request) {
   const date = searchParams.get("date");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  // mine=1 + officeId 생략 = 본인 슬롯 전 사무실 조회 (프로필 요약 — 사무실별 N회 호출 제거)
+  const mineOnly = searchParams.get("mine") === "1";
 
   const officeId = Number(officeIdRaw);
-  if (!Number.isInteger(officeId) || officeId <= 0) {
+  const hasOffice = Number.isInteger(officeId) && officeId > 0;
+  if (!hasOffice && !mineOnly) {
     return NextResponse.json(
       { ok: false, error: "officeId가 필요합니다." },
       { status: 400 },
@@ -84,15 +88,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    const office = await prisma.office.findUnique({
-      where: { id: officeId },
-      select: { id: true },
-    });
-    if (!office) {
-      return NextResponse.json(
-        { ok: false, error: "사무실을 찾을 수 없습니다." },
-        { status: 404 },
-      );
+    if (hasOffice) {
+      const office = await prisma.office.findUnique({
+        where: { id: officeId },
+        select: { id: true },
+      });
+      if (!office) {
+        return NextResponse.json(
+          { ok: false, error: "사무실을 찾을 수 없습니다." },
+          { status: 404 },
+        );
+      }
     }
 
     const dateWhere =
@@ -104,18 +110,20 @@ export async function GET(request: Request) {
 
     const slots = await prisma.workSlot.findMany({
       where: {
-        officeId,
+        ...(hasOffice ? { officeId } : {}),
+        ...(mineOnly ? { adminUserId: admin.adminUserId } : {}),
         date: dateWhere,
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
       include: {
         adminUser: { select: { username: true, displayName: true } },
+        office: { select: { name: true } },
       },
     });
 
     return NextResponse.json({
       ok: true,
-      items: slots.map(mapSlot),
+      items: slots.map((s) => ({ ...mapSlot(s), officeName: s.office.name })),
     });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

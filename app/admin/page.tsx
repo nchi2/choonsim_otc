@@ -4,11 +4,21 @@
 // ① 지금 할 일(접수 대기) ② 오늘 내 일정 ③ 현황 요약(압축) ④ 지갑 재고 ⑤ 바로가기.
 // 데이터는 /api/admin/dashboard 한 번으로 (구 stats+offices+사무실별 reservations 3+N회 → 1회).
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import styled from "styled-components";
-import { StateBox, adminColors } from "@/components/admin/ui";
+import { adminColors } from "@/components/admin/ui";
+import {
+  ErrorState,
+  RefreshingBar,
+  Skeleton,
+} from "@/components/admin/States";
+import { useAdminData } from "@/lib/admin-data";
+import {
+  DASHBOARD_KEY,
+  DASHBOARD_TTL,
+  dashboardFetcher,
+  type DashboardData,
+} from "@/lib/admin-fetchers";
 
 const Page = styled.div`
   max-width: 1040px;
@@ -311,65 +321,41 @@ interface TodayItem {
 }
 
 export default function AdminHubPage() {
-  const router = useRouter();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // null = 로딩 중
-  const [today, setToday] = useState<TodayItem[] | null>(null);
+  // 단일 엔드포인트 + 캐시 — 재방문 시 즉시 렌더 + 백그라운드 갱신 (SWR)
+  const { data, error, isLoading, isValidating, refresh } =
+    useAdminData<DashboardData>(DASHBOARD_KEY, dashboardFetcher, {
+      ttl: DASHBOARD_TTL,
+    });
 
-  // 단일 엔드포인트 — stats + 오늘 내 일정이 한 응답으로 온다.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/admin/dashboard");
-        if (res.status === 401) {
-          router.push("/admin/login");
-          return;
-        }
-        const json = await res.json();
-        if (!res.ok || !json.ok) {
-          throw new Error(json.error || "대시보드를 불러오지 못했습니다.");
-        }
-        if (!cancelled) {
-          setStats(json.stats);
-          setToday(json.todayMySchedule ?? []);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Page>
-        <StateBox $variant="loading">불러오는 중…</StateBox>
+        <Skeleton variant="stat" count={3} />
+        <div style={{ height: "1rem" }} />
+        <Skeleton variant="card" count={2} />
       </Page>
     );
   }
-  if (error || !stats) {
+  if (error && !data) {
     return (
       <Page>
-        <StateBox $variant="error">{error ?? "오류가 발생했습니다."}</StateBox>
+        <ErrorState
+          message={error instanceof Error ? error.message : undefined}
+          onRetry={refresh}
+        />
       </Page>
     );
   }
+  if (!data) return null;
+
+  const stats: Stats = data.stats;
+  const today: TodayItem[] = data.todayMySchedule ?? [];
 
   const todoTotal = stats.pending + stats.otc.pending;
 
   return (
     <Page>
+      <RefreshingBar active={isValidating} />
       <TopGrid>
         <TodoCard $alert={todoTotal > 0}>
           <CardLabel>지금 할 일 — 처리 대기</CardLabel>
@@ -403,9 +389,7 @@ export default function AdminHubPage() {
 
         <Card>
           <CardLabel>오늘 내 일정 (확정 방문)</CardLabel>
-          {today == null ? (
-            <EmptyLine>불러오는 중…</EmptyLine>
-          ) : today.length === 0 ? (
+          {today.length === 0 ? (
             <EmptyLine>오늘 확정된 방문 일정이 없습니다.</EmptyLine>
           ) : (
             <ScheduleList>

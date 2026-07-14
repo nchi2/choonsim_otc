@@ -1,14 +1,34 @@
 "use client";
 
 // 10모의 기적 지갑 재고 — 입고(IN)/불출(OUT) 원장 + 발주(ORDER, 입고 예정).
-// ★ 발주는 재고(stock=IN−OUT)에 반영되지 않는 기록 — 중복 발주 방지용. 수령 확인 시 IN으로 반영.
+// ★ 발주는 재고(stock=IN−OUT)에 미반영 — 수령 확인 시 IN으로 반영.
+// 입고·수령 확인 시 지갑 QR 연속 스캔으로 주소 기록(스캔 수 = 실수량 기본값).
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { todayKst } from "@/lib/kst";
-import { StateBox, adminColors } from "@/components/admin/ui";
+import { adminColors } from "@/components/admin/ui";
+import {
+  EmptyState,
+  ErrorState,
+  RefreshingBar,
+  Skeleton,
+} from "@/components/admin/States";
+import { fetchAdminJson, invalidate, useAdminData } from "@/lib/admin-data";
+import {
+  DASHBOARD_KEY,
+  INVENTORY_KEY,
+  INVENTORY_TTL,
+  STATS_KEY,
+  STATS_TTL,
+  inventoryFetcher,
+  statsFetcher,
+  type AdminStatsData,
+} from "@/lib/admin-fetchers";
+import { WalletQrScanner } from "@/app/scanner/page/components/WalletQrScanner";
+import { addressDedupKey } from "@/app/scanner/lib/utils";
 
 const Page = styled.div`
   max-width: 860px;
@@ -179,6 +199,58 @@ const FormMsg = styled.span<{ $error?: boolean }>`
   color: ${(p) => (p.$error ? adminColors.danger : "#059669")};
 `;
 
+/* ── 스캔 ── */
+
+const ScanToggleBtn = styled.button`
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid ${adminColors.primary};
+  background: #fff;
+  color: ${adminColors.primary};
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const ScanCountNote = styled.p<{ $warn?: boolean }>`
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: ${(p) => (p.$warn ? adminColors.danger : adminColors.textMuted)};
+`;
+
+const ScanAddrList = styled.ul`
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  max-height: 8rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+`;
+
+const ScanAddrItem = styled.li`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: ${adminColors.textSub};
+  word-break: break-all;
+
+  button {
+    flex-shrink: 0;
+    padding: 0 0.4rem;
+    border: 1px solid ${adminColors.dangerBorder};
+    border-radius: 4px;
+    background: #fff;
+    color: ${adminColors.danger};
+    font-size: 0.68rem;
+    cursor: pointer;
+  }
+`;
+
 /* ── 원장 ── */
 
 const LedgerTable = styled.div`
@@ -226,7 +298,7 @@ const LedgerRow = styled.div<{ $pendingOrder?: boolean; $muted?: boolean }>`
   }
 `;
 
-const TypeTag = styled.span<{ $type: string; $muted?: boolean }>`
+const TypeTag = styled.span<{ $type: string }>`
   display: inline-block;
   padding: 1px 8px;
   border-radius: 999px;
@@ -322,14 +394,17 @@ const Overlay = styled.div`
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  overflow-y: auto;
 `;
 
 const Modal = styled.div`
   width: 100%;
-  max-width: 360px;
+  max-width: 420px;
   background: #fff;
   border-radius: 14px;
   padding: 1.25rem 1.4rem;
+  max-height: 90vh;
+  overflow-y: auto;
 `;
 
 const ModalTitle = styled.h3`
@@ -373,6 +448,12 @@ interface Entry {
   status: string | null;
   expectedDate: string | null;
   linkedLedgerId: number | null;
+  walletAddresses: string[] | null;
+}
+
+interface InventoryData {
+  totals: Totals;
+  entries: Entry[];
 }
 
 type FormType = "IN" | "OUT" | "ORDER";
@@ -383,14 +464,47 @@ function fmtExpected(iso: string | null): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+/** 액션 후 캐시 무효화 — 재고·집계·대시보드 (invalidate 매핑 표 준수) */
+function invalidateInventory() {
+  invalidate(INVENTORY_KEY);
+  invalidate(STATS_KEY);
+  invalidate(DASHBOARD_KEY);
+}
+
+/** 스캔 주소 수집 훅 대용 — dedup 키 기준 누적 */
+function useScannedAddresses() {
+  const [addrs, setAddrs] = useState<string[]>([]);
+  const keysRef = useRef(new Set<string>());
+  const add = (raw: string) => {
+    const t = raw.trim();
+    if (!t) return;
+    const key = addressDedupKey(t);
+    if (keysRef.current.has(key)) return;
+    keysRef.current.add(key);
+    setAddrs((prev) => [...prev, t]);
+  };
+  const remove = (addr: string) => {
+    keysRef.current.delete(addressDedupKey(addr));
+    setAddrs((prev) => prev.filter((a) => a !== addr));
+  };
+  const clear = () => {
+    keysRef.current.clear();
+    setAddrs([]);
+  };
+  return { addrs, add, remove, clear };
+}
+
 function WalletInventoryPageInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [totals, setTotals] = useState<Totals | null>(null);
-  const [reserved, setReserved] = useState<number | null>(null);
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const inventory = useAdminData<InventoryData>(
+    INVENTORY_KEY,
+    inventoryFetcher as unknown as () => Promise<InventoryData>,
+    { ttl: INVENTORY_TTL },
+  );
+  const statsData = useAdminData<AdminStatsData>(STATS_KEY, statsFetcher, {
+    ttl: STATS_TTL,
+  });
 
   // 등록 폼 — 10모 상세에서 ?type=OUT&orderId=&count=&receiver= 프리필 진입 지원.
   const initialType = searchParams.get("type");
@@ -414,44 +528,38 @@ function WalletInventoryPageInner() {
   } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  // 수령 확인 모달 — 대상 발주 + 실수량
+  // IN 직접 등록 스캔
+  const inScan = useScannedAddresses();
+  const [inScanOpen, setInScanOpen] = useState(false);
+
+  // 수령 확인 모달 — 대상 발주 + 실수량 + 스캔
   const [receiveTarget, setReceiveTarget] = useState<Entry | null>(null);
   const [receiveCount, setReceiveCount] = useState("");
-
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const [invRes, statsRes] = await Promise.all([
-        fetch("/api/admin/wallet-inventory"),
-        fetch("/api/admin/stats"),
-      ]);
-      if (invRes.status === 401) {
-        router.push("/admin/login");
-        return;
-      }
-      const inv = await invRes.json();
-      if (!invRes.ok || !inv.ok) {
-        throw new Error(inv.error || "재고를 불러오지 못했습니다.");
-      }
-      setTotals(inv.totals);
-      setEntries(inv.entries);
-      const stats = statsRes.ok ? await statsRes.json() : null;
-      if (stats?.ok) setReserved(stats.stats?.wallet?.reserved ?? null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const receiveScan = useScannedAddresses();
+  const [receiveScanOpen, setReceiveScanOpen] = useState(false);
+  // 스캔 수 자동 반영 후 수동으로 덮어썼는지
+  const receiveCountTouched = useRef(false);
 
   const count = (() => {
     const n = Number(countInput.trim());
     return Number.isInteger(n) && n > 0 ? n : null;
   })();
+
+  // IN: 스캔 수 = 장수 기본값 (수동 입력이 있으면 그대로 두고 경고만)
+  const inScanMismatch =
+    type === "IN" &&
+    inScan.addrs.length > 0 &&
+    count != null &&
+    count !== inScan.addrs.length;
+
+  const handleInScanDetected = (addr: string) => {
+    inScan.add(addr);
+  };
+
+  // 스캔이 쌓이면 장수 입력이 비어있을 때 자동 채움
+  if (type === "IN" && inScan.addrs.length > 0 && countInput.trim() === "") {
+    setCountInput(String(inScan.addrs.length));
+  }
 
   const submit = async () => {
     if (count == null || submitting) return;
@@ -475,6 +583,9 @@ function WalletInventoryPageInner() {
           ...(type === "ORDER"
             ? { expectedDate: expectedInput || null }
             : {}),
+          ...(type === "IN" && inScan.addrs.length > 0
+            ? { walletAddresses: inScan.addrs }
+            : {}),
         }),
       });
       const json = await res.json();
@@ -489,7 +600,9 @@ function WalletInventoryPageInner() {
       setExpectedInput("");
       setOrderIdInput("");
       setReceiverInput("");
-      await load();
+      inScan.clear();
+      setInScanOpen(false);
+      invalidateInventory();
     } catch (e) {
       setFormMsg({
         text: e instanceof Error ? e.message : "등록에 실패했습니다.",
@@ -503,7 +616,28 @@ function WalletInventoryPageInner() {
   const openReceive = (entry: Entry) => {
     setReceiveTarget(entry);
     setReceiveCount(String(entry.count));
+    receiveScan.clear();
+    setReceiveScanOpen(false);
+    receiveCountTouched.current = false;
   };
+
+  const handleReceiveScanDetected = (addr: string) => {
+    receiveScan.add(addr);
+  };
+
+  // 스캔 수 = 실수량 자동 반영 (수동으로 만지지 않은 동안)
+  if (
+    receiveTarget &&
+    receiveScan.addrs.length > 0 &&
+    !receiveCountTouched.current &&
+    receiveCount !== String(receiveScan.addrs.length)
+  ) {
+    setReceiveCount(String(receiveScan.addrs.length));
+  }
+
+  const receiveMismatch =
+    receiveScan.addrs.length > 0 &&
+    Number(receiveCount.trim()) !== receiveScan.addrs.length;
 
   const confirmReceive = async () => {
     if (!receiveTarget || busyId != null) return;
@@ -516,7 +650,12 @@ function WalletInventoryPageInner() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ count: n }),
+          body: JSON.stringify({
+            count: n,
+            ...(receiveScan.addrs.length > 0
+              ? { walletAddresses: receiveScan.addrs }
+              : {}),
+          }),
         },
       );
       const json = await res.json();
@@ -524,7 +663,8 @@ function WalletInventoryPageInner() {
         throw new Error(json.error || "입고 확정 실패");
       }
       setReceiveTarget(null);
-      await load();
+      receiveScan.clear();
+      invalidateInventory();
     } catch (e) {
       alert(e instanceof Error ? e.message : "입고 확정에 실패했습니다.");
     } finally {
@@ -546,7 +686,7 @@ function WalletInventoryPageInner() {
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "취소 실패");
-      await load();
+      invalidateInventory();
     } catch (e) {
       alert(e instanceof Error ? e.message : "취소에 실패했습니다.");
     } finally {
@@ -568,7 +708,7 @@ function WalletInventoryPageInner() {
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "삭제 실패");
       }
-      await load();
+      invalidateInventory();
     } catch (e) {
       alert(e instanceof Error ? e.message : "삭제에 실패했습니다.");
     } finally {
@@ -576,12 +716,33 @@ function WalletInventoryPageInner() {
     }
   };
 
-  if (loading)
+  if (inventory.isLoading) {
     return (
       <Page>
-        <StateBox $variant="loading">불러오는 중…</StateBox>
+        <Skeleton variant="stat" count={3} />
+        <div style={{ height: "1rem" }} />
+        <Skeleton variant="table" count={5} />
       </Page>
     );
+  }
+  if (inventory.error && !inventory.data) {
+    return (
+      <Page>
+        <ErrorState
+          message={
+            inventory.error instanceof Error
+              ? inventory.error.message
+              : undefined
+          }
+          onRetry={inventory.refresh}
+        />
+      </Page>
+    );
+  }
+
+  const totals = inventory.data?.totals ?? null;
+  const entries = inventory.data?.entries ?? [];
+  const reserved = statsData.data?.wallet?.reserved ?? null;
 
   const stock = totals?.stock ?? 0;
   const onOrder = totals?.onOrder ?? 0;
@@ -599,7 +760,9 @@ function WalletInventoryPageInner() {
 
   return (
     <Page>
-      {error ? <StateBox $variant="error">{error}</StateBox> : null}
+      <RefreshingBar
+        active={inventory.isValidating && inventory.data != null}
+      />
 
       <SummaryCard $warn={shortage != null && shortage < 0}>
         <SummaryGrid>
@@ -611,7 +774,7 @@ function WalletInventoryPageInner() {
           <SummaryItem>
             <SummaryLabel>확정 예약 소요</SummaryLabel>
             <SummaryValue>{reserved ?? "—"}장</SummaryValue>
-            <SummarySub>확정(VERIFIED) 건이 전부 나가면 필요한 장수</SummarySub>
+            <SummarySub>확정 건 소요 = 준비 장수(손님 보유분 차감)</SummarySub>
           </SummaryItem>
           <SummaryItem>
             <SummaryLabel>발주 중 (재고 미반영)</SummaryLabel>
@@ -672,6 +835,12 @@ function WalletInventoryPageInner() {
               onChange={(e) => setCountInput(e.target.value)}
               placeholder="예: 22"
             />
+            {inScanMismatch ? (
+              <ScanCountNote $warn>
+                ⚠ 스캔 {inScan.addrs.length}개 ≠ 입력 {count}장 — 스캔 수와
+                다릅니다 (등록은 가능).
+              </ScanCountNote>
+            ) : null}
           </div>
           <div>
             <FieldLabel htmlFor="inv-date">
@@ -735,6 +904,39 @@ function WalletInventoryPageInner() {
               }
             />
           </div>
+          {type === "IN" ? (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <FieldLabel>지갑 주소 스캔 (선택 — 입고분 기록)</FieldLabel>
+              <ScanToggleBtn
+                type="button"
+                onClick={() => setInScanOpen((o) => !o)}
+              >
+                {inScanOpen ? "스캔 닫기" : `QR 연속 스캔 (${inScan.addrs.length})`}
+              </ScanToggleBtn>
+              {inScanOpen ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <WalletQrScanner
+                    paused={false}
+                    continuous
+                    onDetected={handleInScanDetected}
+                    idleHint="입고할 종이지갑 QR을 연속 스캔하세요. 스캔 수가 장수 기본값이 됩니다."
+                  />
+                </div>
+              ) : null}
+              {inScan.addrs.length > 0 ? (
+                <ScanAddrList>
+                  {inScan.addrs.map((a) => (
+                    <ScanAddrItem key={addressDedupKey(a)}>
+                      <span style={{ flex: 1 }}>{a}</span>
+                      <button type="button" onClick={() => inScan.remove(a)}>
+                        ×
+                      </button>
+                    </ScanAddrItem>
+                  ))}
+                </ScanAddrList>
+              ) : null}
+            </div>
+          ) : null}
         </FormGrid>
 
         <div>
@@ -761,7 +963,11 @@ function WalletInventoryPageInner() {
         원장 (최근 200건)
       </SectionTitle>
       {entries.length === 0 ? (
-        <StateBox $variant="empty">기록이 없습니다.</StateBox>
+        <EmptyState
+          icon="📦"
+          title="기록이 없습니다"
+          desc="위에서 입고·발주를 등록하면 원장에 쌓입니다."
+        />
       ) : (
         <LedgerTable>
           <LedgerHead>
@@ -809,6 +1015,7 @@ function WalletInventoryPageInner() {
           ))}
           {restEntries.map((en) => {
             const isOrder = en.type === "ORDER";
+            const scanned = en.walletAddresses?.length ?? 0;
             return (
               <LedgerRow key={en.id} $muted={isOrder}>
                 <span>{en.entryDate}</span>
@@ -823,6 +1030,7 @@ function WalletInventoryPageInner() {
                   title={[
                     en.receiverName ? `수령: ${en.receiverName}` : null,
                     en.memo,
+                    scanned > 0 ? `주소 ${scanned}개 기록됨` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -848,7 +1056,10 @@ function WalletInventoryPageInner() {
                       {en.receiverName ? `${en.receiverName} 수령` : ""}
                       {en.receiverName && en.memo ? " · " : ""}
                       {en.memo ?? ""}
-                      {!en.orderId && !en.receiverName && !en.memo ? "—" : ""}
+                      {scanned > 0 ? ` · 주소 ${scanned}개` : ""}
+                      {!en.orderId && !en.receiverName && !en.memo && !scanned
+                        ? "—"
+                        : ""}
                     </>
                   )}
                 </RowDetail>
@@ -876,17 +1087,65 @@ function WalletInventoryPageInner() {
           <Modal onClick={(e) => e.stopPropagation()}>
             <ModalTitle>발주 수령 확인</ModalTitle>
             <ModalSub>
-              발주 #{receiveTarget.id} · {receiveTarget.count}장. 실제 수령한
-              장수를 입력하세요 — 확인 시 입고(IN)로 재고에 반영됩니다.
+              발주 #{receiveTarget.id} · {receiveTarget.count}장. 지갑 QR을
+              연속 스캔하면 <strong>스캔 수가 실수량으로 자동 반영</strong>
+              됩니다. 확인 시 입고(IN)로 재고에 반영됩니다.
             </ModalSub>
-            <FieldLabel htmlFor="receive-count">실수령 장수</FieldLabel>
-            <TextInput
-              id="receive-count"
-              inputMode="numeric"
-              value={receiveCount}
-              onChange={(e) => setReceiveCount(e.target.value)}
-              autoFocus
-            />
+
+            <ScanToggleBtn
+              type="button"
+              onClick={() => setReceiveScanOpen((o) => !o)}
+            >
+              {receiveScanOpen
+                ? "스캔 닫기"
+                : `QR 연속 스캔 (${receiveScan.addrs.length})`}
+            </ScanToggleBtn>
+            {receiveScanOpen ? (
+              <div style={{ marginTop: "0.5rem" }}>
+                <WalletQrScanner
+                  paused={false}
+                  continuous
+                  onDetected={handleReceiveScanDetected}
+                  idleHint="수령한 종이지갑 QR을 연속 스캔하세요. 중복은 무시됩니다."
+                />
+              </div>
+            ) : null}
+            {receiveScan.addrs.length > 0 ? (
+              <ScanAddrList>
+                {receiveScan.addrs.map((a) => (
+                  <ScanAddrItem key={addressDedupKey(a)}>
+                    <span style={{ flex: 1 }}>{a}</span>
+                    <button type="button" onClick={() => receiveScan.remove(a)}>
+                      ×
+                    </button>
+                  </ScanAddrItem>
+                ))}
+              </ScanAddrList>
+            ) : null}
+
+            <div style={{ marginTop: "0.8rem" }}>
+              <FieldLabel htmlFor="receive-count">실수령 장수</FieldLabel>
+              <TextInput
+                id="receive-count"
+                inputMode="numeric"
+                value={receiveCount}
+                onChange={(e) => {
+                  receiveCountTouched.current = true;
+                  setReceiveCount(e.target.value);
+                }}
+              />
+              {receiveMismatch ? (
+                <ScanCountNote $warn>
+                  ⚠ 스캔 {receiveScan.addrs.length}개 ≠ 입력 {receiveCount}장 —
+                  수량이 다릅니다 (진행은 가능).
+                </ScanCountNote>
+              ) : receiveScan.addrs.length > 0 ? (
+                <ScanCountNote>
+                  스캔 {receiveScan.addrs.length}개 = 실수량으로 반영됩니다.
+                </ScanCountNote>
+              ) : null}
+            </div>
+
             <ModalActions>
               <MiniBtn
                 type="button"
@@ -917,7 +1176,13 @@ function WalletInventoryPageInner() {
 
 export default function WalletInventoryPage() {
   return (
-    <Suspense fallback={<StateBox $variant="loading">불러오는 중…</StateBox>}>
+    <Suspense
+      fallback={
+        <Page>
+          <Skeleton variant="stat" count={3} />
+        </Page>
+      }
+    >
       <WalletInventoryPageInner />
     </Suspense>
   );

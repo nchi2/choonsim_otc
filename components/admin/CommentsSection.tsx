@@ -1,11 +1,14 @@
 "use client";
 
 // 신청 상세 하단 운영자 코멘트 스레드 — 10모/OTC 공용.
-// 마운트 시 목록 조회 + 읽음 처리(markRead=1). 본인 코멘트만 수정/삭제.
+// 초기 데이터는 상세 GET 응답에 병합되어 props로 받는다 (마운트 시 별도 호출 없음).
+// 읽음 처리도 상세 GET이 수행. 본인 코멘트만 수정/삭제.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import styled from "styled-components";
 import { adminColors } from "@/components/admin/ui";
+import { invalidate } from "@/lib/admin-data";
+import { DASHBOARD_KEY, STATS_KEY } from "@/lib/admin-fetchers";
 
 const Card = styled.section`
   border: 1px solid ${adminColors.border};
@@ -155,18 +158,32 @@ function fmtTime(iso: string): string {
 export function CommentsSection({
   targetType,
   targetId,
+  initialComments,
+  myAdminUserId,
 }: {
   targetType: "MIRACLE10" | "OTC_REQUEST";
   targetId: number;
+  /** 상세 GET 응답에 병합된 초기 코멘트 (마운트 시 별도 호출 없음) */
+  initialComments: CommentItem[];
+  myAdminUserId: number | null;
 }) {
-  const [comments, setComments] = useState<CommentItem[]>([]);
-  const [myId, setMyId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [comments, setComments] = useState<CommentItem[]>(initialComments);
+  const myId = myAdminUserId;
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editInput, setEditInput] = useState("");
+  const loading = false;
+
+  // 코멘트 변경 → 목록 배지·전역 안읽음 캐시 무효화 (invalidate 매핑 표)
+  const invalidateBadges = useCallback(() => {
+    invalidate(STATS_KEY);
+    invalidate(DASHBOARD_KEY);
+    invalidate(
+      targetType === "MIRACLE10" ? "admin:list:miracle10" : "admin:list:otc",
+    );
+  }, [targetType]);
 
   const load = useCallback(
     async (markRead: boolean) => {
@@ -181,21 +198,13 @@ export function CommentsSection({
           throw new Error(json.error || "코멘트를 불러오지 못했습니다.");
         }
         setComments(json.comments);
-        setMyId(json.myAdminUserId ?? null);
         setError(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
       }
     },
     [targetType, targetId],
   );
-
-  // 상세 열람 = 이 시점까지 읽음 처리
-  useEffect(() => {
-    load(true);
-  }, [load]);
 
   const submit = async () => {
     const body = input.trim();
@@ -211,6 +220,7 @@ export function CommentsSection({
       if (!res.ok || !json.ok) throw new Error(json.error || "작성 실패");
       setInput("");
       await load(true);
+      invalidateBadges();
     } catch (e) {
       setError(e instanceof Error ? e.message : "작성에 실패했습니다.");
     } finally {
@@ -232,6 +242,7 @@ export function CommentsSection({
       if (!res.ok || !json.ok) throw new Error(json.error || "수정 실패");
       setEditingId(null);
       await load(false);
+      invalidateBadges();
     } catch (e) {
       setError(e instanceof Error ? e.message : "수정에 실패했습니다.");
     } finally {
@@ -249,6 +260,7 @@ export function CommentsSection({
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "삭제 실패");
       await load(false);
+      invalidateBadges();
     } catch (e) {
       setError(e instanceof Error ? e.message : "삭제에 실패했습니다.");
     } finally {
