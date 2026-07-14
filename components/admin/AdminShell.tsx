@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -8,80 +8,56 @@ import {
   AdminSessionProvider,
   type AdminSession,
 } from "@/components/admin/AdminSessionContext";
+import {
+  AdminPageHeaderProvider,
+  type AdminPageHeader,
+} from "@/components/admin/AdminPageHeaderContext";
 import { adminColors } from "@/components/admin/ui";
 
-const NAV_ITEMS = [
-  {
-    href: "/admin",
-    label: "대시보드",
-    shortLabel: "홈",
-    title: "운영 대시보드",
-    exact: true,
-    showPendingBadge: false,
-  },
-  {
-    href: "/admin/schedule",
-    label: "일정 캘린더",
-    shortLabel: "일정",
-    title: "일정·근무 캘린더",
-    showPendingBadge: false,
-  },
-  {
-    href: "/admin/miracle10",
-    label: "10모 신청",
-    shortLabel: "10모",
-    title: "10모의 기적 신청 관리",
-    showPendingBadge: true,
-  },
-  {
-    href: "/admin/otc-requests",
-    label: "OTC 신청",
-    shortLabel: "OTC",
-    title: "BMB 구매·판매 신청",
-    showPendingBadge: false,
-  },
-  {
-    href: "/admin/calculator",
-    label: "OTC 계산기",
-    shortLabel: "계산",
-    title: "BMB OTC 단가 계산기",
-    showPendingBadge: false,
-  },
+/** 데스크탑 사이드바 항목 */
+const SIDE_ITEMS = [
+  { href: "/admin", label: "대시보드", exact: true, badge: false },
+  { href: "/admin/requests", label: "신청 관리", exact: false, badge: true },
+  { href: "/admin/schedule", label: "일정 캘린더", exact: false, badge: false },
+  { href: "/admin/calculator", label: "OTC 계산기", exact: false, badge: false },
   {
     href: "/admin/wallet-inventory",
     label: "10모 지갑 재고",
-    shortLabel: "재고",
-    title: "10모의 기적 지갑 재고",
-    showPendingBadge: false,
+    exact: false,
+    badge: false,
   },
 ] as const;
 
+/** 모바일 하단탭 — 4개 (과밀 해소) */
+const TAB_ITEMS = [
+  { href: "/admin", label: "홈", exact: true, badge: false },
+  { href: "/admin/requests", label: "신청", exact: false, badge: true },
+  { href: "/admin/schedule", label: "캘린더", exact: false, badge: false },
+  { href: "/admin/calculator", label: "계산기", exact: false, badge: false },
+] as const;
+
+/** 배지 폴링 주기 — 화면에 머무는 동안에도 새 신청·코멘트를 반영 */
+const BADGE_POLL_MS = 45_000;
+
 const Shell = styled.div`
   min-height: 100vh;
-  background: #f9fafb;
+  background: ${adminColors.bgPage};
   display: flex;
 `;
 
 const Sidebar = styled.aside`
   display: none;
-  width: 220px;
+  width: 210px;
   flex-shrink: 0;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid ${adminColors.border};
   background: #fff;
-  padding: 1.25rem 0.85rem;
+  padding: 1rem 0.85rem;
   flex-direction: column;
   gap: 0.5rem;
 
   @media (min-width: 768px) {
     display: flex;
   }
-`;
-
-const Brand = styled.div`
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #111827;
-  padding: 0.35rem 0.65rem 0.85rem;
 `;
 
 const SideNav = styled.nav`
@@ -113,7 +89,7 @@ const SideLinkLabel = styled.span`
   min-width: 0;
 `;
 
-const PendingBadge = styled.span`
+const CountBadge = styled.span`
   flex-shrink: 0;
   min-width: 1.25rem;
   height: 1.25rem;
@@ -134,63 +110,177 @@ const MainColumn = styled.div`
   flex-direction: column;
 `;
 
-const TopBar = styled.header`
+/* ── 상단 헤더 (전 페이지 공통 고정) ── */
+
+const TopHeader = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  flex-wrap: wrap;
-  padding: 1rem 1rem 0.75rem;
+  padding: 0.6rem 1rem;
   background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid ${adminColors.border};
 
   @media (min-width: 768px) {
-    padding: 1.25rem 1.5rem 1rem;
+    padding: 0.6rem 1.5rem;
   }
 `;
 
-const PageTitle = styled.h1`
-  font-size: 1.25rem;
+const BrandLink = styled(Link)`
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 1rem;
   font-weight: 800;
-  color: #111827;
-  margin: 0;
+  color: ${adminColors.text};
+  text-decoration: none;
+  white-space: nowrap;
 
-  @media (min-width: 768px) {
-    font-size: 1.5rem;
+  em {
+    font-style: normal;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: ${adminColors.primary};
   }
 `;
 
 const TopRight = styled.div`
   display: flex;
   align-items: center;
+  gap: 0.4rem;
+`;
+
+/** 알림 벨 — 이번 덩이에서는 숫자 표시만 (클릭 무동작, 목록은 추후) */
+const BellButton = styled.button<{ $dim: boolean }>`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: ${(p) => (p.$dim ? adminColors.textFaint : adminColors.textSub)};
+  opacity: ${(p) => (p.$dim ? 0.45 : 1)};
+  cursor: default;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+`;
+
+const BellBadge = styled.span`
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: ${adminColors.danger};
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1rem;
+  text-align: center;
+`;
+
+const ProfileLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  color: ${adminColors.textSub};
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  &:hover {
+    background: ${adminColors.bgSubtle};
+    color: ${adminColors.text};
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+`;
+
+const ProfileName = styled.span`
+  @media (max-width: 640px) {
+    display: none;
+  }
+`;
+
+const LogoutIconButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: ${adminColors.textMuted};
+  cursor: pointer;
+
+  &:hover {
+    background: ${adminColors.bgSubtle};
+    color: ${adminColors.text};
+  }
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+`;
+
+/* ── 하단 줄 — 페이지 제목 + 액션 슬롯 (셸이 유일한 제목 소유자) ── */
+
+const PageHeaderBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 0.7rem;
+  background: #fff;
+  border-bottom: 1px solid ${adminColors.border};
+
+  @media (min-width: 768px) {
+    padding: 1rem 1.5rem 0.85rem;
+  }
+`;
+
+const PageTitle = styled.h1`
+  min-width: 0;
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-`;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: ${adminColors.text};
+  margin: 0;
 
-const UserBadge = styled.span`
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #4b5563;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  padding: 4px 10px;
-  border-radius: 999px;
-`;
-
-const LogoutButton = styled.button`
-  padding: 0.45rem 0.85rem;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  &:hover {
-    background: #f9fafb;
+  @media (min-width: 768px) {
+    font-size: 1.35rem;
   }
+`;
+
+const PageActions = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 const Main = styled.main`
   flex: 1;
+  padding-top: 0.75rem;
   padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 
   @media (min-width: 768px) {
@@ -205,7 +295,7 @@ const BottomNav = styled.nav`
   bottom: 0;
   z-index: 40;
   display: flex;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid ${adminColors.border};
   background: #fff;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -223,7 +313,7 @@ const TabLink = styled(Link)<{ $active: boolean }>`
   justify-content: center;
   gap: 0.15rem;
   min-height: 3.5rem;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: ${(p) => (p.$active ? 700 : 600)};
   color: ${(p) => (p.$active ? adminColors.primary : adminColors.textFaint)};
   text-decoration: none;
@@ -243,12 +333,12 @@ const TabLink = styled(Link)<{ $active: boolean }>`
 const TabBadge = styled.span`
   position: absolute;
   top: 0.45rem;
-  right: calc(50% - 1.35rem);
+  right: calc(50% - 1.6rem);
   min-width: 1rem;
   height: 1rem;
   padding: 0 0.25rem;
   border-radius: 999px;
-  background: ${adminColors.alert};
+  background: ${adminColors.danger};
   color: #fff;
   font-size: 0.62rem;
   font-weight: 800;
@@ -256,22 +346,80 @@ const TabBadge = styled.span`
   text-align: center;
 `;
 
-function isNavActive(pathname: string, href: string, exact?: boolean): boolean {
+/* ── 아이콘 (인라인 SVG) ── */
+
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function isNavActive(pathname: string, href: string, exact: boolean): boolean {
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** 신청 탭 활성 — 통합 화면 + 기존 목록/상세 경로 전부 */
+function isRequestsActive(pathname: string): boolean {
+  return (
+    pathname.startsWith("/admin/requests") ||
+    pathname.startsWith("/admin/miracle10") ||
+    pathname.startsWith("/admin/otc-requests")
+  );
+}
+
+function navActive(pathname: string, href: string, exact: boolean): boolean {
+  if (href === "/admin/requests") return isRequestsActive(pathname);
+  return isNavActive(pathname, href, exact);
+}
+
 function resolvePageTitle(pathname: string): string {
-  if (/^\/admin\/miracle10\/[^/]+$/.test(pathname)) {
+  if (/^\/admin\/(miracle10|otc-requests)\/[^/]+$/.test(pathname)) {
     return "신청 상세";
   }
-  if (pathname === "/admin/otc-requests") {
-    return "BMB 구매·판매 신청";
+  if (
+    pathname.startsWith("/admin/requests") ||
+    pathname === "/admin/miracle10" ||
+    pathname === "/admin/otc-requests"
+  ) {
+    return "신청 관리";
   }
-  const item = NAV_ITEMS.find((nav) =>
-    isNavActive(pathname, nav.href, "exact" in nav ? nav.exact : false),
-  );
-  return item?.title ?? "운영";
+  if (pathname.startsWith("/admin/profile")) return "내 프로필";
+  if (pathname.startsWith("/admin/schedule")) return "일정·근무 캘린더";
+  if (pathname.startsWith("/admin/calculator")) return "BMB OTC 단가 계산기";
+  if (pathname.startsWith("/admin/wallet-inventory")) {
+    return "10모의 기적 지갑 재고";
+  }
+  if (pathname === "/admin") return "운영 대시보드";
+  return "운영";
+}
+
+interface BadgeState {
+  pending: number;
+  otcPending: number;
+  commentUnread: number;
 }
 
 export default function AdminShell({
@@ -287,7 +435,14 @@ export default function AdminShell({
     displayName: null,
     loading: true,
   });
-  const [pendingCount, setPendingCount] = useState(0);
+  const [badge, setBadge] = useState<BadgeState>({
+    pending: 0,
+    otcPending: 0,
+    commentUnread: 0,
+  });
+  const [pageHeader, setPageHeader] = useState<AdminPageHeader | null>(null);
+
+  const headerApi = useMemo(() => ({ setHeader: setPageHeader }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,25 +477,44 @@ export default function AdminShell({
     };
   }, [router]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const statsRes = await fetch("/api/admin/stats");
-        const statsJson = statsRes.ok ? await statsRes.json() : null;
-        if (!cancelled && statsJson?.ok) {
-          setPendingCount(statsJson.stats?.pending ?? 0);
-        }
-      } catch {
-        /* badge는 부가 UI — 실패 시 0 유지 */
+  const fetchBadges = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/stats");
+      const json = res.ok ? await res.json() : null;
+      if (json?.ok) {
+        setBadge({
+          pending: json.stats?.pending ?? 0,
+          otcPending: json.stats?.otcPending ?? 0,
+          commentUnread: json.stats?.commentUnread ?? 0,
+        });
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
+    } catch {
+      /* 배지는 부가 UI — 실패 시 기존 값 유지 */
+    }
+  }, []);
 
-  const pageTitle = useMemo(() => resolvePageTitle(pathname), [pathname]);
+  // 라우트 이동 시 즉시 1회
+  useEffect(() => {
+    fetchBadges();
+  }, [pathname, fetchBadges]);
+
+  // 45초 폴링 — 탭이 백그라운드면 건너뛰고, 포커스 복귀 시 즉시 1회
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!document.hidden) fetchBadges();
+    }, BADGE_POLL_MS);
+    const onVisibility = () => {
+      if (!document.hidden) fetchBadges();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [fetchBadges]);
+
+  const requestBadgeCount = badge.pending + badge.otcPending;
+  const defaultTitle = useMemo(() => resolvePageTitle(pathname), [pathname]);
 
   const handleLogout = async () => {
     await fetch("/api/admin/auth/logout", { method: "POST" });
@@ -350,68 +524,96 @@ export default function AdminShell({
 
   return (
     <AdminSessionProvider value={session}>
-      <Shell>
-        <Sidebar>
-          <Brand>춘심 OTC 운영</Brand>
-          <SideNav>
-            {NAV_ITEMS.map((item) => (
-              <SideLink
+      <AdminPageHeaderProvider value={headerApi}>
+        <Shell>
+          <Sidebar>
+            <SideNav>
+              {SIDE_ITEMS.map((item) => (
+                <SideLink
+                  key={item.href}
+                  href={item.href}
+                  $active={navActive(pathname, item.href, item.exact)}
+                >
+                  <SideLinkLabel>{item.label}</SideLinkLabel>
+                  {item.badge && requestBadgeCount > 0 ? (
+                    <CountBadge aria-label={`접수 대기 ${requestBadgeCount}건`}>
+                      {requestBadgeCount}
+                    </CountBadge>
+                  ) : null}
+                </SideLink>
+              ))}
+            </SideNav>
+          </Sidebar>
+
+          <MainColumn>
+            <TopHeader>
+              <BrandLink href="/admin">
+                춘심 <em>Admin</em>
+              </BrandLink>
+              <TopRight>
+                <BellButton
+                  type="button"
+                  disabled
+                  $dim={badge.commentUnread === 0}
+                  aria-label={
+                    badge.commentUnread > 0
+                      ? `안 읽은 코멘트 ${badge.commentUnread}개`
+                      : "알림 없음"
+                  }
+                  title={
+                    badge.commentUnread > 0
+                      ? `안 읽은 코멘트 ${badge.commentUnread}개`
+                      : "알림 없음"
+                  }
+                >
+                  <BellIcon />
+                  {badge.commentUnread > 0 ? (
+                    <BellBadge>{badge.commentUnread}</BellBadge>
+                  ) : null}
+                </BellButton>
+                <ProfileLink href="/admin/profile" aria-label="내 프로필">
+                  <UserIcon />
+                  {session.displayName ? (
+                    <ProfileName>{session.displayName}</ProfileName>
+                  ) : null}
+                </ProfileLink>
+                <LogoutIconButton
+                  type="button"
+                  onClick={handleLogout}
+                  aria-label="로그아웃"
+                  title="로그아웃"
+                >
+                  <LogoutIcon />
+                </LogoutIconButton>
+              </TopRight>
+            </TopHeader>
+
+            <PageHeaderBar>
+              <PageTitle>{pageHeader?.title ?? defaultTitle}</PageTitle>
+              {pageHeader?.actions ? (
+                <PageActions>{pageHeader.actions}</PageActions>
+              ) : null}
+            </PageHeaderBar>
+
+            <Main>{children}</Main>
+          </MainColumn>
+
+          <BottomNav aria-label="어드민 메뉴">
+            {TAB_ITEMS.map((item) => (
+              <TabLink
                 key={item.href}
                 href={item.href}
-                $active={isNavActive(
-                  pathname,
-                  item.href,
-                  "exact" in item ? item.exact : false,
-                )}
+                $active={navActive(pathname, item.href, item.exact)}
               >
-                <SideLinkLabel>{item.label}</SideLinkLabel>
-                {item.showPendingBadge && pendingCount > 0 ? (
-                  <PendingBadge aria-label={`접수 ${pendingCount}건`}>
-                    {pendingCount}
-                  </PendingBadge>
+                {item.badge && requestBadgeCount > 0 ? (
+                  <TabBadge aria-hidden="true">{requestBadgeCount}</TabBadge>
                 ) : null}
-              </SideLink>
+                {item.label}
+              </TabLink>
             ))}
-          </SideNav>
-        </Sidebar>
-
-        <MainColumn>
-          <TopBar>
-            <PageTitle>{pageTitle}</PageTitle>
-            <TopRight>
-              {session.displayName ? (
-                <UserBadge>{session.displayName}</UserBadge>
-              ) : session.loading ? (
-                <UserBadge>…</UserBadge>
-              ) : null}
-              <LogoutButton type="button" onClick={handleLogout}>
-                로그아웃
-              </LogoutButton>
-            </TopRight>
-          </TopBar>
-
-          <Main>{children}</Main>
-        </MainColumn>
-
-        <BottomNav aria-label="어드민 메뉴">
-          {NAV_ITEMS.map((item) => (
-            <TabLink
-              key={item.href}
-              href={item.href}
-              $active={isNavActive(
-                pathname,
-                item.href,
-                "exact" in item ? item.exact : false,
-              )}
-            >
-              {item.showPendingBadge && pendingCount > 0 ? (
-                <TabBadge aria-hidden="true">{pendingCount}</TabBadge>
-              ) : null}
-              {item.shortLabel}
-            </TabLink>
-          ))}
-        </BottomNav>
-      </Shell>
+          </BottomNav>
+        </Shell>
+      </AdminPageHeaderProvider>
     </AdminSessionProvider>
   );
 }

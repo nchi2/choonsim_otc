@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -32,6 +32,7 @@ import { WalletQrScanner } from "@/app/scanner/page/components/WalletQrScanner";
 import { addressDedupKey } from "@/app/scanner/lib/utils";
 import { StateBox } from "@/components/admin/ui";
 import { CommentsSection } from "@/components/admin/CommentsSection";
+import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
 
 const Page = styled.div`
   max-width: 720px;
@@ -44,19 +45,14 @@ const Page = styled.div`
 `;
 
 const BackLink = styled(Link)`
+  display: inline-block;
+  margin-bottom: 0.75rem;
   font-size: 0.875rem;
   color: #6b7280;
   text-decoration: none;
   &:hover {
     color: #111827;
   }
-`;
-
-const Title = styled.h1`
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin: 0.75rem 0 1.25rem;
-  color: #111827;
 `;
 
 const Card = styled.div`
@@ -737,6 +733,21 @@ export default function Miracle10DetailPage({
     load();
   }, [load]);
 
+  // 셸이 유일한 제목 소유자 — 배지 포함 제목을 헤더로 전달 (본문 h1 없음)
+  const headerTitle = useMemo(
+    () =>
+      data ? (
+        <>
+          신청 #{data.id}
+          <Badge $color={STATUS_COLORS[data.status]}>
+            {STATUS_LABELS[data.status]}
+          </Badge>
+        </>
+      ) : undefined,
+    [data],
+  );
+  useAdminPageHeader(headerTitle);
+
   const changeStatus = async (
     status: Miracle10Status,
     extra?: Record<string, unknown>,
@@ -817,13 +828,7 @@ export default function Miracle10DetailPage({
 
   return (
     <Page>
-      <BackLink href="/admin/miracle10">← 목록으로</BackLink>
-      <Title>
-        신청 #{data.id}{" "}
-        <Badge $color={STATUS_COLORS[data.status]}>
-          {STATUS_LABELS[data.status]}
-        </Badge>
-      </Title>
+      <BackLink href="/admin/requests?type=miracle10">← 목록으로</BackLink>
 
       <ActionCard>
         <SectionTitle>다음 액션</SectionTitle>

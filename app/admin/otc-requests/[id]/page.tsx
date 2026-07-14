@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -14,6 +14,7 @@ import {
 import { formatKstYmdLong } from "@/lib/kst";
 import { StateBox, adminColors } from "@/components/admin/ui";
 import { CommentsSection } from "@/components/admin/CommentsSection";
+import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
 
 const Page = styled.div`
   max-width: 720px;
@@ -26,23 +27,14 @@ const Page = styled.div`
 `;
 
 const BackLink = styled(Link)`
+  display: inline-block;
+  margin-bottom: 0.75rem;
   font-size: 0.875rem;
   color: #6b7280;
   text-decoration: none;
   &:hover {
     color: #111827;
   }
-`;
-
-const Title = styled.h1`
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin: 0.75rem 0 1.25rem;
-  color: #111827;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
 `;
 
 const Card = styled.div`
@@ -327,6 +319,22 @@ export default function OtcRequestDetailPage({
     load();
   }, [load]);
 
+  // 셸이 유일한 제목 소유자 — 배지 포함 제목을 헤더로 전달 (본문 h1 없음)
+  const headerTitle = useMemo(
+    () =>
+      data ? (
+        <>
+          OTC 신청 #{data.id}
+          <SideBadge $side={data.side}>{otcSideLabel(data.side)}</SideBadge>
+          <Badge $color={otcRequestStatusColor(data.status)}>
+            {otcRequestStatusLabel(data.status)}
+          </Badge>
+        </>
+      ) : undefined,
+    [data],
+  );
+  useAdminPageHeader(headerTitle);
+
   const changeStatus = async (status: OtcRequestStatus) => {
     if (!data || data.status === status || saving) return;
     setSaving(true);
@@ -366,14 +374,7 @@ export default function OtcRequestDetailPage({
 
   return (
     <Page>
-      <BackLink href="/admin/otc-requests">← 목록으로</BackLink>
-      <Title>
-        OTC 신청 #{data.id}
-        <SideBadge $side={data.side}>{otcSideLabel(data.side)}</SideBadge>
-        <Badge $color={otcRequestStatusColor(data.status)}>
-          {otcRequestStatusLabel(data.status)}
-        </Badge>
-      </Title>
+      <BackLink href="/admin/requests?type=otc">← 목록으로</BackLink>
 
       <ActionCard>
         <SectionTitle>다음 액션</SectionTitle>

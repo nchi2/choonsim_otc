@@ -2,14 +2,12 @@
 
 // 운영 대시보드 — "할 일 중심".
 // ① 지금 할 일(접수 대기) ② 오늘 내 일정 ③ 현황 요약(압축) ④ 지갑 재고 ⑤ 바로가기.
-// 데이터는 기존 API 재사용: /api/admin/stats, /api/admin/offices, /api/admin/schedule/reservations.
+// 데이터는 /api/admin/dashboard 한 번으로 (구 stats+offices+사무실별 reservations 3+N회 → 1회).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
-import { useAdminSession } from "@/components/admin/AdminSessionContext";
-import { todayKst } from "@/lib/kst";
 import { StateBox, adminColors } from "@/components/admin/ui";
 
 const Page = styled.div`
@@ -221,6 +219,12 @@ const WalletStat = styled.span`
   }
 `;
 
+const WalletShortage = styled.span`
+  color: ${adminColors.danger};
+  font-weight: 800;
+  white-space: nowrap;
+`;
+
 const WalletBig = styled(Link)`
   font-size: 1.15rem;
   font-weight: 800;
@@ -296,54 +300,44 @@ interface Stats {
   walletStock: number;
   walletIn: number;
   walletOut: number;
+  wallet: { stock: number; onOrder: number; reserved: number };
 }
 
 interface TodayItem {
   orderId: number;
   time: string;
   name: string;
-  officeName: string;
-}
-
-interface OfficeItem {
-  id: number;
-  name: string;
-  isActive: boolean;
-}
-
-interface ReservationItem {
-  id: number;
-  reservedStart: string;
-  assignedAdminUserId: number | null;
-  customerName: string;
-  confirmed: boolean;
+  officeName: string | null;
 }
 
 export default function AdminHubPage() {
   const router = useRouter();
-  const { adminUserId } = useAdminSession();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // null = 로딩 중
   const [today, setToday] = useState<TodayItem[] | null>(null);
 
+  // 단일 엔드포인트 — stats + 오늘 내 일정이 한 응답으로 온다.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        const statsRes = await fetch("/api/admin/stats");
-        if (statsRes.status === 401) {
+        const res = await fetch("/api/admin/dashboard");
+        if (res.status === 401) {
           router.push("/admin/login");
           return;
         }
-        const statsJson = await statsRes.json();
-        if (!statsRes.ok || !statsJson.ok) {
-          throw new Error(statsJson.error || "집계를 불러오지 못했습니다.");
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || "대시보드를 불러오지 못했습니다.");
         }
-        if (!cancelled) setStats(statsJson.stats);
+        if (!cancelled) {
+          setStats(json.stats);
+          setToday(json.todayMySchedule ?? []);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
@@ -356,52 +350,6 @@ export default function AdminHubPage() {
       cancelled = true;
     };
   }, [router]);
-
-  // 오늘 내 확정 일정 — 사무실 목록 × 오늘 예약 조회 후 본인 배정만.
-  useEffect(() => {
-    if (adminUserId == null) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const date = todayKst();
-        const officesRes = await fetch("/api/admin/offices");
-        const officesJson = await officesRes.json();
-        if (!officesRes.ok || !officesJson.ok) throw new Error();
-        const offices = officesJson.offices as OfficeItem[];
-
-        const results = await Promise.all(
-          offices.map(async (office) => {
-            const res = await fetch(
-              `/api/admin/schedule/reservations?officeId=${office.id}&from=${date}&to=${date}`,
-            );
-            const json = await res.json();
-            if (!res.ok || !json.ok) return [] as TodayItem[];
-            return (json.items as ReservationItem[])
-              .filter(
-                (r) => r.confirmed && r.assignedAdminUserId === adminUserId,
-              )
-              .map((r) => ({
-                orderId: r.id,
-                time: r.reservedStart,
-                name: r.customerName,
-                officeName: office.name,
-              }));
-          }),
-        );
-
-        if (!cancelled) {
-          setToday(
-            results.flat().sort((a, b) => a.time.localeCompare(b.time)),
-          );
-        }
-      } catch {
-        if (!cancelled) setToday([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [adminUserId]);
 
   if (loading) {
     return (
@@ -430,7 +378,7 @@ export default function AdminHubPage() {
           ) : (
             <TodoRow>
               <TodoItem
-                href="/admin/miracle10?tab=PENDING"
+                href="/admin/requests?type=miracle10&tab=PENDING"
                 $active={stats.pending > 0}
               >
                 <TodoName>10모의 기적 접수</TodoName>
@@ -440,7 +388,7 @@ export default function AdminHubPage() {
                 </TodoValue>
               </TodoItem>
               <TodoItem
-                href="/admin/otc-requests?status=PENDING"
+                href="/admin/requests?type=otc&status=PENDING"
                 $active={stats.otc.pending > 0}
               >
                 <TodoName>OTC 접수</TodoName>
@@ -489,51 +437,56 @@ export default function AdminHubPage() {
         </CardLabel>
         <SummaryRow>
           <SummaryTitle>10모의 기적</SummaryTitle>
-          <SummaryStat href="/admin/miracle10?tab=CONTACTED">
+          <SummaryStat href="/admin/requests?type=miracle10&tab=CONTACTED">
             연락완료 <strong>{stats.contacted}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/miracle10?tab=VERIFIED">
+          <SummaryStat href="/admin/requests?type=miracle10&tab=VERIFIED">
             일정확정 <strong>{stats.verified}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/miracle10?tab=COMPLETED">
+          <SummaryStat href="/admin/requests?type=miracle10&tab=COMPLETED">
             완료 <strong>{stats.completed}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/miracle10?tab=CANCELED">
+          <SummaryStat href="/admin/requests?type=miracle10&tab=CANCELED">
             취소 <strong>{stats.canceled}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/miracle10?tab=ALL">
+          <SummaryStat href="/admin/requests?type=miracle10&tab=ALL">
             전체 <strong>{stats.total}</strong>
           </SummaryStat>
         </SummaryRow>
         <SummaryRow>
           <SummaryTitle>BMB 구매·판매</SummaryTitle>
-          <SummaryStat href="/admin/otc-requests?status=CONTACTED">
+          <SummaryStat href="/admin/requests?type=otc&status=CONTACTED">
             연락완료 <strong>{stats.otc.contacted}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/otc-requests?status=AGREED">
+          <SummaryStat href="/admin/requests?type=otc&status=AGREED">
             합의완료 <strong>{stats.otc.agreed}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/otc-requests?status=COMPLETED">
+          <SummaryStat href="/admin/requests?type=otc&status=COMPLETED">
             완료 <strong>{stats.otc.completed}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/otc-requests?status=CANCELED">
+          <SummaryStat href="/admin/requests?type=otc&status=CANCELED">
             취소 <strong>{stats.otc.canceled}</strong>
           </SummaryStat>
-          <SummaryStat href="/admin/otc-requests?status=ALL">
+          <SummaryStat href="/admin/requests?type=otc&status=ALL">
             전체 <strong>{stats.otc.total}</strong>
           </SummaryStat>
         </SummaryRow>
         <SummaryRow>
           <SummaryTitle>10모 지갑 재고</SummaryTitle>
           <WalletBig href="/admin/wallet-inventory">
-            {stats.walletStock}장
+            {stats.wallet.stock}장
+            {stats.wallet.onOrder > 0
+              ? ` (+${stats.wallet.onOrder} 예정)`
+              : ""}
           </WalletBig>
           <WalletStat>
-            입고 <strong>{stats.walletIn}</strong>
+            확정 예약 소요 <strong>{stats.wallet.reserved}</strong>장
           </WalletStat>
-          <WalletStat>
-            불출 <strong>{stats.walletOut}</strong>
-          </WalletStat>
+          {stats.wallet.stock - stats.wallet.reserved < 0 ? (
+            <WalletShortage>
+              부족 {stats.wallet.reserved - stats.wallet.stock}장 ⚠️
+            </WalletShortage>
+          ) : null}
         </SummaryRow>
       </SummaryCard>
 
@@ -543,11 +496,11 @@ export default function AdminHubPage() {
           <MenuTitle>일정·근무 캘린더</MenuTitle>
           <MenuDesc>신청 일정 조회 + 내 근무 슬롯 등록</MenuDesc>
         </MenuCard>
-        <MenuCard href="/admin/miracle10">
+        <MenuCard href="/admin/requests?type=miracle10">
           <MenuTitle>10모의 기적 신청 관리</MenuTitle>
           <MenuDesc>목록·상세, 상태 변경, 거래 기록</MenuDesc>
         </MenuCard>
-        <MenuCard href="/admin/otc-requests">
+        <MenuCard href="/admin/requests?type=otc">
           <MenuTitle>BMB 구매·판매 신청</MenuTitle>
           <MenuDesc>OTC 신청 목록·상세, 상태 관리</MenuDesc>
         </MenuCard>
