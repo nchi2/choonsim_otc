@@ -239,6 +239,14 @@ const SaveScheduleBtn = styled.button`
   }
 `;
 
+const ScheduleBtnRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+`;
+
 const ScheduleError = styled.p`
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
@@ -353,6 +361,13 @@ const ManualStatusDivider = styled.div`
   font-weight: 600;
 `;
 
+const CompleteWarnText = styled.p`
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #dc2626;
+`;
+
 /* ── 거래 기록 (내장 계산기) ── */
 
 const CalcBox = styled.div`
@@ -366,20 +381,70 @@ const CalcBox = styled.div`
 const CalcRow = styled.div`
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 0.75rem;
   padding: 0.18rem 0;
   font-size: 0.85rem;
   color: #374151;
   strong {
     color: #111827;
+    text-align: right;
+  }
+
+  /* 좁은 폭 — 라벨 위 / 값 아래로 세로 전환 (라벨·값 뒤엉킴 방지) */
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.1rem;
+    padding: 0.35rem 0;
+
+    strong {
+      text-align: left;
+    }
+  }
+`;
+
+/* 환율 입력 행 — 데스크탑 우측 정렬 입력, 모바일 전체 폭 */
+const RateInput = styled.input`
+  width: 7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+  text-align: right;
+
+  @media (max-width: 480px) {
+    width: 100%;
+    text-align: left;
   }
 `;
 
 const CalcActions = styled.div`
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   margin-top: 0.6rem;
+
+  @media (max-width: 480px) {
+    button {
+      flex: 1 1 40%;
+    }
+  }
+`;
+
+/* 일정 확정 후 다음 단계 안내 — 거래 기록 카드 상단 */
+const NextStepNote = styled.p`
+  margin: 0 0 0.85rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
 `;
 
 const SmallBtn = styled.button`
@@ -644,6 +709,8 @@ export default function Miracle10DetailPage({
   // 일정 확정 전 확인 단계 (P2P 판매 경험 체크)
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [p2pChecked, setP2pChecked] = useState(false);
+  // 완료 시 거래 기록 미작성 경고 (경고만 — 진행은 허용)
+  const [completeWarn, setCompleteWarn] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -676,16 +743,24 @@ export default function Miracle10DetailPage({
   ) => {
     if (!data || (data.status === status && !extra) || saving) return;
 
-    // 완료 전환 — 자동 불출 안내 후 확인 (저장된 거래 기록 기준).
+    // 완료 전환 — 거래 기록 미작성 경고 + 자동 불출 안내 후 확인 (저장된 기록 기준).
     const oursCount = (data.receiveWallets ?? []).filter(
       (w) => w.isOurs,
     ).length;
     if (status === "COMPLETED" && data.status !== "COMPLETED") {
+      const dealMissing =
+        decToNum(data.dealUnitPriceKrw) == null ||
+        decToNum(data.dealTotalKrw) == null;
+      if (dealMissing) setCompleteWarn(true);
+      const warnPrefix = dealMissing
+        ? "⚠ 거래 기록(단가·총액)이 아직 작성되지 않았습니다.\n계속하면 기록 없이 완료됩니다.\n\n"
+        : "";
       const msg =
         oursCount > 0
-          ? `거래 완료 처리하시겠습니까?\n\n저장된 거래 기록 기준, 우리 지갑 ${oursCount}장이 재고에서 자동 불출 기록됩니다.\n(이 신청으로 불출 기록이 이미 있으면 중복 기록되지 않습니다.)`
-          : "거래 완료 처리하시겠습니까?\n\n「우리 지갑」으로 체크된 주소가 없어 재고 불출은 기록되지 않습니다.";
+          ? `${warnPrefix}거래 완료 처리하시겠습니까?\n\n저장된 거래 기록 기준, 우리 지갑 ${oursCount}장이 재고에서 자동 불출 기록됩니다.\n(이 신청으로 불출 기록이 이미 있으면 중복 기록되지 않습니다.)`
+          : `${warnPrefix}거래 완료 처리하시겠습니까?\n\n「우리 지갑」으로 체크된 주소가 없어 재고 불출은 기록되지 않습니다.`;
       if (!window.confirm(msg)) return;
+      setCompleteWarn(false);
     }
 
     setSaving(true);
@@ -769,8 +844,14 @@ export default function Miracle10DetailPage({
               </PrimaryActionBtn>
             </NextActionRow>
             <ActionHint>
-              손님에게 전화로 연락한 뒤 「연락 완료 처리」를 눌러 다음 단계로
-              넘겨주세요.
+              연락해서 아래 「방문 일정」을 확정해주세요. 일정까지 정해지면
+              방문 일정의 「일정 확정」 버튼으로 바로 확정할 수 있습니다.
+              <br />
+              <strong style={{ color: "#b91c1c" }}>
+                ※ P2P 거래 앱에서 판매 이력이 있으면 이용이 불가합니다 — 통화
+                시 꼭 확인하세요.
+              </strong>{" "}
+              (확정 단계에서 확인 체크로 기록됩니다)
             </ActionHint>
           </>
         ) : null}
@@ -877,6 +958,12 @@ export default function Miracle10DetailPage({
             </StatusButton>
           ))}
         </StatusButtons>
+        {completeWarn ? (
+          <CompleteWarnText role="alert">
+            거래 기록을 먼저 작성해주세요. 아래 「거래 기록」에서 단가·총액을
+            저장한 뒤 완료 처리하는 것을 권장합니다.
+          </CompleteWarnText>
+        ) : null}
       </ActionCard>
 
       <Card>
@@ -926,6 +1013,11 @@ export default function Miracle10DetailPage({
             visitDate={data.visitDate}
             reservedStart={data.reservedStart}
             onSaved={load}
+            onMarkContacted={
+              data.status === "PENDING"
+                ? () => changeStatus("CONTACTED")
+                : undefined
+            }
           />
         ) : (
           <>
@@ -1008,6 +1100,8 @@ interface VisitScheduleEditorProps {
   visitDate: string | null;
   reservedStart: string | null;
   onSaved: () => void;
+  /** PENDING 건 — 「연락 완료」 상태 전환 버튼 (일정 없이 연락만 남긴 경우) */
+  onMarkContacted?: () => void;
 }
 
 function VisitScheduleEditor({
@@ -1018,6 +1112,7 @@ function VisitScheduleEditor({
   visitDate,
   reservedStart,
   onSaved,
+  onMarkContacted,
 }: VisitScheduleEditorProps) {
   const minDate = todayKst();
   const [draftOfficeId, setDraftOfficeId] = useState<number | null>(officeId);
@@ -1142,30 +1237,37 @@ function VisitScheduleEditor({
     [slotOpenDates],
   );
 
+  // 일정 확정 전 P2P 확인 단계 (다음 액션 카드와 동일 정책)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [p2pChecked, setP2pChecked] = useState(false);
+
   const hasChanges =
     draftDate !== (visitDate ?? "") ||
     draftStart !== (reservedStart ?? "") ||
     draftOfficeId !== officeId;
 
-  const canSave =
-    hasChanges &&
-    activeOfficeId != null &&
-    draftDate !== "" &&
-    draftStart !== "";
+  const fieldsComplete =
+    activeOfficeId != null && draftDate !== "" && draftStart !== "";
 
-  const saveSchedule = async () => {
-    if (!canSave || saving || activeOfficeId == null) return;
+  // 임시 저장(상태 유지)은 변경이 있을 때만, 확정은 필드만 완성되면 가능
+  // (임시 저장해 둔 일정을 그대로 확정하는 경우 포함).
+  const canSaveDraft = hasChanges && fieldsComplete;
+  const canConfirm = fieldsComplete;
+
+  /** confirm=true면 일정 저장 + VERIFIED 전환을 한 요청(한 트랜잭션)으로. */
+  const saveSchedule = async (confirm: boolean) => {
+    if (saving || activeOfficeId == null || !fieldsComplete) return;
+    if (!confirm && !hasChanges) return;
     setSaving(true);
     setScheduleError(null);
     try {
-      const payload: {
-        visitDate: string;
-        reservedStart: string;
-        officeId: number;
-      } = {
+      const payload: Record<string, unknown> = {
         visitDate: draftDate,
         reservedStart: draftStart,
         officeId: activeOfficeId,
+        ...(confirm
+          ? { status: "VERIFIED", p2pExperienceConfirmed: true }
+          : {}),
       };
       const res = await fetch(`/api/admin/miracle10/${orderId}`, {
         method: "PATCH",
@@ -1176,6 +1278,8 @@ function VisitScheduleEditor({
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "일정 저장 실패");
       }
+      setConfirmOpen(false);
+      setP2pChecked(false);
       onSaved();
     } catch (e) {
       setScheduleError(
@@ -1305,9 +1409,74 @@ function VisitScheduleEditor({
         )
       ) : null}
 
-      <SaveScheduleBtn type="button" disabled={!canSave || saving} onClick={saveSchedule}>
-        {saving ? "저장 중…" : "일정 저장"}
-      </SaveScheduleBtn>
+      {status === "VERIFIED" ? (
+        <SaveScheduleBtn
+          type="button"
+          disabled={!canSaveDraft || saving}
+          onClick={() => saveSchedule(false)}
+        >
+          {saving ? "저장 중…" : "일정 변경 저장"}
+        </SaveScheduleBtn>
+      ) : confirmOpen ? (
+        <ConfirmBox style={{ marginTop: "0.75rem" }}>
+          <CheckLabel>
+            <input
+              type="checkbox"
+              checked={p2pChecked}
+              onChange={(e) => setP2pChecked(e.target.checked)}
+            />
+            P2P 거래 앱에서의 판매 경험 여부를 확인했습니까? (판매 이력이
+            있으면 이용 불가)
+          </CheckLabel>
+          <ConfirmActions>
+            <PrimaryActionBtn
+              disabled={!p2pChecked || saving}
+              onClick={() => saveSchedule(true)}
+            >
+              {saving ? "확정 중…" : "일정 확정"}
+            </PrimaryActionBtn>
+            <GhostBtn
+              type="button"
+              onClick={() => {
+                setConfirmOpen(false);
+                setP2pChecked(false);
+              }}
+            >
+              취소
+            </GhostBtn>
+          </ConfirmActions>
+        </ConfirmBox>
+      ) : (
+        <>
+          <ScheduleBtnRow>
+            <SaveScheduleBtn
+              type="button"
+              style={{ marginTop: 0 }}
+              disabled={!canConfirm || saving}
+              onClick={() => setConfirmOpen(true)}
+            >
+              일정 확정
+            </SaveScheduleBtn>
+            <GhostBtn
+              type="button"
+              disabled={!canSaveDraft || saving}
+              onClick={() => saveSchedule(false)}
+            >
+              {saving ? "저장 중…" : "임시 저장 (미확정)"}
+            </GhostBtn>
+            {onMarkContacted ? (
+              <GhostBtn type="button" disabled={saving} onClick={onMarkContacted}>
+                연락 완료로 변경
+              </GhostBtn>
+            ) : null}
+          </ScheduleBtnRow>
+          <ActionHint>
+            「일정 확정」 = 일정 저장 + 상태 전환(운영자 배정·정원 반영).
+            일정을 못 정했거나 문자로 연락만 남겼다면 → 「연락 완료」 상태로
+            변경하세요.
+          </ActionHint>
+        </>
+      )}
         </>
       )}
       {scheduleError ? <ScheduleError role="alert">{scheduleError}</ScheduleError> : null}
@@ -1586,6 +1755,13 @@ function DealRecordSection({
   return (
     <Card>
       <SectionTitle>거래 기록</SectionTitle>
+      {order.status === "VERIFIED" ? (
+        <NextStepNote>
+          다음 단계 — 호가 평단가 기준으로 「계산 결과 기입」을 눌러 단가를
+          산정하고, 흥정 결과를 반영해 저장하세요. 저장 후 위에서 「거래 완료
+          처리」를 진행합니다.
+        </NextStepNote>
+      ) : null}
       <SectionSub>
         평단가(호가 VWAP) 기준 + 마진 하한(10모당 3만원) 계산기입니다. 「계산
         결과 기입」 후 흥정에 맞게 단가를 수정하고 저장하세요.
@@ -1616,7 +1792,7 @@ function DealRecordSection({
             </strong>
           </CalcRow>
         ) : null}
-        <CalcRow style={{ alignItems: "center" }}>
+        <CalcRow>
           <span>
             <FieldLabel
               htmlFor="deal-usdt-krw"
@@ -1626,9 +1802,8 @@ function DealRecordSection({
             </FieldLabel>
             {usdtKrwOverride != null ? <FloorNote>수동</FloorNote> : null}
           </span>
-          <TextInput
+          <RateInput
             id="deal-usdt-krw"
-            style={{ width: "7rem", textAlign: "right" }}
             inputMode="decimal"
             value={usdtKrwInput}
             onChange={(e) => handleUsdtKrwChange(e.target.value)}
