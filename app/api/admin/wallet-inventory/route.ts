@@ -2,29 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/admin-guard";
 import { isKstYmd, todayKst } from "@/lib/kst";
+import { computeWalletTotals, isLedgerType } from "@/lib/wallet-inventory";
 
 export const runtime = "nodejs";
-
-const LEDGER_TYPES = ["IN", "OUT"] as const;
-type LedgerType = (typeof LEDGER_TYPES)[number];
-
-function isLedgerType(v: unknown): v is LedgerType {
-  return typeof v === "string" && (LEDGER_TYPES as readonly string[]).includes(v);
-}
-
-async function computeTotals(): Promise<{
-  inTotal: number;
-  outTotal: number;
-  stock: number;
-}> {
-  const grouped = await prisma.paperWalletLedger.groupBy({
-    by: ["type"],
-    _sum: { count: true },
-  });
-  const inTotal = grouped.find((g) => g.type === "IN")?._sum.count ?? 0;
-  const outTotal = grouped.find((g) => g.type === "OUT")?._sum.count ?? 0;
-  return { inTotal, outTotal, stock: inTotal - outTotal };
-}
 
 export async function GET() {
   if (!(await getAdminUser())) {
@@ -36,7 +16,7 @@ export async function GET() {
 
   try {
     const [totals, entries] = await Promise.all([
-      computeTotals(),
+      computeWalletTotals(),
       prisma.paperWalletLedger.findMany({
         orderBy: [{ entryDate: "desc" }, { id: "desc" }],
         take: 200,
@@ -50,6 +30,9 @@ export async function GET() {
           adminName: true,
           orderId: true,
           receiverName: true,
+          status: true,
+          expectedDate: true,
+          linkedLedgerId: true,
         },
       }),
     ]);
@@ -86,7 +69,10 @@ export async function POST(request: Request) {
 
   if (!isLedgerType(body.type)) {
     return NextResponse.json(
-      { ok: false, error: "type은 IN(입고)/OUT(불출)이어야 합니다." },
+      {
+        ok: false,
+        error: "type은 IN(입고)/OUT(불출)/ORDER(발주)여야 합니다.",
+      },
       { status: 400 },
     );
   }
@@ -135,6 +121,21 @@ export async function POST(request: Request) {
     }
   }
 
+  // ORDER(발주) — 예상 도착일(선택, YYYY-MM-DD → KST 자정). 재고와 무관한 기록.
+  let expectedDate: Date | null = null;
+  if (type === "ORDER" && body.expectedDate !== undefined && body.expectedDate !== null && body.expectedDate !== "") {
+    if (
+      typeof body.expectedDate !== "string" ||
+      !isKstYmd(body.expectedDate)
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "예상 도착일 형식은 YYYY-MM-DD 입니다." },
+        { status: 400 },
+      );
+    }
+    expectedDate = new Date(`${body.expectedDate}T00:00:00+09:00`);
+  }
+
   try {
     if (orderId != null) {
       const order = await prisma.otcOrder.findUnique({
@@ -160,11 +161,12 @@ export async function POST(request: Request) {
         adminName: admin.displayName || admin.username,
         orderId,
         receiverName,
+        ...(type === "ORDER" ? { status: "PENDING", expectedDate } : {}),
       },
       select: { id: true },
     });
 
-    const totals = await computeTotals();
+    const totals = await computeWalletTotals();
     return NextResponse.json({ ok: true, id: entry.id, totals });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

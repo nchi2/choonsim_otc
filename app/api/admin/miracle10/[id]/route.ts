@@ -255,6 +255,18 @@ export async function PATCH(
   const dealData = dealInput.data;
   const hasDeal = Object.keys(dealData).length > 0;
 
+  // 테스트 데이터 건별 토글
+  let isTestUpdate: boolean | undefined;
+  if ("isTest" in body) {
+    if (typeof body.isTest !== "boolean") {
+      return NextResponse.json(
+        { ok: false, error: "isTest 값이 올바르지 않습니다." },
+        { status: 400 },
+      );
+    }
+    isTestUpdate = body.isTest;
+  }
+
   let newStatus: OrderStatus | null = null;
   if (hasStatus) {
     const status = typeof body.status === "string" ? body.status : "";
@@ -264,7 +276,7 @@ export async function PATCH(
     newStatus = status as OrderStatus;
   }
 
-  if (!newStatus && !scheduleInput && !hasDeal) {
+  if (!newStatus && !scheduleInput && !hasDeal && isTestUpdate === undefined) {
     return NextResponse.json({ ok: false, error: "변경할 항목이 없습니다." }, { status: 400 });
   }
 
@@ -350,7 +362,7 @@ export async function PATCH(
           });
         }
 
-        if (hasDeal) {
+        if (hasDeal || isTestUpdate !== undefined) {
           const { receiveWallets, ...restDeal } = dealData;
           await tx.otcOrder.update({
             where: { id },
@@ -363,6 +375,7 @@ export async function PATCH(
                       receiveWallets as unknown as Prisma.InputJsonValue,
                   }
                 : {}),
+              ...(isTestUpdate !== undefined ? { isTest: isTestUpdate } : {}),
               ...editor,
             },
           });

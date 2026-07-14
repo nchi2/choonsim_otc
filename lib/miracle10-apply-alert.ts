@@ -1,12 +1,7 @@
 import { Resend } from "resend";
 import { fmtKstMinute, formatKstYmdLong } from "@/lib/kst";
+import { getAlertFromAddress, getAlertRecipients } from "@/lib/alert-email";
 
-const DEFAULT_ALERT_EMAILS = [
-  // "rsnchi2@gmail.com",
-  "choonsim.dev@gmail.com",
-] as const;
-
-const DEFAULT_FROM = "onboarding@resend.dev";
 const ADMIN_MIRACLE10_URL = "https://choonsim.com/admin/miracle10";
 
 export interface Miracle10ApplyAlertPayload {
@@ -29,21 +24,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function getAlertEmails(): string[] {
-  const raw = process.env.ALERT_EMAILS?.trim();
-  if (raw) {
-    return raw
-      .split(",")
-      .map((e) => e.trim())
-      .filter(Boolean);
-  }
-  return [...DEFAULT_ALERT_EMAILS];
-}
-
-function getFromAddress(): string {
-  return process.env.RESEND_FROM?.trim() || DEFAULT_FROM;
 }
 
 function visitTypeLabel(visitType: string): string {
@@ -110,8 +90,8 @@ export async function sendMiracle10ApplyAlert(
   const subject = `[춘심] All-in-One 신청 — ${payload.name} ${payload.quantity}모`;
 
   const { error } = await resend.emails.send({
-    from: getFromAddress(),
-    to: getAlertEmails(),
+    from: getAlertFromAddress(),
+    to: await getAlertRecipients(),
     subject,
     html: buildAlertHtml(payload),
   });

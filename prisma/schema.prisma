@@ -57,6 +57,15 @@ model AdminUser {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // 프로필 — email은 신청 알림 수신자 소스로도 사용
+  email String?
+  phone String?
+
+  // 정산·급여용 계좌 — ★본인 전용. profile API(세션 uid) 외 어떤 조회/목록에도 노출 금지.
+  bankName          String?
+  bankAccountNo     String?
+  bankAccountHolder String?
+
   workSlots      WorkSlot[]
   assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
   walletLedgers  PaperWalletLedger[] @relation("WalletLedgerAdmin")
@@ -153,6 +162,9 @@ model OtcOrder {
   isSbmbMember Boolean @default(false)
   memo         String?
 
+  // 테스트 데이터 — 목록·집계·배지·공개 정원(taken)에서 기본 제외 (?includeTest=1)
+  isTest Boolean @default(false)
+
   // 거래 기록 (운영자 작업 화면, 전부 nullable — 기존 데이터 안전)
   p2pExperienceConfirmed Boolean? // 일정 확정 시 "P2P 거래 앱 판매 경험 확인" 체크 여부
   dealQuantity           Int? // 실제 거래 수량 (기본 = 신청 수량)
@@ -180,9 +192,13 @@ model OtcOrder {
   walletLedgers PaperWalletLedger[] @relation("WalletLedgerOrder")
 
   @@index([status])
+  @@index([kind, status])
   @@index([createdAt])
   @@index([kind])
   @@index([customerId])
+  @@index([visitDate])
+  @@index([reservedStart])
+  @@index([isTest])
 }
 
 // 종이지갑(EVM 지갑) 재고 원장 — 입고(IN)/불출(OUT) 행 누적, 재고 = IN 합 − OUT 합.
@@ -191,10 +207,15 @@ model PaperWalletLedger {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
 
-  type      String // "IN" 입고 | "OUT" 불출
+  type      String // "IN" 입고 | "OUT" 불출 | "ORDER" 발주(입고 예정)
   count     Int // 장수 — 항상 양수, 부호는 type으로 해석
-  entryDate String // 실물 입출고 날짜 YYYY-MM-DD (KST)
+  entryDate String // 실물 입출고(발주) 날짜 YYYY-MM-DD (KST)
   memo      String?
+
+  // ORDER 전용 — 중복 발주 방지용 기록. ★재고(stock=IN−OUT) 계산에 절대 미포함.
+  status         String? // ORDER: "PENDING" | "RECEIVED" | "CANCELED"
+  expectedDate   DateTime? // 예상 도착일
+  linkedLedgerId Int? // 입고 확정 시 생성된 IN 원장 id
 
   // 등록자/담당 운영자 — 계정 삭제돼도 원장 보존(SetNull + 이름 스냅샷)
   adminUserId Int?
@@ -207,6 +228,7 @@ model PaperWalletLedger {
   receiverName String?
 
   @@index([type])
+  @@index([type, status])
   @@index([entryDate])
   @@index([orderId])
 }
@@ -247,9 +269,13 @@ model OtcRequest {
   lastEditedByName String?
   lastEditedAt     DateTime?
 
+  // 테스트 데이터 — 목록·집계에서 기본 제외 (?includeTest=1)
+  isTest Boolean @default(false)
+
   @@index([status])
   @@index([createdAt])
   @@index([side])
+  @@index([isTest])
 }
 
 // 신청 건 운영자 코멘트 — 10모(OtcOrder)·OTC(OtcRequest) 공용, targetType+targetId 참조.

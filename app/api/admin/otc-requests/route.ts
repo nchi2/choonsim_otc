@@ -1,36 +1,74 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/app/generated/prisma/client";
 import { getAdminUser } from "@/lib/admin-guard";
 import { getCommentBadges } from "@/lib/order-comments";
+import {
+  OTC_REQUEST_STATUSES,
+  isOtcRequestStatus,
+} from "@/lib/otc-request-status";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const statusParam = searchParams.get("status");
+  const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 300);
+  const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
+  const includeTest = searchParams.get("includeTest") === "1";
+
+  // 테스트 데이터 기본 제외 — ?includeTest=1 일 때만 포함
+  const baseWhere: Prisma.OtcRequestWhereInput = includeTest
+    ? {}
+    : { isTest: false };
+  const where: Prisma.OtcRequestWhereInput = { ...baseWhere };
+  if (statusParam && isOtcRequestStatus(statusParam)) {
+    where.status = statusParam;
+  }
+
   try {
-    const items = await prisma.otcRequest.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 300,
-      select: {
-        id: true,
-        createdAt: true,
-        side: true,
-        name: true,
-        contact: true,
-        quantity: true,
-        desiredPrice: true,
-        status: true,
-        visitDate: true,
-        reservedStart: true,
-        lastEditedByName: true,
-        lastEditedAt: true,
-        office: { select: { name: true } },
-      },
-    });
+    const [total, grouped, items] = await Promise.all([
+      prisma.otcRequest.count({ where }),
+      prisma.otcRequest.groupBy({
+        by: ["status"],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+      prisma.otcRequest.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+        select: {
+          id: true,
+          createdAt: true,
+          side: true,
+          name: true,
+          contact: true,
+          quantity: true,
+          desiredPrice: true,
+          status: true,
+          visitDate: true,
+          reservedStart: true,
+          isTest: true,
+          lastEditedByName: true,
+          lastEditedAt: true,
+          office: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    const countOf = (s: string) =>
+      grouped.find((g) => g.status === s)?._count._all ?? 0;
+    const counts = Object.fromEntries([
+      ...OTC_REQUEST_STATUSES.map((s) => [s, countOf(s)]),
+      ["total", grouped.reduce((sum, g) => sum + g._count._all, 0)],
+    ]) as Record<string, number>;
 
     const badges = await getCommentBadges(
       admin.adminUserId,
@@ -40,6 +78,10 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+      total,
+      counts,
+      limit,
+      offset,
       items: items.map((it) => ({
         id: it.id,
         createdAt: it.createdAt.toISOString(),
@@ -51,6 +93,7 @@ export async function GET() {
         status: it.status,
         visitDate: it.visitDate,
         reservedStart: it.reservedStart,
+        isTest: it.isTest,
         lastEditedByName: it.lastEditedByName,
         lastEditedAt: it.lastEditedAt ? it.lastEditedAt.toISOString() : null,
         officeName: it.office?.name ?? null,

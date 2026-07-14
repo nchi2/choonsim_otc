@@ -90,7 +90,19 @@ export async function PATCH(
 
   const data: Partial<Record<TextFieldKey, string | null>> & {
     status?: string;
+    isTest?: boolean;
   } = {};
+
+  // 테스트 데이터 건별 토글
+  if ("isTest" in body) {
+    if (typeof body.isTest !== "boolean") {
+      return NextResponse.json(
+        { ok: false, error: "isTest 값이 올바르지 않습니다." },
+        { status: 400 },
+      );
+    }
+    data.isTest = body.isTest;
+  }
 
   if (body.status !== undefined) {
     if (!isOtcRequestStatus(body.status)) {

@@ -193,7 +193,8 @@ function AdminOtcRequestsPageInner() {
       }
       setError(null);
       try {
-        const res = await fetch("/api/admin/otc-requests");
+        // 서버 기본 limit이 50으로 줄어 명시 — 다음 덩이에서 counts·서버 필터로 전환하며 제거 예정
+        const res = await fetch("/api/admin/otc-requests?limit=200");
         if (res.status === 401) {
           router.push("/admin/login");
           return;

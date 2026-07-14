@@ -12,6 +12,11 @@ export interface ScheduleReservationItem {
   status: OrderStatus;
   /** true = VERIFIED + 배정 완료(정원 차감 대상). false = 표시 전용 미확정. */
   confirmed: boolean;
+  /**
+   * 테스트 건 — 캘린더에서 숨기지 않는다(자리를 실제로 점유 중이므로 숨기면
+   * 중복 배정 위험). UI 표시 구분용 필드. 공개 정원(taken)에서는 제외됨.
+   */
+  isTest: boolean;
 }
 
 /**
@@ -40,6 +45,7 @@ export async function getScheduleReservations(
       reservedStart: true,
       assignedAdminUserId: true,
       status: true,
+      isTest: true,
       customer: { select: { name: true } },
     },
     orderBy: [{ visitDate: "asc" }, { reservedStart: "asc" }, { id: "asc" }],
@@ -54,5 +60,6 @@ export async function getScheduleReservations(
     status: r.status,
     confirmed:
       r.status === OrderStatus.VERIFIED && r.assignedAdminUserId != null,
+    isTest: r.isTest,
   }));
 }

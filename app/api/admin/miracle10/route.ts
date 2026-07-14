@@ -18,15 +18,27 @@ export async function GET(request: Request) {
   const statusParam = searchParams.get("status");
   const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 200);
   const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
+  const includeTest = searchParams.get("includeTest") === "1";
 
-  const where: Prisma.OtcOrderWhereInput = { kind: OrderKind.MIRACLE10 };
+  // 테스트 데이터 기본 제외 — ?includeTest=1 일 때만 포함
+  const baseWhere: Prisma.OtcOrderWhereInput = {
+    kind: OrderKind.MIRACLE10,
+    ...(includeTest ? {} : { isTest: false }),
+  };
+  const where: Prisma.OtcOrderWhereInput = { ...baseWhere };
   if (statusParam && VALID_STATUS.has(statusParam as OrderStatus)) {
     where.status = statusParam as OrderStatus;
   }
 
   try {
-    const [total, orders] = await Promise.all([
+    const [total, grouped, orders] = await Promise.all([
       prisma.otcOrder.count({ where }),
+      // 상태별 건수 서버 집계 — 클라 전체 다운로드 후 집계 제거용
+      prisma.otcOrder.groupBy({
+        by: ["status"],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
       prisma.otcOrder.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -42,6 +54,7 @@ export async function GET(request: Request) {
           reservedStart: true,
           visitTimeSlot: true,
           isSbmbMember: true,
+          isTest: true,
           lastEditedBy: true,
           lastEditedByName: true,
           lastEditedAt: true,
@@ -49,6 +62,17 @@ export async function GET(request: Request) {
         },
       }),
     ]);
+
+    const countOf = (s: OrderStatus) =>
+      grouped.find((g) => g.status === s)?._count._all ?? 0;
+    const counts = {
+      PENDING: countOf(OrderStatus.PENDING),
+      CONTACTED: countOf(OrderStatus.CONTACTED),
+      VERIFIED: countOf(OrderStatus.VERIFIED),
+      COMPLETED: countOf(OrderStatus.COMPLETED),
+      CANCELED: countOf(OrderStatus.CANCELED),
+      total: grouped.reduce((sum, g) => sum + g._count._all, 0),
+    };
 
     const badges = await getCommentBadges(
       admin.adminUserId,
@@ -67,6 +91,7 @@ export async function GET(request: Request) {
       reservedStart: o.reservedStart,
       visitTimeSlot: o.visitTimeSlot,
       isSbmbMember: o.isSbmbMember,
+      isTest: o.isTest,
       lastEditedBy: o.lastEditedBy,
       lastEditedByName: o.lastEditedByName,
       lastEditedAt: o.lastEditedAt,
@@ -76,7 +101,7 @@ export async function GET(request: Request) {
       unreadCommentCount: badges.get(o.id)?.unread ?? 0,
     }));
 
-    return NextResponse.json({ ok: true, total, limit, offset, items });
+    return NextResponse.json({ ok: true, total, counts, limit, offset, items });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[admin/miracle10] list failed", code);

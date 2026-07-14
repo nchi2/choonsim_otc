@@ -10,6 +10,17 @@ export const verifiedAssignedOrderWhere = {
   assignedAdminUserId: { not: null },
 } as const;
 
+/**
+ * 공개 정원 차감(taken) 전용 — 테스트 건 제외.
+ * 확정 플로우 테스트가 손님이 보는 예약 자리를 잠식하지 않게 한다.
+ * 배정 무결성 검사(slotHasVerifiedReservation·duplicateOnAdmin)와
+ * 어드민 캘린더 표시는 테스트 포함(verifiedAssignedOrderWhere) 유지.
+ */
+export const capacityTakenWhere = {
+  ...verifiedAssignedOrderWhere,
+  isTest: false,
+} as const;
+
 /** 특정 (사무실, 날짜, 시작시각) 캐파·차감·남은자리. */
 export async function getSlotCountsAtTime(
   db: DbClient,
@@ -21,7 +32,7 @@ export async function getSlotCountsAtTime(
     db.workSlot.count({ where: { officeId, date, startTime } }),
     db.otcOrder.count({
       where: {
-        ...verifiedAssignedOrderWhere,
+        ...capacityTakenWhere,
         officeId,
         visitDate: date,
         reservedStart: startTime,
@@ -62,7 +73,7 @@ export async function getSlotAvailabilityForDate(
     }),
     prisma.otcOrder.findMany({
       where: {
-        ...verifiedAssignedOrderWhere,
+        ...capacityTakenWhere,
         officeId,
         visitDate: date,
       },
@@ -110,7 +121,7 @@ export async function getDaySummaries(
     }),
     prisma.otcOrder.findMany({
       where: {
-        ...verifiedAssignedOrderWhere,
+        ...capacityTakenWhere,
         officeId,
         visitDate: { gte: from, lte: to },
       },
