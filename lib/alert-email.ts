@@ -6,7 +6,9 @@ const DEFAULT_ALERT_EMAILS = [
   "choonsim.dev@gmail.com",
 ] as const;
 
-const DEFAULT_FROM = "onboarding@resend.dev";
+// choonsim.com 도메인 Resend 인증(Verified) 완료 → 발신 주소를 도메인 주소로.
+// env RESEND_FROM 이 있으면 그것이 우선(오버라이드), 없으면 이 값 사용.
+const DEFAULT_FROM = "춘심 <noreply@choonsim.com>";
 
 /** env/기본값 fallback — DB 조회 실패·비어있음 대비. */
 function getFallbackAlertEmails(): string[] {
