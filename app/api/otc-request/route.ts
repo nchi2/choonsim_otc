@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isKstYmd } from "@/lib/kst";
 import { isAllowedSlotTime, isBusinessDayKst } from "@/lib/work-schedule";
+import { sendOtcRequestApplyAlert } from "@/lib/otc-request-apply-alert";
 
 export const runtime = "nodejs";
 
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
     const buyerBank = parseBankFields(body, "buyer");
 
     const hasSchedule = !!(visitDate || reservedStart || officeId);
+    let officeName: string | null = null;
     if (hasSchedule) {
       if (!visitDate || !isKstYmd(visitDate) || !isBusinessDayKst(visitDate)) {
         return bad("방문 희망일이 올바르지 않습니다.");
@@ -89,9 +91,10 @@ export async function POST(request: Request) {
       }
       const office = await prisma.office.findUnique({
         where: { id: officeId },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!office) return bad("사무실을 찾을 수 없습니다.");
+      officeName = office.name;
     }
 
     try {
@@ -112,8 +115,25 @@ export async function POST(request: Request) {
           memo,
           status: "PENDING",
         },
-        select: { id: true },
+        select: { id: true, createdAt: true },
       });
+      // 운영자 알림 — 발송 실패해도 신청은 성공 유지(10모와 동일).
+      try {
+        await sendOtcRequestApplyAlert({
+          applicationNo: `OTC-${row.createdAt.getFullYear()}-${String(row.id).padStart(4, "0")}`,
+          side,
+          name,
+          contact,
+          quantity,
+          desiredPrice,
+          visitDate: hasSchedule ? visitDate : null,
+          reservedStart: hasSchedule ? reservedStart : null,
+          officeName,
+          createdAt: row.createdAt,
+        });
+      } catch (alertErr) {
+        console.error("[otc-request] buy alert failed", alertErr);
+      }
       return NextResponse.json({ ok: true, id: row.id });
     } catch (err) {
       const code = (err as { code?: string })?.code ?? "unknown";
@@ -141,8 +161,25 @@ export async function POST(request: Request) {
         memo,
         status: "PENDING",
       },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
+    // 운영자 알림 — 발송 실패해도 신청은 성공 유지(10모와 동일). 판매는 방문 일정 없음.
+    try {
+      await sendOtcRequestApplyAlert({
+        applicationNo: `OTC-${row.createdAt.getFullYear()}-${String(row.id).padStart(4, "0")}`,
+        side,
+        name,
+        contact,
+        quantity,
+        desiredPrice,
+        visitDate: null,
+        reservedStart: null,
+        officeName: null,
+        createdAt: row.createdAt,
+      });
+    } catch (alertErr) {
+      console.error("[otc-request] sell alert failed", alertErr);
+    }
     return NextResponse.json({ ok: true, id: row.id });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

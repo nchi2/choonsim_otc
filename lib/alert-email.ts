@@ -22,14 +22,20 @@ function getFallbackAlertEmails(): string[] {
   return [...DEFAULT_ALERT_EMAILS];
 }
 
+export type AlertKind = "miracle10" | "otc";
+
 /**
- * 알림 수신자 — AdminUser.email 채워진 전원.
- * DB에 하나도 없거나 조회 실패 시 env(ALERT_EMAILS)/기본값으로 폴백.
+ * 알림 수신자 — email 채워졌고 해당 종류 수신을 켠(alertMiracle10/alertOtc) 운영자.
+ * kind는 필수 — 호출부가 항상 종류를 명시해 "실수로 전원 발송"을 원천 차단.
+ * DB에 해당 종류 수신자가 하나도 없거나 조회 실패 시 env(ALERT_EMAILS)/기본값으로 폴백.
  */
-export async function getAlertRecipients(): Promise<string[]> {
+export async function getAlertRecipients(kind: AlertKind): Promise<string[]> {
   try {
     const admins = await prisma.adminUser.findMany({
-      where: { email: { not: null } },
+      where: {
+        email: { not: null },
+        ...(kind === "otc" ? { alertOtc: true } : { alertMiracle10: true }),
+      },
       select: { email: true },
     });
     const emails = admins

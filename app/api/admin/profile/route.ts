@@ -17,6 +17,8 @@ const PROFILE_SELECT = {
   bankName: true,
   bankAccountNo: true,
   bankAccountHolder: true,
+  alertMiracle10: true,
+  alertOtc: true,
 } as const;
 
 export async function GET() {
@@ -58,6 +60,9 @@ const TEXT_FIELDS = [
   { key: "bankAccountHolder", max: 50 },
 ] as const;
 
+// 알림 수신 종류 토글 — 요청에 없으면 미변경.
+const BOOL_FIELDS = ["alertMiracle10", "alertOtc"] as const;
+
 export async function PATCH(request: Request) {
   const admin = await getAdminUser();
   if (!admin) {
@@ -77,7 +82,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const data: Record<string, string | null> = {};
+  const data: Record<string, string | null | boolean> = {};
 
   if ("displayName" in body) {
     const v = body.displayName;
@@ -121,6 +126,18 @@ export async function PATCH(request: Request) {
     } else {
       data[key] = v.trim() || null;
     }
+  }
+
+  for (const key of BOOL_FIELDS) {
+    if (!(key in body)) continue;
+    const v = body[key];
+    if (typeof v !== "boolean") {
+      return NextResponse.json(
+        { ok: false, error: `${key} 값이 올바르지 않습니다.` },
+        { status: 400 },
+      );
+    }
+    data[key] = v;
   }
 
   if (Object.keys(data).length === 0) {

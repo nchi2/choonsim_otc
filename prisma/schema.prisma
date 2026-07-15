@@ -66,6 +66,10 @@ model AdminUser {
   bankAccountNo     String?
   bankAccountHolder String?
 
+  // 신청 알림 수신 종류 선택 — default true(기존 동작=전원 수신 유지).
+  alertMiracle10 Boolean @default(true)
+  alertOtc       Boolean @default(true)
+
   workSlots      WorkSlot[]
   assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
   walletLedgers  PaperWalletLedger[] @relation("WalletLedgerAdmin")

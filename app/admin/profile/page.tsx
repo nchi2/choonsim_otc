@@ -119,6 +119,43 @@ const SmallBtn = styled.button`
   }
 `;
 
+const AlertFieldset = styled.div`
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid ${adminColors.rowDivider};
+`;
+
+const AlertLegend = styled.p`
+  margin: 0 0 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${adminColors.textMuted};
+`;
+
+const AlertHint = styled.p`
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  color: ${adminColors.textFaint};
+  line-height: 1.5;
+`;
+
+const AlertCheck = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.88rem;
+  color: ${adminColors.textSub};
+  cursor: pointer;
+
+  input {
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: ${adminColors.primary};
+    cursor: pointer;
+  }
+`;
+
 const SaveRow = styled.div`
   display: flex;
   align-items: center;
@@ -204,6 +241,8 @@ interface Profile {
   bankName: string | null;
   bankAccountNo: string | null;
   bankAccountHolder: string | null;
+  alertMiracle10: boolean;
+  alertOtc: boolean;
 }
 
 /** 계좌번호 마스킹 — 앞 6자리만 노출, 이후 숫자는 *, 구분자는 유지. */
@@ -229,6 +268,8 @@ export default function AdminProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [alertMiracle10, setAlertMiracle10] = useState(true);
+  const [alertOtc, setAlertOtc] = useState(true);
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoMsg, setInfoMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -280,6 +321,8 @@ export default function AdminProfilePage() {
     setDisplayName(p.displayName);
     setEmail(p.email ?? "");
     setPhone(p.phone ?? "");
+    setAlertMiracle10(p.alertMiracle10);
+    setAlertOtc(p.alertOtc);
     setBankName(p.bankName ?? "");
     setBankHolder(p.bankAccountHolder ?? "");
     setBankAccountNo(p.bankAccountNo ?? "");
@@ -324,6 +367,8 @@ export default function AdminProfilePage() {
           displayName: displayName.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
+          alertMiracle10,
+          alertOtc,
         }),
       });
       const json = await res.json();
@@ -457,6 +502,29 @@ export default function AdminProfilePage() {
             />
           </div>
         </FieldGrid>
+        <AlertFieldset>
+          <AlertLegend>알림 수신 종류</AlertLegend>
+          <AlertHint>
+            체크한 종류의 신규 신청이 들어오면 이메일로 알려드립니다. (이메일이
+            비어 있으면 발송되지 않습니다.)
+          </AlertHint>
+          <AlertCheck>
+            <input
+              type="checkbox"
+              checked={alertMiracle10}
+              onChange={(e) => setAlertMiracle10(e.target.checked)}
+            />
+            10모의 기적 신청 알림
+          </AlertCheck>
+          <AlertCheck>
+            <input
+              type="checkbox"
+              checked={alertOtc}
+              onChange={(e) => setAlertOtc(e.target.checked)}
+            />
+            BMB 구매·판매(OTC) 신청 알림
+          </AlertCheck>
+        </AlertFieldset>
         <SaveRow>
           <SaveBtn
             type="button"
