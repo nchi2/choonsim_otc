@@ -14,11 +14,15 @@ import { adminColors } from "@/components/admin/ui";
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 export interface MonthCalendarDayMeta {
-  mySlotCount?: number;
   workerCount?: number;
+  /** 그날 확정 예약 건수 (전체 뷰) — 「예약 N건」 */
+  reservationCount?: number;
+  /** 내 배정 확정 예약 건수 ("내 것만" 뷰) — 「내 예약 N건」 */
   myReservationCount?: number;
   /** 일정만 잡힌 미확정(접수·연락완료) 신청 수 — 정원 차감과 무관, 표시 전용 */
   pendingReservationCount?: number;
+  /** 확정 예약 ≥ 그날 총 슬롯 수 → 「꽉 참」(빨강 테두리) */
+  full?: boolean;
   /** "내 것만" 모드에서 전체 근무자 수 배지 숨김 */
   hideWorkerCount?: boolean;
 }
@@ -50,6 +54,17 @@ export interface MonthCalendarProps {
   dayEvents?: Record<string, MonthCalendarDayEvent[]>;
   /** 상세 모드에서 셀당 최대 표시 일정 수 — 초과분은 "+N건" (기본 3) */
   maxEventsPerDay?: number;
+  /**
+   * 좌우 여백 제거(가장자리까지 셀 확보) — 어드민 스케줄 전용 opt-in.
+   * 미지정이면 기존 padding 유지 (공개 모달 영향 없음).
+   */
+  edgeToEdge?: boolean;
+  /**
+   * 이 날짜 미만을 회색(muted)으로 표시 — "지난 날짜 읽기 전용" 뷰용 opt-in.
+   * 클릭 가능 여부는 isDateEnabled/minDate가 결정(여기선 표시만).
+   * 미지정이면 minDate 기준 (공개 모달 영향 없음).
+   */
+  pastBoundaryDate?: string;
   onMonthChange?: (year: number, month: number) => void;
 }
 
@@ -70,8 +85,12 @@ export default function MonthCalendar({
   dayMeta,
   dayEvents,
   maxEventsPerDay = 3,
+  edgeToEdge = false,
+  pastBoundaryDate,
   onMonthChange,
 }: MonthCalendarProps) {
+  // 회색 처리 기준일 — opt-in pastBoundaryDate 우선, 없으면 minDate (공개 기존 동작)
+  const mutedBefore = pastBoundaryDate ?? minDate;
   const detailed = dayEvents != null;
   const initial = isKstYmd(valueDate)
     ? { y: Number(valueDate.slice(0, 4)), m: Number(valueDate.slice(5, 7)) - 1 }
@@ -136,7 +155,7 @@ export default function MonthCalendar({
   };
 
   return (
-    <CalendarBox>
+    <CalendarBox $edge={edgeToEdge}>
       <CalendarHeader>
         <CalNavButton
           type="button"
@@ -168,39 +187,46 @@ export default function MonthCalendar({
       <CalGrid>
         {cells.map((ymd, idx) =>
           ymd ? (
-            <CalDayWrap key={ymd} $detailed={detailed}>
+            <CalDayWrap
+              key={ymd}
+              $detailed={detailed}
+              $full={dayMeta?.[ymd]?.full === true}
+            >
               <CalDay
                 type="button"
                 disabled={!isEnabled(ymd)}
                 $selected={valueDate === ymd}
                 $sun={weekdayFromKstYmd(ymd) === 0}
                 $sat={weekdayFromKstYmd(ymd) === 6}
-                $muted={compareKstYmd(ymd, minDate) < 0}
+                $muted={compareKstYmd(ymd, mutedBefore) < 0}
                 onClick={() => isEnabled(ymd) && onSelect(ymd)}
               >
                 {Number(ymd.slice(8, 10))}
               </CalDay>
               {dayMeta?.[ymd] ? (
                 <DayBadgeRow>
-                  {(dayMeta[ymd].mySlotCount ?? 0) > 0 ? (
-                    <DayBadge $tone="mine">
-                      내 {dayMeta[ymd].mySlotCount}
+                  {(dayMeta[ymd].reservationCount ?? 0) > 0 ? (
+                    <DayBadge $tone="reserve">
+                      예약 {dayMeta[ymd].reservationCount}건
                     </DayBadge>
                   ) : null}
                   {(dayMeta[ymd].myReservationCount ?? 0) > 0 ? (
                     <DayBadge $tone="reserve">
-                      예약 {dayMeta[ymd].myReservationCount}
+                      내 예약 {dayMeta[ymd].myReservationCount}건
                     </DayBadge>
                   ) : null}
                   {(dayMeta[ymd].pendingReservationCount ?? 0) > 0 ? (
                     <DayBadge $tone="pending">
-                      미확정 {dayMeta[ymd].pendingReservationCount}
+                      ⚠ 미확정 {dayMeta[ymd].pendingReservationCount}
                     </DayBadge>
+                  ) : null}
+                  {dayMeta[ymd].full ? (
+                    <DayBadge $tone="full">꽉 참</DayBadge>
                   ) : null}
                   {!dayMeta[ymd].hideWorkerCount &&
                   (dayMeta[ymd].workerCount ?? 0) > 0 ? (
                     <DayBadge $tone="all">
-                      {dayMeta[ymd].workerCount}명
+                      근무 {dayMeta[ymd].workerCount}명
                     </DayBadge>
                   ) : null}
                 </DayBadgeRow>
@@ -251,12 +277,13 @@ export function defaultCalendarMaxDate(minDate: string, months = 12): string {
   return to;
 }
 
-const CalendarBox = styled.div`
+const CalendarBox = styled.div<{ $edge?: boolean }>`
   width: 100%;
   background: ${adminColors.white};
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  padding: 12px;
+  /* edgeToEdge=가장자리까지 셀 확보 (어드민 스케줄 전용) */
+  padding: ${(p) => (p.$edge ? "10px 2px" : "12px")};
 `;
 
 const CalendarHeader = styled.div`
@@ -317,7 +344,7 @@ const CalGrid = styled.div`
   gap: 2px;
 `;
 
-const CalDayWrap = styled.div<{ $detailed?: boolean }>`
+const CalDayWrap = styled.div<{ $detailed?: boolean; $full?: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -326,11 +353,17 @@ const CalDayWrap = styled.div<{ $detailed?: boolean }>`
   ${(p) =>
     p.$detailed
       ? `
-  border: 1px solid ${adminColors.bgHover};
+  border: 1px solid ${p.$full ? adminColors.dangerBorder : adminColors.bgHover};
   border-radius: 8px;
   padding: 2px 2px 4px;
   `
-      : ""}
+      : p.$full
+        ? `
+  border: 1px solid ${adminColors.dangerBorder};
+  border-radius: 8px;
+  padding: 1px;
+  `
+        : ""}
 `;
 
 const CalEmpty = styled.div<{ $detailed?: boolean }>`
@@ -390,7 +423,7 @@ const DayBadgeRow = styled.div`
 `;
 
 const DayBadge = styled.span<{
-  $tone: "mine" | "all" | "reserve" | "pending";
+  $tone: "all" | "reserve" | "pending" | "full";
 }>`
   font-size: 0.62rem;
   font-weight: 700;
@@ -402,23 +435,27 @@ const DayBadge = styled.span<{
   overflow: hidden;
   text-overflow: ellipsis;
   color: ${(p) =>
-    p.$tone === "mine"
-      ? adminColors.primary
-      : p.$tone === "reserve"
-        ? adminColors.successDeep
-        : p.$tone === "pending"
-          ? adminColors.textMuted
+    p.$tone === "reserve"
+      ? adminColors.successDeep
+      : p.$tone === "pending"
+        ? adminColors.warnText
+        : p.$tone === "full"
+          ? adminColors.danger
           : adminColors.textMuted};
   background: ${(p) =>
-    p.$tone === "mine"
-      ? adminColors.primarySoft
-      : p.$tone === "reserve"
-        ? adminColors.successBg
-        : p.$tone === "pending"
-          ? adminColors.white
+    p.$tone === "reserve"
+      ? adminColors.successBg
+      : p.$tone === "pending"
+        ? adminColors.warnSoft
+        : p.$tone === "full"
+          ? adminColors.dangerSoft
           : adminColors.bgHover};
   border: ${(p) =>
-    p.$tone === "pending" ? "1px dashed ${adminColors.textFaint}" : "1px solid transparent"};
+    p.$tone === "pending"
+      ? `1px solid ${adminColors.warnBorder}`
+      : p.$tone === "full"
+        ? `1px solid ${adminColors.dangerBorder}`
+        : "1px solid transparent"};
 `;
 
 /* ── 상세 모드 — 셀 안 일정 항목 ── */
@@ -443,7 +480,7 @@ const DayEventItem = styled.div<{ $confirmed: boolean; $test?: boolean }>`
   line-height: 1.4;
   overflow: hidden;
   white-space: nowrap;
-  border: 1px ${(p) => (p.$confirmed && !p.$test ? "solid transparent" : "dashed ${adminColors.textFaint}")};
+  border: 1px ${(p) => (p.$confirmed && !p.$test ? "solid transparent" : `dashed ${adminColors.textFaint}`)};
   background: ${(p) =>
     p.$test ? adminColors.bgHover : p.$confirmed ? adminColors.successBg : adminColors.white};
   color: ${(p) => (p.$test ? adminColors.textFaint : p.$confirmed ? adminColors.successDeep : adminColors.textMuted)};

@@ -577,7 +577,7 @@ const PositionRow = styled.div<{ $head?: boolean }>`
   border-bottom: 1px solid #f1f3f5;
   ${(p) =>
     p.$head
-      ? "background: ${adminColors.bgHoverRow}; border-radius: 8px; padding: 0.5rem 0.6rem;"
+      ? `background: ${adminColors.bgHoverRow}; border-radius: 8px; padding: 0.5rem 0.6rem;`
       : ""}
 
   @media (min-width: 768px) {
@@ -654,7 +654,7 @@ const ProfileRow = styled.div<{ $current?: boolean }>`
   padding: 0.18rem 0.35rem;
   border-radius: 6px;
   background: ${(p) => (p.$current ? adminColors.alertSoft : "transparent")};
-  outline: ${(p) => (p.$current ? "1px solid ${adminColors.alertBorder}" : "none")};
+  outline: ${(p) => (p.$current ? `1px solid ${adminColors.alertBorder}` : "none")};
 `;
 
 const ProfilePriceCell = styled.span`

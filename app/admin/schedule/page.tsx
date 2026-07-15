@@ -9,7 +9,13 @@ import MonthCalendar, {
   type MonthCalendarDayEvent,
   type MonthCalendarDayMeta,
 } from "@/components/admin/MonthCalendar";
-import { formatKstYmdLong, monthBoundsKst, todayKst } from "@/lib/kst";
+import {
+  addDaysKstYmd,
+  formatKstYmdLong,
+  isPastKstYmd,
+  monthBoundsKst,
+  todayKst,
+} from "@/lib/kst";
 import {
   BUSINESS_TIME_SLOTS,
   isBusinessDayKst,
@@ -87,6 +93,31 @@ const Card = styled.div`
   padding: 1.25rem;
 `;
 
+/* 캘린더 카드 — 좌우 여백 최소화(셀 폭 확보). 제목/안내는 PanelPad로 개별 패딩. */
+const CalendarCard = styled(Card)`
+  padding: 1.1rem 0.4rem 1rem;
+
+  @media (max-width: 640px) {
+    padding: 0.9rem 0.2rem 0.85rem;
+  }
+`;
+
+const PanelPad = styled.div`
+  padding: 0 0.6rem;
+`;
+
+/* 과거 조회 안내 */
+const ReadOnlyNote = styled.p`
+  margin: 0.75rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid ${adminColors.border};
+  border-radius: 8px;
+  background: ${adminColors.bgSubtle};
+  color: ${adminColors.textMuted};
+  font-size: 0.8rem;
+  font-weight: 600;
+`;
+
 const PanelTitle = styled.h2`
   font-size: 0.95rem;
   font-weight: 700;
@@ -100,10 +131,11 @@ const PanelSub = styled.p`
   margin: 0 0 1rem;
 `;
 
+/* 시간 슬롯 세로 리스트 — 한 줄에 하나씩 (스캔 용이) */
 const SlotGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 `;
 
 const SlotChip = styled.button<{
@@ -111,10 +143,12 @@ const SlotChip = styled.button<{
   $active?: boolean;
 }>`
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 0.5rem 0.55rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
   border-radius: 8px;
   border: 1.5px solid
     ${(p) =>
@@ -133,7 +167,6 @@ const SlotChip = styled.button<{
           : adminColors.white};
   cursor: pointer;
   text-align: left;
-  min-height: 56px;
 
   &:hover:not(:disabled) {
     border-color: ${(p) =>
@@ -146,21 +179,18 @@ const SlotChip = styled.button<{
   }
 `;
 
-const SlotHeader = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.35rem;
-  width: 100%;
-`;
-
 const SlotTime = styled.span`
-  font-size: 0.85rem;
+  flex-shrink: 0;
+  width: 3.1rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: ${adminColors.text};
+  font-variant-numeric: tabular-nums;
 `;
 
 const SlotCount = styled.span`
+  flex-shrink: 0;
+  margin-left: auto;
   font-size: 0.72rem;
   font-weight: 700;
   color: ${adminColors.textMuted};
@@ -168,9 +198,10 @@ const SlotCount = styled.span`
 `;
 
 const SlotWorkers = styled.div`
+  flex: 1;
+  min-width: 0;
   font-size: 0.74rem;
   line-height: 1.4;
-  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -412,8 +443,10 @@ export default function AdminSchedulePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const minDate = todayKst();
-  const maxDate = defaultCalendarMaxDate(minDate, 12);
+  const today = todayKst();
+  // 과거 조회 허용 — nav/클릭 하한을 365일 전으로. 쓰기는 canEditDay(오늘 이후)로 차단.
+  const viewMinDate = addDaysKstYmd(today, -365);
+  const maxDate = defaultCalendarMaxDate(today, 12);
 
   // 사무실 — 5분 캐시 (상세·프리페치와 공유)
   const officesData = useAdminData<Office[]>(OFFICES_KEY, officesFetcher, {
@@ -517,39 +550,61 @@ export default function AdminSchedulePage() {
     const meta: Record<string, MonthCalendarDayMeta> = {};
     const ensure = (date: string): MonthCalendarDayMeta => {
       if (!meta[date]) {
-        meta[date] = {
-          mySlotCount: 0,
-          workerCount: 0,
-          myReservationCount: 0,
-          pendingReservationCount: 0,
-          hideWorkerCount: mineOnlyView,
-        };
+        meta[date] = { hideWorkerCount: mineOnlyView };
       }
       return meta[date];
     };
 
+    // 그날 캐파 = 등록된 근무 슬롯 총 개수(운영자 수 아님) + 근무자 수(중복 제거)
+    const slotsByDate = new Map<string, { count: number; users: Set<number> }>();
     for (const s of monthSlots) {
-      if (mineOnlyView && s.adminUserId !== myAdminUserId) continue;
-      const m = ensure(s.date);
-      if (s.adminUserId === myAdminUserId) {
-        m.mySlotCount = (m.mySlotCount ?? 0) + 1;
-      }
+      const e = slotsByDate.get(s.date) ?? { count: 0, users: new Set() };
+      e.count += 1;
+      e.users.add(s.adminUserId);
+      slotsByDate.set(s.date, e);
     }
 
-    // 예약(확정·미확정)은 셀 안 일정 항목(dayEvents)으로 직접 표시하므로
-    // 배지는 근무 정보(내 슬롯·근무자 수)만 유지.
-
-    if (!mineOnlyView) {
-      for (const d of Object.keys(meta)) {
-        const users = new Set(
-          monthSlots.filter((s) => s.date === d).map((s) => s.adminUserId),
+    if (mineOnlyView) {
+      // 내 예약 N건 (본인 배정 확정만)
+      for (const r of confirmedReservations) {
+        if (r.assignedAdminUserId !== myAdminUserId) continue;
+        const m = ensure(r.visitDate);
+        m.myReservationCount = (m.myReservationCount ?? 0) + 1;
+      }
+    } else {
+      // 예약 N건 (확정) — 운영자가 가장 알고 싶은 값
+      const confirmedByDate = new Map<string, number>();
+      for (const r of confirmedReservations) {
+        const m = ensure(r.visitDate);
+        m.reservationCount = (m.reservationCount ?? 0) + 1;
+        confirmedByDate.set(
+          r.visitDate,
+          (confirmedByDate.get(r.visitDate) ?? 0) + 1,
         );
-        meta[d].workerCount = users.size;
+      }
+      // ⚠ 미확정
+      for (const r of pendingReservations) {
+        const m = ensure(r.visitDate);
+        m.pendingReservationCount = (m.pendingReservationCount ?? 0) + 1;
+      }
+      // 근무 N명 + 꽉참(확정 예약 ≥ 그날 총 슬롯 수)
+      for (const [date, { count, users }] of slotsByDate) {
+        const m = ensure(date);
+        m.workerCount = users.size;
+        if (count > 0 && (confirmedByDate.get(date) ?? 0) >= count) {
+          m.full = true;
+        }
       }
     }
 
     return meta;
-  }, [monthSlots, myAdminUserId, mineOnlyView]);
+  }, [
+    monthSlots,
+    confirmedReservations,
+    pendingReservations,
+    myAdminUserId,
+    mineOnlyView,
+  ]);
 
   // 셀 안 일정 항목 — 확정=진하게 / 미확정=회색·점선. 시간순, 동시간엔 확정 먼저.
   const dayEvents = useMemo(() => {
@@ -768,16 +823,20 @@ export default function AdminSchedulePage() {
       />
 
       <Layout>
-        <Card>
-          <PanelTitle>일정 캘린더 (KST)</PanelTitle>
-          <PanelSub>
-            신청 일정을 한눈에 — 초록 굵게 = 확정 · 회색 점선 = 미확정 ·
-            넘치면 +N건. 날짜를 누르면 오른쪽에서 그날 근무·예약을 관리합니다.
-          </PanelSub>
+        <CalendarCard>
+          <PanelPad>
+            <PanelTitle>일정 캘린더 (KST)</PanelTitle>
+            <PanelSub>
+              예약 N건 = 확정 방문 · ⚠ 미확정 · 빨강 테두리 = 꽉 참. 날짜를
+              누르면 오른쪽에서 그날 근무·예약을 관리합니다.
+            </PanelSub>
+          </PanelPad>
           <MonthCalendar
             valueDate={selectedDate}
-            minDate={minDate}
+            minDate={viewMinDate}
             maxDate={maxDate}
+            pastBoundaryDate={today}
+            edgeToEdge
             dayMeta={dayMeta}
             dayEvents={dayEvents}
             isDateEnabled={isScheduleDateEnabled}
@@ -785,11 +844,11 @@ export default function AdminSchedulePage() {
             onMonthChange={handleMonthChange}
           />
           {slotsLoading ? (
-            <div style={{ marginTop: "0.75rem" }}>
+            <PanelPad style={{ marginTop: "0.75rem" }}>
               <Skeleton variant="table" count={2} />
-            </div>
+            </PanelPad>
           ) : null}
-        </Card>
+        </CalendarCard>
 
         <Card>
           <PanelTitle>
@@ -857,19 +916,15 @@ export default function AdminSchedulePage() {
                         toggleSlot(time);
                       }}
                     >
-                      <SlotHeader>
-                        <SlotTime>{time}</SlotTime>
-                        {visibleRows.length > 0 ? (
-                          <SlotCount>
-                            {confirmedCount}/{visibleRows.length}
-                          </SlotCount>
-                        ) : null}
-                      </SlotHeader>
+                      <SlotTime>{time}</SlotTime>
                       <SlotWorkers>
                         {visibleRows.length === 0 &&
                         pendingItems.length === 0 &&
                         canEditDay ? (
                           <SlotMeta>클릭하여 등록</SlotMeta>
+                        ) : visibleRows.length === 0 &&
+                          pendingItems.length === 0 ? (
+                          <SlotMeta>빈자리</SlotMeta>
                         ) : (
                           visibleRows.map((row) => (
                             <WorkerLine key={`${time}-${row.adminUserId}`}>
@@ -908,13 +963,22 @@ export default function AdminSchedulePage() {
                           </WorkerLine>
                         ))}
                       </SlotWorkers>
+                      {visibleRows.length > 0 ? (
+                        <SlotCount>
+                          {confirmedCount}/{visibleRows.length}
+                        </SlotCount>
+                      ) : null}
                     </SlotChip>
                   );
                 })}
               </SlotGrid>
 
               {!canEditDay ? (
-                <Hint>과거 날짜는 조회만 가능합니다.</Hint>
+                <ReadOnlyNote>
+                  {isPastKstYmd(selectedDate)
+                    ? "지난 날짜입니다 — 조회만 가능하며 근무 등록·수정은 할 수 없습니다."
+                    : "이 날짜는 근무 등록이 불가합니다 (조회만 가능)."}
+                </ReadOnlyNote>
               ) : (
                 <>
                   <BtnRow>
