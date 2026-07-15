@@ -694,6 +694,31 @@ function WalletInventoryPageInner() {
     }
   };
 
+  const unreceiveOrder = async (entry: Entry) => {
+    if (busyId != null) return;
+    if (
+      !window.confirm(
+        `발주 #${entry.id} 수령을 취소할까요?\n\n연결된 입고(+${entry.count}장) 원장이 삭제되고 발주가 「수령 대기(PENDING)」로 되돌아갑니다.`,
+      )
+    ) {
+      return;
+    }
+    setBusyId(entry.id);
+    try {
+      const res = await fetch(
+        `/api/admin/wallet-inventory/${entry.id}/unreceive`,
+        { method: "POST" },
+      );
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "수령 취소 실패");
+      invalidateInventory();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "수령 취소에 실패했습니다.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const removeEntry = async (id: number) => {
     if (busyId != null) return;
     if (!window.confirm(`기록 #${id}을 삭제할까요? 재고에 바로 반영됩니다.`)) {
@@ -1065,6 +1090,16 @@ function WalletInventoryPageInner() {
                 </RowDetail>
                 <AdminCell>{en.adminName}</AdminCell>
                 <RowActions>
+                  {isOrder && en.status === "RECEIVED" ? (
+                    <MiniBtn
+                      type="button"
+                      $danger
+                      disabled={busyId != null}
+                      onClick={() => unreceiveOrder(en)}
+                    >
+                      수령 취소
+                    </MiniBtn>
+                  ) : null}
                   {!isOrder ? (
                     <MiniBtn
                       type="button"
