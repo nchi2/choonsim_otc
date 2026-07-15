@@ -46,7 +46,7 @@ const SummaryCard = styled.section<{ $warn: boolean }>`
   border: 1px solid
     ${(p) => (p.$warn ? adminColors.dangerBorder : adminColors.border)};
   border-radius: 14px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.1rem 1.25rem;
   margin-bottom: 1.25rem;
 `;
@@ -108,7 +108,7 @@ const ShortageBanner = styled.p`
 const Card = styled.section`
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 `;
@@ -134,12 +134,12 @@ const TypeBtn = styled.button<{ $active: boolean; $tone: "in" | "out" | "order" 
   background: ${(p) =>
     p.$active
       ? p.$tone === "out"
-        ? "#b91c1c"
+        ? adminColors.dangerText
         : p.$tone === "order"
           ? adminColors.alert
           : adminColors.primary
-      : "#fff"};
-  color: ${(p) => (p.$active ? "#fff" : adminColors.textSub)};
+      : adminColors.white};
+  color: ${(p) => (p.$active ? adminColors.white : adminColors.textSub)};
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -173,7 +173,7 @@ const TextInput = styled.input`
   border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
 `;
 
 const SubmitBtn = styled.button`
@@ -182,7 +182,7 @@ const SubmitBtn = styled.button`
   border-radius: 10px;
   border: none;
   background: ${adminColors.primary};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
@@ -196,7 +196,7 @@ const FormMsg = styled.span<{ $error?: boolean }>`
   margin-left: 0.6rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: ${(p) => (p.$error ? adminColors.danger : "#059669")};
+  color: ${(p) => (p.$error ? adminColors.danger : adminColors.successStrong)};
 `;
 
 /* ── 스캔 ── */
@@ -205,7 +205,7 @@ const ScanToggleBtn = styled.button`
   padding: 0.45rem 0.85rem;
   border-radius: 8px;
   border: 1px solid ${adminColors.primary};
-  background: #fff;
+  background: ${adminColors.white};
   color: ${adminColors.primary};
   font-size: 0.8rem;
   font-weight: 700;
@@ -244,7 +244,7 @@ const ScanAddrItem = styled.li`
     padding: 0 0.4rem;
     border: 1px solid ${adminColors.dangerBorder};
     border-radius: 4px;
-    background: #fff;
+    background: ${adminColors.white};
     color: ${adminColors.danger};
     font-size: 0.68rem;
     cursor: pointer;
@@ -256,7 +256,7 @@ const ScanAddrItem = styled.li`
 const LedgerTable = styled.div`
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   overflow: hidden;
 `;
 
@@ -307,13 +307,13 @@ const TypeTag = styled.span<{ $type: string }>`
   white-space: nowrap;
   color: ${(p) =>
     p.$type === "OUT"
-      ? "#b91c1c"
+      ? adminColors.dangerText
       : p.$type === "ORDER"
         ? adminColors.alertTextStrong
         : "#047857"};
   background: ${(p) =>
     p.$type === "OUT"
-      ? "#fef2f2"
+      ? adminColors.dangerSoft
       : p.$type === "ORDER"
         ? adminColors.alertSoft
         : "#ecfdf5"};
@@ -370,9 +370,9 @@ const MiniBtn = styled.button<{ $primary?: boolean; $danger?: boolean }>`
         : p.$danger
           ? adminColors.dangerBorder
           : adminColors.borderInput};
-  background: ${(p) => (p.$primary ? adminColors.primary : "#fff")};
+  background: ${(p) => (p.$primary ? adminColors.primary : adminColors.white)};
   color: ${(p) =>
-    p.$primary ? "#fff" : p.$danger ? "#b91c1c" : adminColors.textSub};
+    p.$primary ? adminColors.white : p.$danger ? adminColors.dangerText : adminColors.textSub};
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
@@ -400,7 +400,7 @@ const Overlay = styled.div`
 const Modal = styled.div`
   width: 100%;
   max-width: 420px;
-  background: #fff;
+  background: ${adminColors.white};
   border-radius: 14px;
   padding: 1.25rem 1.4rem;
   max-height: 90vh;

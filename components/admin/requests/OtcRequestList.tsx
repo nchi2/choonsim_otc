@@ -4,7 +4,7 @@
 // useAdminData 캐시(첫 페이지) + 서버 counts/?status + [테스트 포함] 토글.
 // 구분(구매/판매)은 로드분 내 클라 필터.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import {
   CommentBadge,
@@ -12,6 +12,7 @@ import {
   FilterTabCount,
   StatusBadge,
   UnreadBadge,
+  adminColors,
 } from "@/components/admin/ui";
 import {
   EmptyState,
@@ -20,12 +21,20 @@ import {
   Skeleton,
 } from "@/components/admin/States";
 import {
+  CardId,
+  CardLink,
+  CardList,
+  CardMetaFaint,
+  CardName,
+  CardTop,
+  CardVisit,
+  ChipDivider,
+  ChipScroll,
   Hide,
   HeadRow,
   ListMeta,
   LoadMoreBtn,
   Row,
-  SubMobile,
   Table,
   Tabs,
   TestBadge,
@@ -53,8 +62,8 @@ const SideBadge = styled.span<{ $side: string }>`
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #fff;
-  background: ${(p) => (p.$side === "SELL" ? "#6570c5" : "#a8639f")};
+  color: ${adminColors.white};
+  background: ${(p) => (p.$side === "SELL" ? adminColors.brandSell : adminColors.brandBuy)};
   white-space: nowrap;
 `;
 
@@ -194,21 +203,24 @@ export function OtcRequestList({
         </IncludeTestToggle>
       </Toolbar>
       <Toolbar style={{ marginTop: "-0.4rem" }}>
-        <Tabs aria-label="상태 필터">
+        <ChipScroll aria-label="상태 필터">
           {STATUS_TAB_ORDER.map((tab) => (
-            <FilterTab
-              key={tab}
-              type="button"
-              $active={statusFilter === tab}
-              onClick={() => setStatusFilter(tab)}
-            >
-              {STATUS_TAB_LABELS[tab]}
-              <FilterTabCount $active={statusFilter === tab}>
-                {statusCount(tab)}
-              </FilterTabCount>
-            </FilterTab>
+            <Fragment key={tab}>
+              {/* 완료·취소·전체는 구분선 뒤로 (한 급 아래) */}
+              {tab === "COMPLETED" ? <ChipDivider /> : null}
+              <FilterTab
+                type="button"
+                $active={statusFilter === tab}
+                onClick={() => setStatusFilter(tab)}
+              >
+                {STATUS_TAB_LABELS[tab]}
+                <FilterTabCount $active={statusFilter === tab}>
+                  {statusCount(tab)}
+                </FilterTabCount>
+              </FilterTab>
+            </Fragment>
           ))}
-        </Tabs>
+        </ChipScroll>
       </Toolbar>
 
       <RefreshingBar active={isValidating && data != null} />
@@ -282,12 +294,6 @@ export function OtcRequestList({
                         {it.unreadCommentCount}
                       </UnreadBadge>
                     ) : null}
-                    <SubMobile>
-                      {it.quantity.toLocaleString("ko-KR")}개 ·{" "}
-                      {it.desiredPrice != null
-                        ? `${it.desiredPrice.toLocaleString("ko-KR")}원`
-                        : "가격 미정"}
-                    </SubMobile>
                   </span>
                   <Hide>{it.contact}</Hide>
                   <Hide>{it.quantity}</Hide>
@@ -308,6 +314,47 @@ export function OtcRequestList({
               ))}
             </Table>
           )}
+
+          {/* 모바일 카드 (≤640px 전용) */}
+          {visible.length > 0 ? (
+            <CardList>
+              {visible.map((it) => (
+                <CardLink
+                  key={it.id}
+                  href={`/admin/otc-requests/${it.id}`}
+                  $test={it.isTest}
+                >
+                  <CardTop>
+                    <CardId>#{it.id}</CardId>
+                    <CardName>
+                      <SideBadge $side={it.side}>
+                        {it.side === "SELL" ? "판매" : "구매"}
+                      </SideBadge>
+                      {it.name}
+                      {it.isTest ? <TestBadge>TEST</TestBadge> : null}
+                      {it.commentCount > 0 ? (
+                        <CommentBadge>💬{it.commentCount}</CommentBadge>
+                      ) : null}
+                      {it.unreadCommentCount > 0 ? (
+                        <UnreadBadge>{it.unreadCommentCount}</UnreadBadge>
+                      ) : null}
+                    </CardName>
+                    <StatusBadge $color={otcRequestStatusColor(it.status)}>
+                      {otcRequestStatusLabel(it.status)}
+                    </StatusBadge>
+                  </CardTop>
+                  <CardVisit>
+                    <CardMetaFaint>
+                      {it.quantity.toLocaleString("ko-KR")}개 ·{" "}
+                      {it.desiredPrice != null
+                        ? `${it.desiredPrice.toLocaleString("ko-KR")}원`
+                        : "가격 미정"}
+                    </CardMetaFaint>
+                  </CardVisit>
+                </CardLink>
+              ))}
+            </CardList>
+          ) : null}
           {hasMore ? (
             <LoadMoreBtn
               type="button"

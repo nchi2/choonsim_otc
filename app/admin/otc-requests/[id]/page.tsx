@@ -22,6 +22,7 @@ import { DASHBOARD_KEY, STATS_KEY } from "@/lib/admin-fetchers";
 /** OTC 변경 액션 후 캐시 무효화 — 캘린더는 OtcRequest 미표시라 제외 (확인됨) */
 function invalidateAfterOtcChange() {
   invalidate("admin:list:otc");
+  invalidate("admin:unread");
   invalidate(STATS_KEY);
   invalidate(DASHBOARD_KEY);
 }
@@ -50,17 +51,17 @@ const BackLink = styled(Link)`
   display: inline-block;
   margin-bottom: 0.75rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   text-decoration: none;
   &:hover {
-    color: #111827;
+    color: ${adminColors.text};
   }
 `;
 
 const Card = styled.div`
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 `;
@@ -68,23 +69,88 @@ const Card = styled.div`
 const SectionTitle = styled.h2`
   font-size: 0.95rem;
   font-weight: 700;
-  color: #374151;
+  color: ${adminColors.textSub};
   margin: 0 0 0.75rem;
 `;
 
 const SectionSub = styled.p`
   font-size: 0.78rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin: 0 0 0.75rem;
   line-height: 1.45;
 `;
+
+/* 카드 내 소제목 (병합 카드에서 구분용) */
+const SubHeading = styled.h3`
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: ${adminColors.textMuted};
+  margin: 1.1rem 0 0.4rem;
+`;
+
+/* ── 접기 (접수 정보 — 읽기 전용 메타) ── */
+
+const CollapseCard = styled.div`
+  border: 1px solid ${adminColors.border};
+  border-radius: 12px;
+  background: ${adminColors.white};
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+`;
+
+const CollapseHeader = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: ${adminColors.textSub};
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: ${adminColors.bgSubtle};
+  }
+`;
+
+const CollapseBody = styled.div`
+  padding: 0 1.5rem 1.25rem;
+`;
+
+function Collapsible({
+  title,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  defaultOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <CollapseCard>
+      <CollapseHeader
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span aria-hidden>{open ? "▾" : "▸"}</span> {title}
+      </CollapseHeader>
+      {open ? <CollapseBody>{children}</CollapseBody> : null}
+    </CollapseCard>
+  );
+}
 
 const Field = styled.div`
   display: grid;
   grid-template-columns: 140px 1fr;
   gap: 0.5rem;
   padding: 0.4rem 0;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid ${adminColors.borderFaint};
   font-size: 0.9rem;
   &:first-of-type {
     border-top: none;
@@ -98,11 +164,11 @@ const Field = styled.div`
 `;
 
 const Key = styled.span`
-  color: #6b7280;
+  color: ${adminColors.textMuted};
 `;
 
 const Val = styled.span`
-  color: #111827;
+  color: ${adminColors.text};
   font-weight: 500;
   word-break: break-all;
 `;
@@ -113,7 +179,7 @@ const Badge = styled.span<{ $color: string }>`
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  color: ${adminColors.white};
   background: ${(p) => p.$color};
 `;
 
@@ -124,13 +190,13 @@ const SideBadge = styled.span<{ $side: string }>`
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
-  background: ${(p) => (p.$side === "SELL" ? "#6570c5" : "#a8639f")};
+  color: ${adminColors.white};
+  background: ${(p) => (p.$side === "SELL" ? adminColors.brandSell : adminColors.brandBuy)};
 `;
 
 const ActionCard = styled(Card)`
-  border-color: #c7d2fe;
-  background: #fafaff;
+  border-color: ${adminColors.primaryBorder};
+  background: ${adminColors.primarySofter};
 `;
 
 const NextActionRow = styled.div`
@@ -145,7 +211,7 @@ const PrimaryActionBtn = styled.button`
   border-radius: 10px;
   border: none;
   background: ${adminColors.primary};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
@@ -162,7 +228,7 @@ const TelLinkBtn = styled.a`
   padding: 0.65rem 1.1rem;
   border: 1.5px solid ${adminColors.primary};
   border-radius: 10px;
-  background: #fff;
+  background: ${adminColors.white};
   color: ${adminColors.primary};
   font-size: 0.9rem;
   font-weight: 700;
@@ -172,16 +238,16 @@ const TelLinkBtn = styled.a`
 const ActionHint = styled.p`
   margin: 0.6rem 0 0;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   line-height: 1.5;
 `;
 
 const ManualStatusDivider = styled.div`
   margin: 1rem 0 0.6rem;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed ${adminColors.border};
   padding-top: 0.6rem;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
   font-weight: 600;
 `;
 
@@ -195,8 +261,8 @@ const StatusButton = styled.button<{ $active: boolean; $color: string }>`
   padding: 0.5rem 1rem;
   border-radius: 8px;
   border: 1.5px solid ${(p) => p.$color};
-  background: ${(p) => (p.$active ? p.$color : "#fff")};
-  color: ${(p) => (p.$active ? "#fff" : p.$color)};
+  background: ${(p) => (p.$active ? p.$color : adminColors.white)};
+  color: ${(p) => (p.$active ? adminColors.white : p.$color)};
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -212,10 +278,10 @@ const TestToggleLabel = styled.label`
   gap: 0.4rem;
   margin-top: 0.9rem;
   padding-top: 0.6rem;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed ${adminColors.border};
   font-size: 0.78rem;
   font-weight: 600;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   cursor: pointer;
 
   input {
@@ -237,27 +303,27 @@ const FieldLabel = styled.label`
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-bottom: 0.3rem;
 `;
 
 const TextInput = styled.input`
   width: 100%;
   padding: 0.55rem 0.7rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
 `;
 
 const MemoArea = styled.textarea`
   width: 100%;
   min-height: 90px;
   padding: 0.55rem 0.7rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
   resize: vertical;
   font-family: inherit;
 `;
@@ -273,7 +339,7 @@ const SaveRow = styled.div`
 const SaveMsg = styled.span<{ $error?: boolean }>`
   font-size: 0.8rem;
   font-weight: 600;
-  color: ${(p) => (p.$error ? "#dc2626" : "#059669")};
+  color: ${(p) => (p.$error ? adminColors.danger : adminColors.successStrong)};
 `;
 
 interface Detail {
@@ -543,8 +609,9 @@ export default function OtcRequestDetailPage({
         </TestToggleLabel>
       </ActionCard>
 
+      {/* 신청인 + 신청 내용 병합 카드 */}
       <Card>
-        <SectionTitle>신청인</SectionTitle>
+        <SectionTitle>신청인 · 신청 내용 — {otcSideLabel(data.side)}</SectionTitle>
         <Field>
           <Key>이름</Key>
           <Val>{data.name}</Val>
@@ -557,10 +624,7 @@ export default function OtcRequestDetailPage({
           <Key>접수일시</Key>
           <Val>{new Date(data.createdAt).toLocaleString("ko-KR")}</Val>
         </Field>
-      </Card>
-
-      <Card>
-        <SectionTitle>신청 내용 — {otcSideLabel(data.side)}</SectionTitle>
+        <SubHeading>거래 조건</SubHeading>
         <Field>
           <Key>수량</Key>
           <Val>{data.quantity.toLocaleString("ko-KR")}</Val>
@@ -617,8 +681,20 @@ export default function OtcRequestDetailPage({
 
       <OperatorSection request={data} onSaved={load} />
 
-      <Card>
-        <SectionTitle>기록</SectionTitle>
+      <CommentsSection
+        key={data.id}
+        targetType="OTC_REQUEST"
+        targetId={data.id}
+        initialComments={comments}
+        myAdminUserId={myAdminUserId}
+      />
+
+      {/* 접수 정보 — 읽기 전용 메타, 기본 접힘 */}
+      <Collapsible title="접수 정보" defaultOpen={false}>
+        <Field>
+          <Key>접수일시</Key>
+          <Val>{new Date(data.createdAt).toLocaleString("ko-KR")}</Val>
+        </Field>
         <Field>
           <Key>최종 수정</Key>
           <Val>
@@ -627,15 +703,7 @@ export default function OtcRequestDetailPage({
               : "-"}
           </Val>
         </Field>
-      </Card>
-
-      <CommentsSection
-        key={data.id}
-        targetType="OTC_REQUEST"
-        targetId={data.id}
-        initialComments={comments}
-        myAdminUserId={myAdminUserId}
-      />
+      </Collapsible>
     </Page>
   );
 }

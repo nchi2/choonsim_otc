@@ -13,7 +13,7 @@ import { DASHBOARD_KEY, STATS_KEY } from "@/lib/admin-fetchers";
 const Card = styled.section`
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 `;
@@ -71,7 +71,7 @@ const MiniBtn = styled.button<{ $danger?: boolean }>`
   border-radius: 6px;
   border: 1px solid
     ${(p) => (p.$danger ? adminColors.dangerBorder : adminColors.borderInput)};
-  background: #fff;
+  background: ${adminColors.white};
   color: ${(p) => (p.$danger ? adminColors.danger : adminColors.textSub)};
   font-size: 0.7rem;
   font-weight: 700;
@@ -99,7 +99,7 @@ const TextArea = styled.textarea`
   border-radius: 8px;
   font-size: 0.88rem;
   font-family: inherit;
-  background: #fff;
+  background: ${adminColors.white};
   resize: vertical;
 `;
 
@@ -115,7 +115,7 @@ const SubmitBtn = styled.button`
   border-radius: 8px;
   border: none;
   background: ${adminColors.primary};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -176,10 +176,11 @@ export function CommentsSection({
   const [editInput, setEditInput] = useState("");
   const loading = false;
 
-  // 코멘트 변경 → 목록 배지·전역 안읽음 캐시 무효화 (invalidate 매핑 표)
+  // 코멘트 변경 → 목록 배지·전역 안읽음·알림 벨 캐시 무효화 (invalidate 매핑 표)
   const invalidateBadges = useCallback(() => {
     invalidate(STATS_KEY);
     invalidate(DASHBOARD_KEY);
+    invalidate("admin:unread");
     invalidate(
       targetType === "MIRACLE10" ? "admin:list:miracle10" : "admin:list:otc",
     );

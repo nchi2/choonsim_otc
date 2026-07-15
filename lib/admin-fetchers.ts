@@ -100,6 +100,27 @@ export function otcListUrl(status: string, includeTest: boolean, offset = 0) {
   return `/api/admin/otc-requests?${params.toString()}`;
 }
 
+/* ── 알림 벨 — 내 안읽음 코멘트 목록 (읽기 전용) ── */
+
+export const UNREAD_KEY = "admin:unread";
+export const UNREAD_TTL = 30_000;
+
+export interface UnreadNotification {
+  targetType: "MIRACLE10" | "OTC_REQUEST";
+  targetId: number;
+  name: string;
+  unread: number;
+  lastBody: string;
+  lastAuthorName: string;
+  lastCreatedAt: string;
+  href: string;
+}
+
+export const unreadFetcher = () =>
+  fetchAdminJson<{ items: UnreadNotification[] }>(
+    "/api/admin/comments/unread",
+  ).then((j) => j.items);
+
 /* ── 재고 ── */
 
 export const INVENTORY_KEY = "admin:inventory";

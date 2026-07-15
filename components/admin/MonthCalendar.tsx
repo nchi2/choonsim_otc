@@ -9,6 +9,7 @@ import {
   nowKst,
   weekdayFromKstYmd,
 } from "@/lib/kst";
+import { adminColors } from "@/components/admin/ui";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
@@ -252,8 +253,8 @@ export function defaultCalendarMaxDate(minDate: string, months = 12): string {
 
 const CalendarBox = styled.div`
   width: 100%;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: ${adminColors.white};
+  border: 1px solid ${adminColors.border};
   border-radius: 12px;
   padding: 12px;
 `;
@@ -269,9 +270,9 @@ const CalNavButton = styled.button`
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #4338ca;
+  border: 1px solid ${adminColors.border};
+  background: ${adminColors.white};
+  color: ${adminColors.primary};
   font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
@@ -280,8 +281,8 @@ const CalNavButton = styled.button`
   justify-content: center;
 
   &:hover:not(:disabled) {
-    background: #eef2ff;
-    border-color: #4338ca;
+    background: ${adminColors.primarySoft};
+    border-color: ${adminColors.primary};
   }
 
   &:disabled {
@@ -293,7 +294,7 @@ const CalNavButton = styled.button`
 const CalTitle = styled.span`
   font-size: 0.95rem;
   font-weight: 700;
-  color: #111827;
+  color: ${adminColors.text};
 `;
 
 const CalWeekRow = styled.div`
@@ -307,7 +308,7 @@ const CalWeekday = styled.span<{ $sun?: boolean; $sat?: boolean }>`
   font-size: 0.72rem;
   font-weight: 600;
   padding: 4px 0;
-  color: ${(p) => (p.$sun ? "#dc2626" : p.$sat ? "#2563eb" : "#6b7280")};
+  color: ${(p) => (p.$sun ? adminColors.danger : p.$sat ? adminColors.info : adminColors.textMuted)};
 `;
 
 const CalGrid = styled.div`
@@ -325,7 +326,7 @@ const CalDayWrap = styled.div<{ $detailed?: boolean }>`
   ${(p) =>
     p.$detailed
       ? `
-  border: 1px solid #f3f4f6;
+  border: 1px solid ${adminColors.bgHover};
   border-radius: 8px;
   padding: 2px 2px 4px;
   `
@@ -353,23 +354,23 @@ const CalDay = styled.button<{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: ${(p) => (p.$selected ? "#4338ca" : "transparent")};
+  background: ${(p) => (p.$selected ? adminColors.primary : "transparent")};
   color: ${(p) =>
     p.$selected
-      ? "#ffffff"
+      ? adminColors.white
       : p.$muted
-        ? "#d1d5db"
+        ? adminColors.borderInput
         : p.$sun
-          ? "#dc2626"
+          ? adminColors.danger
           : p.$sat
-            ? "#2563eb"
-            : "#1f2937"};
+            ? adminColors.info
+            : adminColors.textStrong};
   transition:
     background-color 0.12s ease,
     color 0.12s ease;
 
   &:hover:not(:disabled) {
-    background: ${(p) => (p.$selected ? "#3730a3" : "#eef2ff")};
+    background: ${(p) => (p.$selected ? adminColors.primaryHover : adminColors.primarySoft)};
   }
 
   &:disabled {
@@ -402,22 +403,22 @@ const DayBadge = styled.span<{
   text-overflow: ellipsis;
   color: ${(p) =>
     p.$tone === "mine"
-      ? "#4338ca"
+      ? adminColors.primary
       : p.$tone === "reserve"
-        ? "#0f766e"
+        ? adminColors.successDeep
         : p.$tone === "pending"
-          ? "#6b7280"
-          : "#6b7280"};
+          ? adminColors.textMuted
+          : adminColors.textMuted};
   background: ${(p) =>
     p.$tone === "mine"
-      ? "#eef2ff"
+      ? adminColors.primarySoft
       : p.$tone === "reserve"
-        ? "#ccfbf1"
+        ? adminColors.successBg
         : p.$tone === "pending"
-          ? "#ffffff"
-          : "#f3f4f6"};
+          ? adminColors.white
+          : adminColors.bgHover};
   border: ${(p) =>
-    p.$tone === "pending" ? "1px dashed #9ca3af" : "1px solid transparent"};
+    p.$tone === "pending" ? "1px dashed ${adminColors.textFaint}" : "1px solid transparent"};
 `;
 
 /* ── 상세 모드 — 셀 안 일정 항목 ── */
@@ -442,10 +443,10 @@ const DayEventItem = styled.div<{ $confirmed: boolean; $test?: boolean }>`
   line-height: 1.4;
   overflow: hidden;
   white-space: nowrap;
-  border: 1px ${(p) => (p.$confirmed && !p.$test ? "solid transparent" : "dashed #9ca3af")};
+  border: 1px ${(p) => (p.$confirmed && !p.$test ? "solid transparent" : "dashed ${adminColors.textFaint}")};
   background: ${(p) =>
-    p.$test ? "#f3f4f6" : p.$confirmed ? "#ccfbf1" : "#ffffff"};
-  color: ${(p) => (p.$test ? "#9ca3af" : p.$confirmed ? "#0f766e" : "#6b7280")};
+    p.$test ? adminColors.bgHover : p.$confirmed ? adminColors.successBg : adminColors.white};
+  color: ${(p) => (p.$test ? adminColors.textFaint : p.$confirmed ? adminColors.successDeep : adminColors.textMuted)};
   font-weight: ${(p) => (p.$confirmed && !p.$test ? 700 : 500)};
 `;
 
@@ -478,5 +479,5 @@ const DayEventMore = styled.div`
   padding: 0 4px;
   font-size: 0.62rem;
   font-weight: 700;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
 `;

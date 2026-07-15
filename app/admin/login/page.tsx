@@ -18,7 +18,7 @@ const Container = styled.div`
 const LoginCard = styled.div`
   width: 100%;
   max-width: 400px;
-  background-color: #ffffff;
+  background-color: ${adminColors.white};
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06);
@@ -43,7 +43,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 0.875rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   text-align: center;
   margin-bottom: 2rem;
 `;
@@ -63,12 +63,12 @@ const FormGroup = styled.div`
 const Label = styled.label`
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: ${adminColors.textSub};
 `;
 
 const Input = styled.input`
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 6px;
   font-size: 1rem;
   transition: border-color 0.2s;
@@ -93,7 +93,7 @@ const ErrorMessage = styled.div`
 const SubmitButton = styled.button`
   padding: 0.75rem 1.5rem;
   background-color: ${adminColors.primary};
-  color: #ffffff;
+  color: ${adminColors.white};
   border: none;
   border-radius: 8px;
   font-size: 1rem;

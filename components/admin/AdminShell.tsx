@@ -37,7 +37,11 @@ import {
   otcListKey,
   otcListUrl,
   statsFetcher,
+  UNREAD_KEY,
+  UNREAD_TTL,
+  unreadFetcher,
   type AdminStatsData,
+  type UnreadNotification,
 } from "@/lib/admin-fetchers";
 
 /** 데스크탑 사이드바 항목 */
@@ -76,7 +80,7 @@ const Sidebar = styled.aside`
   width: 210px;
   flex-shrink: 0;
   border-right: 1px solid ${adminColors.border};
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1rem 0.85rem;
   flex-direction: column;
   gap: 0.5rem;
@@ -122,7 +126,7 @@ const CountBadge = styled.span`
   padding: 0 0.35rem;
   border-radius: 999px;
   background: ${adminColors.alert};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.25rem;
@@ -144,7 +148,7 @@ const TopHeader = styled.header`
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.6rem 1rem;
-  background: #fff;
+  background: ${adminColors.white};
   border-bottom: 1px solid ${adminColors.border};
 
   @media (min-width: 768px) {
@@ -176,7 +180,11 @@ const TopRight = styled.div`
   gap: 0.4rem;
 `;
 
-/** 알림 벨 — 이번 덩이에서는 숫자 표시만 (클릭 무동작, 목록은 추후) */
+/** 알림 벨 — 클릭 시 안읽음 코멘트 드롭다운 */
+const BellWrap = styled.div`
+  position: relative;
+`;
+
 const BellButton = styled.button<{ $dim: boolean }>`
   position: relative;
   display: inline-flex;
@@ -188,8 +196,12 @@ const BellButton = styled.button<{ $dim: boolean }>`
   border-radius: 8px;
   background: transparent;
   color: ${(p) => (p.$dim ? adminColors.textFaint : adminColors.textSub)};
-  opacity: ${(p) => (p.$dim ? 0.45 : 1)};
-  cursor: default;
+  opacity: ${(p) => (p.$dim ? 0.55 : 1)};
+  cursor: pointer;
+
+  &:hover {
+    background: ${adminColors.bgSubtle};
+  }
 
   svg {
     width: 20px;
@@ -206,11 +218,84 @@ const BellBadge = styled.span`
   padding: 0 0.25rem;
   border-radius: 999px;
   background: ${adminColors.danger};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.62rem;
   font-weight: 800;
   line-height: 1rem;
   text-align: center;
+`;
+
+const BellDropdown = styled.div`
+  position: absolute;
+  top: 2.5rem;
+  right: 0;
+  z-index: 50;
+  width: 320px;
+  max-width: calc(100vw - 1.5rem);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: ${adminColors.white};
+  border: 1px solid ${adminColors.border};
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.14);
+`;
+
+const BellHead = styled.div`
+  padding: 0.7rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: ${adminColors.textSub};
+  border-bottom: 1px solid ${adminColors.rowDivider};
+`;
+
+const NotifItem = styled(Link)`
+  display: block;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid ${adminColors.rowDivider};
+  text-decoration: none;
+  color: ${adminColors.text};
+
+  &:last-child {
+    border-bottom: none;
+  }
+  &:hover {
+    background: ${adminColors.bgSubtle};
+  }
+`;
+
+const NotifTop = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+`;
+
+const NotifUnread = styled.span`
+  min-width: 1rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: ${adminColors.danger};
+  color: ${adminColors.white};
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-align: center;
+`;
+
+const NotifPreview = styled.div`
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: ${adminColors.textMuted};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const NotifEmpty = styled.div`
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: ${adminColors.textFaint};
 `;
 
 const ProfileLink = styled(Link)`
@@ -273,7 +358,7 @@ const PageHeaderBar = styled.div`
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.85rem 1rem 0.7rem;
-  background: #fff;
+  background: ${adminColors.white};
   border-bottom: 1px solid ${adminColors.border};
 
   @media (min-width: 768px) {
@@ -322,7 +407,7 @@ const BottomNav = styled.nav`
   z-index: 40;
   display: flex;
   border-top: 1px solid ${adminColors.border};
-  background: #fff;
+  background: ${adminColors.white};
   padding-bottom: env(safe-area-inset-bottom, 0px);
 
   @media (min-width: 768px) {
@@ -365,7 +450,7 @@ const TabBadge = styled.span`
   padding: 0 0.25rem;
   border-radius: 999px;
   background: ${adminColors.danger};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.62rem;
   font-weight: 800;
   line-height: 1rem;
@@ -463,6 +548,99 @@ function prefetchForHref(href: string) {
     prefetch(INVENTORY_KEY, inventoryFetcher, INVENTORY_TTL);
     prefetch(STATS_KEY, statsFetcher, STATS_TTL);
   }
+}
+
+function fmtNotifTime(iso: string): string {
+  return new Date(iso).toLocaleString("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** 알림 벨 — 클릭 시 안읽음 코멘트 드롭다운. 열릴 때만 목록 fetch(lazy). */
+function NotificationBell({ unreadCount }: { unreadCount: number }) {
+  const [open, setOpen] = useState(false);
+  const dim = unreadCount === 0;
+
+  // 바깥 클릭·ESC로 닫기
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <BellWrap>
+      <BellButton
+        type="button"
+        $dim={dim}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={
+          unreadCount > 0 ? `안 읽은 코멘트 ${unreadCount}개` : "알림 없음"
+        }
+        title={unreadCount > 0 ? `안 읽은 코멘트 ${unreadCount}개` : "알림 없음"}
+      >
+        <BellIcon />
+        {unreadCount > 0 ? <BellBadge>{unreadCount}</BellBadge> : null}
+      </BellButton>
+      {open ? (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 49 }}
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          <BellDropdown role="menu">
+            <BellHead>안 읽은 코멘트</BellHead>
+            <NotificationList onNavigate={() => setOpen(false)} />
+          </BellDropdown>
+        </>
+      ) : null}
+    </BellWrap>
+  );
+}
+
+function NotificationList({ onNavigate }: { onNavigate: () => void }) {
+  const { data, isLoading } = useAdminData<UnreadNotification[]>(
+    UNREAD_KEY,
+    unreadFetcher,
+    { ttl: UNREAD_TTL },
+  );
+
+  if (isLoading && !data) {
+    return <NotifEmpty>불러오는 중…</NotifEmpty>;
+  }
+  if (!data || data.length === 0) {
+    return <NotifEmpty>안 읽은 코멘트가 없습니다.</NotifEmpty>;
+  }
+  return (
+    <>
+      {data.map((n) => (
+        <NotifItem
+          key={`${n.targetType}-${n.targetId}`}
+          href={n.href}
+          onClick={onNavigate}
+        >
+          <NotifTop>
+            <span>
+              #{n.targetId} {n.name}
+            </span>
+            <NotifUnread>{n.unread}</NotifUnread>
+          </NotifTop>
+          <NotifPreview>
+            {n.lastAuthorName}: {n.lastBody}
+          </NotifPreview>
+          <NotifPreview style={{ marginTop: "0.1rem" }}>
+            {fmtNotifTime(n.lastCreatedAt)}
+          </NotifPreview>
+        </NotifItem>
+      ))}
+    </>
+  );
 }
 
 export default function AdminShell({
@@ -577,26 +755,7 @@ export default function AdminShell({
                 춘심 <em>Admin</em>
               </BrandLink>
               <TopRight>
-                <BellButton
-                  type="button"
-                  disabled
-                  $dim={commentUnread === 0}
-                  aria-label={
-                    commentUnread > 0
-                      ? `안 읽은 코멘트 ${commentUnread}개`
-                      : "알림 없음"
-                  }
-                  title={
-                    commentUnread > 0
-                      ? `안 읽은 코멘트 ${commentUnread}개`
-                      : "알림 없음"
-                  }
-                >
-                  <BellIcon />
-                  {commentUnread > 0 ? (
-                    <BellBadge>{commentUnread}</BellBadge>
-                  ) : null}
-                </BellButton>
+                <NotificationBell unreadCount={commentUnread} />
                 <ProfileLink href="/admin/profile" aria-label="내 프로필">
                   <UserIcon />
                   {session.displayName ? (

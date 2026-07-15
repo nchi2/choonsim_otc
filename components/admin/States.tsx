@@ -25,7 +25,7 @@ const SkeletonBlock = styled.div`
 const SkeletonCardBox = styled.div`
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
@@ -65,7 +65,7 @@ export function Skeleton({
         style={{
           border: `1px solid ${adminColors.border}`,
           borderRadius: 12,
-          background: "#fff",
+          background: adminColors.white,
           overflow: "hidden",
         }}
         aria-busy="true"
@@ -176,7 +176,7 @@ const RetryBtn = styled.button`
   padding: 0.45rem 1.1rem;
   border-radius: 8px;
   border: 1px solid ${adminColors.dangerBorder};
-  background: #fff;
+  background: ${adminColors.white};
   color: ${adminColors.dangerTextStrong};
   font-size: 0.82rem;
   font-weight: 700;

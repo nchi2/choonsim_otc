@@ -23,49 +23,71 @@ export const adminColors = {
   /** 확정·성공 — 틸 (STATUS_COLORS.VERIFIED와 동일) */
   success: "#0d9488",
   successSoft: "#f0fdfa",
+  successStrong: "#059669",
+  successDeep: "#0f766e",
+  successBg: "#ccfbf1", // teal-100 (확정 이벤트·체크 배경)
+  successBorder: "#99f6e4", // teal-200
+
+  /** 완료 — 초록 (STATUS_COLORS.COMPLETED) */
+  done: "#16a34a",
 
   /** 오류·취소 */
   danger: "#dc2626",
   dangerSoft: "#fef2f2",
   dangerBorder: "#fca5a5",
+  dangerText: "#b91c1c",
   dangerTextStrong: "#991b1b",
+
+  /** 경고(앰버) — 지갑 부족·하한 등 */
+  warnText: "#92400e",
+  warnSoft: "#fef3c7",
+  warnBorder: "#fde68a",
+  warnAmber: "#ca8a04",
+
+  /** 정보 — 파랑 (STATUS_COLORS.CONTACTED) */
+  info: "#2563eb",
 
   /** 그레이 스케일 (Tailwind gray) */
   text: "#111827",
+  textStrong: "#1f2937",
   textSub: "#374151",
+  textSub2: "#4b5563",
   textMuted: "#6b7280",
   textFaint: "#9ca3af",
   border: "#e5e7eb",
   borderInput: "#d1d5db",
+  borderFaint: "#f5f5f5", // 카드 내 필드 구분선(아주 옅음)
+  borderFaint2: "#eceef1", // 계산기 카드 테두리
   rowDivider: "#f1f5f9",
   bgSubtle: "#f9fafb",
   bgHover: "#f3f4f6",
   bgPage: "#f9fafb",
+  bgHoverRow: "#fafafa",
+  primarySofter: "#fafaff", // 카드 강조 배경(near-white 인디고 tint)
   white: "#fff",
+
+  /** OTC 브랜드색 (메인 배너 — 구매/판매) */
+  brandBuy: "#a8639f",
+  brandSell: "#6570c5",
 } as const;
 
-/** 페이지 본문 래퍼 — max-width는 화면 성격별 프롭. */
-export const PageBody = styled.div<{ $maxWidth?: number }>`
-  max-width: ${(p) => p.$maxWidth ?? 960}px;
-  margin: 0 auto;
-  padding: 1rem 1rem 1.5rem;
+/**
+ * 상태 → 배지 색 (10모·OTC 공통 팔레트).
+ * 접수=주황 · 연락완료=파랑 · 일정확정=틸 · 완료=초록 · 취소=회색.
+ * (합의완료 AGREED는 OTC 전용 — 틸 계열)
+ */
+const STATUS_COLOR_MAP: Record<string, string> = {
+  PENDING: adminColors.alert,
+  CONTACTED: adminColors.info,
+  VERIFIED: adminColors.success,
+  AGREED: adminColors.success,
+  COMPLETED: adminColors.done,
+  CANCELED: adminColors.textMuted,
+};
 
-  @media (min-width: 768px) {
-    padding: 1.25rem 1.5rem 2rem;
-  }
-`;
-
-export const AdminCard = styled.section`
-  border: 1px solid ${adminColors.border};
-  border-radius: 12px;
-  background: ${adminColors.white};
-  padding: 1.1rem 1.25rem;
-  margin-bottom: 1rem;
-
-  @media (min-width: 768px) {
-    padding: 1.25rem 1.5rem;
-  }
-`;
+export function statusColor(status: string): string {
+  return STATUS_COLOR_MAP[status] ?? adminColors.textMuted;
+}
 
 export const CardTitle = styled.h2`
   font-size: 0.95rem;
@@ -79,15 +101,6 @@ export const CardSub = styled.p`
   color: ${adminColors.textMuted};
   line-height: 1.5;
   margin: 0 0 0.85rem;
-`;
-
-/** 목록 상단 툴바 — 탭 + 우측 버튼. */
-export const ListToolbar = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.9rem;
 `;
 
 /** 필터 탭 (pill) — 활성=인디고. */

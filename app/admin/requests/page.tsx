@@ -45,7 +45,7 @@ const SegmentBtn = styled.button<{ $active: boolean }>`
   border-radius: 10px;
   border: 1.5px solid
     ${(p) => (p.$active ? adminColors.primary : adminColors.border)};
-  background: ${(p) => (p.$active ? adminColors.primarySoft : "#fff")};
+  background: ${(p) => (p.$active ? adminColors.primarySoft : adminColors.white)};
   color: ${(p) => (p.$active ? adminColors.primary : adminColors.textMuted)};
   font-size: 0.9rem;
   font-weight: 700;
@@ -57,7 +57,7 @@ const SegmentPendingBadge = styled.span<{ $active: boolean }>`
   padding: 0 0.3rem;
   border-radius: 999px;
   background: ${(p) => (p.$active ? adminColors.alert : adminColors.bgHover)};
-  color: ${(p) => (p.$active ? "#fff" : adminColors.textMuted)};
+  color: ${(p) => (p.$active ? adminColors.white : adminColors.textMuted)};
   font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.15rem;
@@ -152,7 +152,10 @@ function RequestsPageInner() {
       </SegmentRow>
 
       <SegmentPanel $hidden={type !== "miracle10"}>
-        <Miracle10List initialStatus={initialM10Status} />
+        <Miracle10List
+          initialStatus={initialM10Status}
+          wallet={stats?.wallet}
+        />
       </SegmentPanel>
       <SegmentPanel $hidden={type !== "otc"}>
         <OtcRequestList initialStatus={initialOtcStatus} />

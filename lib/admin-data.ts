@@ -46,6 +46,11 @@ export function peek<T>(key: string): T | undefined {
   return cache.get(key)?.data as T | undefined;
 }
 
+/** 마지막 성공 시각(ms) — "N초 전 갱신" 표시용. 없으면 0. */
+export function cacheTimestamp(key: string): number {
+  return cache.get(key)?.ts ?? 0;
+}
+
 /**
  * 캐시에 값을 직접 주입 (낙관적 업데이트 / 다른 응답의 부산물 채움).
  * data 생략 시 = 강제 재검증 표시(ts=0)만 하고 구독자에게 알림.
@@ -117,6 +122,8 @@ export interface AdminDataResult<T> {
   isValidating: boolean;
   /** 강제 재조회 (새로고침 버튼) */
   refresh: () => Promise<void>;
+  /** 마지막 성공 시각(ms) — "N초 전 갱신" 표시용. 0이면 아직 없음. */
+  dataUpdatedAt: number;
 }
 
 /**
@@ -199,6 +206,7 @@ export function useAdminData<T>(
     isLoading: !hasData && !entry?.error,
     isValidating: !!entry?.promise,
     refresh,
+    dataUpdatedAt: entry?.ts ?? 0,
   };
 }
 

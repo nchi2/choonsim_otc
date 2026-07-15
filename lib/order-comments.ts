@@ -113,6 +113,77 @@ export async function getCommentsForTarget(
   return { comments, unreadCount };
 }
 
+export interface UnreadTarget {
+  targetType: CommentTargetType;
+  targetId: number;
+  /** 이 건의 내 안읽음 코멘트 수 */
+  unread: number;
+  /** 마지막 코멘트(전체 기준) 미리보기·작성자·시각 */
+  lastBody: string;
+  lastAuthorName: string;
+  lastCreatedAt: Date;
+}
+
+/**
+ * 내 안읽음 코멘트가 있는 신청 목록 — 헤더 벨 드롭다운용 (읽기 전용).
+ * getGlobalUnreadCount와 동일 판정 규칙(isUnreadComment) 재사용.
+ * 신청명(이름)은 라우트에서 붙인다(여기선 targetType/targetId까지만).
+ */
+export async function getUnreadCommentTargets(
+  adminUserId: number,
+): Promise<UnreadTarget[]> {
+  const [comments, reads] = await Promise.all([
+    prisma.orderComment.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        targetType: true,
+        targetId: true,
+        createdAt: true,
+        authorId: true,
+        authorName: true,
+        body: true,
+      },
+    }),
+    prisma.commentReadState.findMany({
+      where: { adminUserId },
+      select: { targetType: true, targetId: true, lastReadAt: true },
+    }),
+  ]);
+
+  const lastReadByKey = new Map(
+    reads.map((r) => [`${r.targetType}\t${r.targetId}`, r.lastReadAt.getTime()]),
+  );
+
+  const byKey = new Map<string, UnreadTarget & { key: string }>();
+  for (const c of comments) {
+    const key = `${c.targetType}\t${c.targetId}`;
+    const lastRead = lastReadByKey.get(key) ?? 0;
+    // 마지막 코멘트 정보는 남의 것/내 것 무관하게 최신으로 갱신 (오름차순 순회 → 마지막이 최신)
+    const existing = byKey.get(key);
+    const base =
+      existing ??
+      ({
+        key,
+        targetType: c.targetType as CommentTargetType,
+        targetId: c.targetId,
+        unread: 0,
+        lastBody: "",
+        lastAuthorName: "",
+        lastCreatedAt: c.createdAt,
+      } as UnreadTarget & { key: string });
+    base.lastBody = c.body;
+    base.lastAuthorName = c.authorName;
+    base.lastCreatedAt = c.createdAt;
+    if (isUnreadComment(c, lastRead, adminUserId)) base.unread += 1;
+    byKey.set(key, base);
+  }
+
+  return [...byKey.values()]
+    .filter((t) => t.unread > 0)
+    .sort((a, b) => b.lastCreatedAt.getTime() - a.lastCreatedAt.getTime())
+    .map(({ key: _key, ...t }) => t);
+}
+
 /** 읽음 처리 — 지금 시점까지 읽은 것으로 기록 (상세 열람·코멘트 작성 시). */
 export async function markCommentsRead(
   adminUserId: number,

@@ -57,15 +57,15 @@ const Toolbar = styled.div`
 const Label = styled.label`
   font-size: 0.85rem;
   font-weight: 600;
-  color: #4b5563;
+  color: ${adminColors.textSub2};
 `;
 
 const Select = styled.select`
   padding: 0.45rem 0.65rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
   min-width: 180px;
 `;
 
@@ -81,22 +81,22 @@ const Layout = styled.div`
 `;
 
 const Card = styled.div`
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem;
 `;
 
 const PanelTitle = styled.h2`
   font-size: 0.95rem;
   font-weight: 700;
-  color: #374151;
+  color: ${adminColors.textSub};
   margin: 0 0 0.75rem;
 `;
 
 const PanelSub = styled.p`
   font-size: 0.8rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin: 0 0 1rem;
 `;
 
@@ -130,7 +130,7 @@ const SlotChip = styled.button<{
         ? "#f5f6ff"
         : p.$variant === "others"
           ? adminColors.bgSubtle
-          : "#fff"};
+          : adminColors.white};
   cursor: pointer;
   text-align: left;
   min-height: 56px;
@@ -157,7 +157,7 @@ const SlotHeader = styled.div`
 const SlotTime = styled.span`
   font-size: 0.85rem;
   font-weight: 700;
-  color: #111827;
+  color: ${adminColors.text};
 `;
 
 const SlotCount = styled.span`
@@ -234,8 +234,8 @@ const Button = styled.button<{ $primary?: boolean }>`
   border-radius: 8px;
   border: 1px solid
     ${(p) => (p.$primary ? adminColors.primary : adminColors.borderInput)};
-  background: ${(p) => (p.$primary ? adminColors.primary : "#fff")};
-  color: ${(p) => (p.$primary ? "#fff" : adminColors.textSub)};
+  background: ${(p) => (p.$primary ? adminColors.primary : adminColors.white)};
+  color: ${(p) => (p.$primary ? adminColors.white : adminColors.textSub)};
   font-size: 0.85rem;
   font-weight: ${(p) => (p.$primary ? 700 : 600)};
   cursor: pointer;
@@ -253,7 +253,7 @@ const Button = styled.button<{ $primary?: boolean }>`
 
 const Hint = styled.p`
   font-size: 0.8rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin: 0.75rem 0 0;
   line-height: 1.5;
 `;
@@ -261,8 +261,8 @@ const Hint = styled.p`
 const ErrorBox = styled.div`
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
+  background: ${adminColors.dangerSoft};
+  color: ${adminColors.dangerText};
   font-size: 0.85rem;
   margin-bottom: 1rem;
 `;
@@ -270,7 +270,7 @@ const ErrorBox = styled.div`
 const EmptyPanel = styled.div`
   padding: 2rem 1rem;
   text-align: center;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
   font-size: 0.9rem;
 `;
 
@@ -286,7 +286,7 @@ const InactiveTag = styled.span`
 
 const ViewToggle = styled.div`
   display: inline-flex;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   overflow: hidden;
 `;
@@ -294,8 +294,8 @@ const ViewToggle = styled.div`
 const ViewToggleBtn = styled.button<{ $active: boolean }>`
   padding: 0.45rem 0.8rem;
   border: none;
-  background: ${(p) => (p.$active ? adminColors.primary : "#fff")};
-  color: ${(p) => (p.$active ? "#fff" : adminColors.textSub)};
+  background: ${(p) => (p.$active ? adminColors.primary : adminColors.white)};
+  color: ${(p) => (p.$active ? adminColors.white : adminColors.textSub)};
   font-size: 0.8rem;
   font-weight: ${(p) => (p.$active ? 700 : 500)};
   cursor: pointer;

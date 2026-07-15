@@ -4,6 +4,7 @@
 // ① 지금 할 일(접수 대기) ② 오늘 내 일정 ③ 현황 요약(압축) ④ 지갑 재고 ⑤ 바로가기.
 // 데이터는 /api/admin/dashboard 한 번으로 (구 stats+offices+사무실별 reservations 3+N회 → 1회).
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { adminColors } from "@/components/admin/ui";
@@ -47,7 +48,7 @@ const TopGrid = styled.div`
 const Card = styled.section`
   border: 1px solid ${adminColors.border};
   border-radius: 14px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.1rem 1.25rem;
 `;
 
@@ -64,7 +65,7 @@ const CardLabel = styled.h2`
 const TodoCard = styled(Card)<{ $alert: boolean }>`
   border-color: ${(p) =>
     p.$alert ? adminColors.alertBorder : adminColors.border};
-  background: ${(p) => (p.$alert ? adminColors.alertSoft : "#fff")};
+  background: ${(p) => (p.$alert ? adminColors.alertSoft : adminColors.white)};
 `;
 
 const TodoRow = styled.div`
@@ -81,7 +82,7 @@ const TodoItem = styled(Link)<{ $active: boolean }>`
   border-radius: 12px;
   border: 1px solid
     ${(p) => (p.$active ? adminColors.alertBorder : adminColors.border)};
-  background: #fff;
+  background: ${adminColors.white};
   text-decoration: none;
   transition: box-shadow 0.15s, border-color 0.15s;
 
@@ -93,10 +94,22 @@ const TodoItem = styled(Link)<{ $active: boolean }>`
   }
 `;
 
+const TodoNameRow = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+`;
+
 const TodoName = styled.span`
   font-size: 0.78rem;
   font-weight: 700;
   color: ${adminColors.textMuted};
+`;
+
+const TodoChevron = styled.span<{ $active: boolean }>`
+  font-size: 0.9rem;
+  color: ${(p) => (p.$active ? adminColors.alert : adminColors.textFaint)};
 `;
 
 const TodoValue = styled.span<{ $active: boolean }>`
@@ -177,46 +190,63 @@ const CardFootLink = styled(Link)`
   }
 `;
 
-/* ── 현황 요약 + 지갑 재고 (압축 줄) ── */
+/* ── 현황 요약 — 상태 열 정렬 그리드 ── */
 
 const SummaryCard = styled(Card)`
   margin-bottom: 1rem;
   padding: 0.9rem 1.25rem;
 `;
 
-const SummaryRow = styled.div`
+/* 6열 그리드: 라벨 | 연락완료 | 진행 | 완료 | 취소(회색) | 전체 */
+const StatusGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) repeat(5, minmax(0, 1fr));
+  gap: 0.15rem 0.35rem;
+  align-items: baseline;
+  overflow-x: auto;
+`;
+
+const SgHead = styled.span<{ $muted?: boolean }>`
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+  color: ${(p) => (p.$muted ? adminColors.textFaint : adminColors.textMuted)};
+  padding-bottom: 0.15rem;
+`;
+
+const SgRowLabel = styled.span`
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: ${adminColors.text};
+  white-space: nowrap;
+`;
+
+const SgCell = styled(Link)<{ $muted?: boolean }>`
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  color: ${(p) => (p.$muted ? adminColors.textFaint : adminColors.textSub)};
+
+  &:hover {
+    color: ${(p) => (p.$muted ? adminColors.textMuted : adminColors.primary)};
+  }
+`;
+
+const WalletRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.35rem 0.8rem;
-  padding: 0.45rem 0;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid ${adminColors.rowDivider};
   font-size: 0.84rem;
-
-  & + & {
-    border-top: 1px solid ${adminColors.rowDivider};
-  }
 `;
 
-const SummaryTitle = styled.span`
-  flex-shrink: 0;
-  min-width: 7.5rem;
-  font-weight: 800;
-  color: ${adminColors.text};
-`;
-
-const SummaryStat = styled(Link)`
-  color: ${adminColors.textMuted};
-  text-decoration: none;
-  white-space: nowrap;
-
-  strong {
-    color: ${adminColors.textSub};
-    font-weight: 800;
-  }
-
-  &:hover strong {
-    color: ${adminColors.primary};
-  }
+const UpdatedText = styled.span`
+  font-size: 0.72rem;
+  color: ${adminColors.textFaint};
 `;
 
 const WalletStat = styled.span`
@@ -257,20 +287,27 @@ const SectionTitle = styled.h2`
   margin: 1.25rem 0 0.75rem;
 `;
 
+/* 바로가기 — 아이콘 타일 그리드로 압축 */
 const MenuGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 0.6rem;
+
+  @media (min-width: 560px) {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
 `;
 
 const MenuCard = styled(Link)`
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.9rem 1rem;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+  padding: 0.85rem 0.6rem;
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   text-decoration: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   &:hover {
@@ -279,16 +316,16 @@ const MenuCard = styled(Link)`
   }
 `;
 
-const MenuTitle = styled.span`
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: ${adminColors.text};
+const MenuIcon = styled.span`
+  font-size: 1.5rem;
+  line-height: 1;
 `;
 
-const MenuDesc = styled.span`
-  font-size: 0.76rem;
-  color: ${adminColors.textMuted};
-  line-height: 1.45;
+const MenuTitle = styled.span`
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: ${adminColors.text};
+  line-height: 1.3;
 `;
 
 interface Stats {
@@ -320,12 +357,30 @@ interface TodayItem {
   officeName: string | null;
 }
 
+/** "방금 갱신" / "N분 전 갱신" — 초 단위는 노이즈라 분 기준. */
+function relativeUpdated(ts: number, now: number): string {
+  if (!ts) return "";
+  const sec = Math.max(0, Math.round((now - ts) / 1000));
+  if (sec < 60) return "방금 갱신";
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}분 전 갱신`;
+  return `${Math.round(min / 60)}시간 전 갱신`;
+}
+
 export default function AdminHubPage() {
   // 단일 엔드포인트 + 캐시 — 재방문 시 즉시 렌더 + 백그라운드 갱신 (SWR)
-  const { data, error, isLoading, isValidating, refresh } =
+  const { data, error, isLoading, isValidating, refresh, dataUpdatedAt } =
     useAdminData<DashboardData>(DASHBOARD_KEY, dashboardFetcher, {
       ttl: DASHBOARD_TTL,
     });
+
+  // 상대 갱신 시각 표시 — 20초마다 라벨 갱신
+  const [now, setNow] = useState(() => dataUpdatedAt || 0);
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 20_000);
+    return () => clearInterval(t);
+  }, [dataUpdatedAt]);
 
   if (isLoading) {
     return (
@@ -367,7 +422,10 @@ export default function AdminHubPage() {
                 href="/admin/requests?type=miracle10&tab=PENDING"
                 $active={stats.pending > 0}
               >
-                <TodoName>10모의 기적 접수</TodoName>
+                <TodoNameRow>
+                  <TodoName>10모의 기적 접수</TodoName>
+                  <TodoChevron $active={stats.pending > 0}>›</TodoChevron>
+                </TodoNameRow>
                 <TodoValue $active={stats.pending > 0}>
                   {stats.pending}
                   <TodoUnit>건</TodoUnit>
@@ -377,7 +435,10 @@ export default function AdminHubPage() {
                 href="/admin/requests?type=otc&status=PENDING"
                 $active={stats.otc.pending > 0}
               >
-                <TodoName>OTC 접수</TodoName>
+                <TodoNameRow>
+                  <TodoName>OTC 접수</TodoName>
+                  <TodoChevron $active={stats.otc.pending > 0}>›</TodoChevron>
+                </TodoNameRow>
                 <TodoValue $active={stats.otc.pending > 0}>
                   {stats.otc.pending}
                   <TodoUnit>건</TodoUnit>
@@ -416,47 +477,72 @@ export default function AdminHubPage() {
       </TopGrid>
 
       <SummaryCard>
-        <CardLabel as="h2" style={{ marginBottom: "0.25rem" }}>
-          현황 요약
+        <CardLabel
+          as="div"
+          style={{
+            marginBottom: "0.5rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+          }}
+        >
+          <span>현황 요약</span>
+          {dataUpdatedAt ? (
+            <UpdatedText>{relativeUpdated(dataUpdatedAt, now)}</UpdatedText>
+          ) : null}
         </CardLabel>
-        <SummaryRow>
-          <SummaryTitle>10모의 기적</SummaryTitle>
-          <SummaryStat href="/admin/requests?type=miracle10&tab=CONTACTED">
-            연락완료 <strong>{stats.contacted}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=miracle10&tab=VERIFIED">
-            일정확정 <strong>{stats.verified}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=miracle10&tab=COMPLETED">
-            완료 <strong>{stats.completed}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=miracle10&tab=CANCELED">
-            취소 <strong>{stats.canceled}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=miracle10&tab=ALL">
-            전체 <strong>{stats.total}</strong>
-          </SummaryStat>
-        </SummaryRow>
-        <SummaryRow>
-          <SummaryTitle>BMB 구매·판매</SummaryTitle>
-          <SummaryStat href="/admin/requests?type=otc&status=CONTACTED">
-            연락완료 <strong>{stats.otc.contacted}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=otc&status=AGREED">
-            합의완료 <strong>{stats.otc.agreed}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=otc&status=COMPLETED">
-            완료 <strong>{stats.otc.completed}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=otc&status=CANCELED">
-            취소 <strong>{stats.otc.canceled}</strong>
-          </SummaryStat>
-          <SummaryStat href="/admin/requests?type=otc&status=ALL">
-            전체 <strong>{stats.otc.total}</strong>
-          </SummaryStat>
-        </SummaryRow>
-        <SummaryRow>
-          <SummaryTitle>10모 지갑 재고</SummaryTitle>
+        <StatusGrid>
+          {/* 헤더 — 취소 열은 회색으로 격하 */}
+          <span />
+          <SgHead>연락완료</SgHead>
+          <SgHead>진행</SgHead>
+          <SgHead>완료</SgHead>
+          <SgHead $muted>취소</SgHead>
+          <SgHead>전체</SgHead>
+
+          <SgRowLabel>10모의 기적</SgRowLabel>
+          <SgCell href="/admin/requests?type=miracle10&tab=CONTACTED">
+            {stats.contacted}
+          </SgCell>
+          <SgCell
+            href="/admin/requests?type=miracle10&tab=VERIFIED"
+            title="일정확정"
+          >
+            {stats.verified}
+          </SgCell>
+          <SgCell href="/admin/requests?type=miracle10&tab=COMPLETED">
+            {stats.completed}
+          </SgCell>
+          <SgCell href="/admin/requests?type=miracle10&tab=CANCELED" $muted>
+            {stats.canceled}
+          </SgCell>
+          <SgCell href="/admin/requests?type=miracle10&tab=ALL">
+            {stats.total}
+          </SgCell>
+
+          <SgRowLabel>BMB 구매·판매</SgRowLabel>
+          <SgCell href="/admin/requests?type=otc&status=CONTACTED">
+            {stats.otc.contacted}
+          </SgCell>
+          <SgCell
+            href="/admin/requests?type=otc&status=AGREED"
+            title="합의완료"
+          >
+            {stats.otc.agreed}
+          </SgCell>
+          <SgCell href="/admin/requests?type=otc&status=COMPLETED">
+            {stats.otc.completed}
+          </SgCell>
+          <SgCell href="/admin/requests?type=otc&status=CANCELED" $muted>
+            {stats.otc.canceled}
+          </SgCell>
+          <SgCell href="/admin/requests?type=otc&status=ALL">
+            {stats.otc.total}
+          </SgCell>
+        </StatusGrid>
+
+        <WalletRow>
+          <SgRowLabel>10모 지갑 재고</SgRowLabel>
           <WalletBig href="/admin/wallet-inventory">
             {stats.wallet.stock}장
             {stats.wallet.onOrder > 0
@@ -471,30 +557,34 @@ export default function AdminHubPage() {
               부족 {stats.wallet.reserved - stats.wallet.stock}장 ⚠️
             </WalletShortage>
           ) : null}
-        </SummaryRow>
+        </WalletRow>
       </SummaryCard>
 
       <SectionTitle>바로가기</SectionTitle>
       <MenuGrid>
         <MenuCard href="/admin/schedule">
+          <MenuIcon aria-hidden>📅</MenuIcon>
           <MenuTitle>일정·근무 캘린더</MenuTitle>
-          <MenuDesc>신청 일정 조회 + 내 근무 슬롯 등록</MenuDesc>
         </MenuCard>
         <MenuCard href="/admin/requests?type=miracle10">
-          <MenuTitle>10모의 기적 신청 관리</MenuTitle>
-          <MenuDesc>목록·상세, 상태 변경, 거래 기록</MenuDesc>
+          <MenuIcon aria-hidden>🎯</MenuIcon>
+          <MenuTitle>10모의 기적</MenuTitle>
         </MenuCard>
         <MenuCard href="/admin/requests?type=otc">
-          <MenuTitle>BMB 구매·판매 신청</MenuTitle>
-          <MenuDesc>OTC 신청 목록·상세, 상태 관리</MenuDesc>
+          <MenuIcon aria-hidden>💱</MenuIcon>
+          <MenuTitle>BMB 구매·판매</MenuTitle>
         </MenuCard>
         <MenuCard href="/admin/calculator">
-          <MenuTitle>OTC 단가 계산기</MenuTitle>
-          <MenuDesc>호가 평단가·환율·마진 시뮬레이션</MenuDesc>
+          <MenuIcon aria-hidden>🧮</MenuIcon>
+          <MenuTitle>단가 계산기</MenuTitle>
         </MenuCard>
         <MenuCard href="/admin/wallet-inventory">
-          <MenuTitle>10모의 기적 지갑 재고</MenuTitle>
-          <MenuDesc>종이지갑 입고·불출 원장</MenuDesc>
+          <MenuIcon aria-hidden>📦</MenuIcon>
+          <MenuTitle>지갑 재고</MenuTitle>
+        </MenuCard>
+        <MenuCard href="/admin/profile">
+          <MenuIcon aria-hidden>👤</MenuIcon>
+          <MenuTitle>내 프로필</MenuTitle>
         </MenuCard>
       </MenuGrid>
     </Page>

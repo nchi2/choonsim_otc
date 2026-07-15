@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import BmbUsdtTicker from "@/app/page/components/BmbUsdtTicker";
 import { marginFloorKrw } from "@/lib/otc-estimate";
+import { adminColors } from "@/components/admin/ui";
 
 const Page = styled.div`
   max-width: 960px;
@@ -17,9 +18,9 @@ const Page = styled.div`
 `;
 
 const Card = styled.div`
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 `;
@@ -27,7 +28,7 @@ const Card = styled.div`
 const SectionTitle = styled.h2`
   font-size: 0.95rem;
   font-weight: 700;
-  color: #374151;
+  color: ${adminColors.textSub};
   margin: 0 0 1rem;
 `;
 
@@ -42,14 +43,14 @@ const Row = styled.div`
 const Label = styled.label`
   font-size: 0.85rem;
   font-weight: 600;
-  color: #4b5563;
+  color: ${adminColors.textSub2};
   min-width: 72px;
 `;
 
 const Input = styled.input`
   width: 120px;
   padding: 0.5rem 0.65rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
   &:focus {
@@ -63,9 +64,9 @@ const Chip = styled.button<{ $active: boolean }>`
   padding: 0.5rem 0.9rem;
   min-height: 2.5rem;
   border-radius: 999px;
-  border: 1px solid ${(p) => (p.$active ? "#4338ca" : "#e5e7eb")};
-  background: ${(p) => (p.$active ? "#eef2ff" : "#fff")};
-  color: ${(p) => (p.$active ? "#4338ca" : "#374151")};
+  border: 1px solid ${(p) => (p.$active ? adminColors.primary : adminColors.border)};
+  background: ${(p) => (p.$active ? adminColors.primarySoft : adminColors.white)};
+  color: ${(p) => (p.$active ? adminColors.primary : adminColors.textSub)};
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -73,7 +74,7 @@ const Chip = styled.button<{ $active: boolean }>`
 
 const Segment = styled.div`
   display: inline-flex;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 10px;
   overflow: hidden;
 `;
@@ -89,24 +90,24 @@ const SegmentButton = styled.button<{
   font-weight: 700;
   cursor: pointer;
   background: ${(p) =>
-    p.$active ? (p.$tone === "buy" ? "#dc2626" : "#2563eb") : "#fff"};
-  color: ${(p) => (p.$active ? "#fff" : "#6b7280")};
+    p.$active ? (p.$tone === "buy" ? adminColors.danger : adminColors.info) : adminColors.white};
+  color: ${(p) => (p.$active ? adminColors.white : adminColors.textMuted)};
   transition: background 0.12s ease;
 
   & + & {
-    border-left: 1px solid #e5e7eb;
+    border-left: 1px solid ${adminColors.border};
   }
 `;
 
 const RefreshButton = styled.button`
   padding: 0.45rem 0.9rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
-  background: #fff;
+  background: ${adminColors.white};
   font-size: 0.85rem;
   cursor: pointer;
   &:hover {
-    background: #f9fafb;
+    background: ${adminColors.bgSubtle};
   }
   &:disabled {
     opacity: 0.6;
@@ -116,7 +117,7 @@ const RefreshButton = styled.button`
 
 const Meta = styled.div`
   font-size: 0.8rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-top: 0.5rem;
 `;
 
@@ -136,7 +137,7 @@ const LevelRow = styled.div`
 
 const BarTrack = styled.div`
   height: 18px;
-  background: #f3f4f6;
+  background: ${adminColors.bgHover};
   border-radius: 4px;
   overflow: hidden;
   position: relative;
@@ -154,16 +155,16 @@ const BarFill = styled.div<{
     p.$tone === "buy"
       ? p.$partial
         ? "#f87171"
-        : "#dc2626"
+        : adminColors.danger
       : p.$partial
         ? "#60a5fa"
-        : "#2563eb"};
+        : adminColors.info};
   border-radius: 4px;
 `;
 
 const LevelMeta = styled.span<{ $active: boolean; $tone: "buy" | "sell" }>`
   color: ${(p) =>
-    p.$active ? (p.$tone === "buy" ? "#991b1b" : "#1e40af") : "#9ca3af"};
+    p.$active ? (p.$tone === "buy" ? adminColors.dangerTextStrong : "#1e40af") : adminColors.textFaint};
   font-weight: ${(p) => (p.$active ? 600 : 400)};
   text-align: right;
   white-space: nowrap;
@@ -173,15 +174,15 @@ const CollapseRow = styled.button`
   margin-top: 4px;
   width: 100%;
   padding: 0.5rem;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed ${adminColors.borderInput};
   border-radius: 8px;
-  background: #fafafa;
-  color: #6b7280;
+  background: ${adminColors.bgHoverRow};
+  color: ${adminColors.textMuted};
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   &:hover {
-    background: #f3f4f6;
+    background: ${adminColors.bgHover};
   }
 `;
 
@@ -189,9 +190,9 @@ const WarnBanner = styled.div<{ $severe?: boolean }>`
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  border: 1px solid ${(p) => (p.$severe ? "#dc2626" : "#fca5a5")};
-  background: ${(p) => (p.$severe ? "#fef2f2" : "#fff5f5")};
-  color: #991b1b;
+  border: 1px solid ${(p) => (p.$severe ? adminColors.danger : adminColors.dangerBorder)};
+  background: ${(p) => (p.$severe ? adminColors.dangerSoft : "#fff5f5")};
+  color: ${adminColors.dangerTextStrong};
   border-radius: 10px;
   padding: 0.7rem 0.9rem;
   font-size: 0.85rem;
@@ -217,14 +218,14 @@ const NegotiationCard = styled.div`
 const NegotiationLabel = styled.div`
   font-size: 0.8rem;
   font-weight: 800;
-  color: #92400e;
+  color: ${adminColors.warnText};
   margin-bottom: 0.4rem;
 `;
 
 const NegotiationValue = styled.div`
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1f2937;
+  color: ${adminColors.textStrong};
   line-height: 1.5;
 `;
 
@@ -235,10 +236,10 @@ const NegotiationSub = styled.div`
 `;
 
 const ErrorBox = styled.div`
-  color: #dc2626;
+  color: ${adminColors.danger};
   font-size: 0.875rem;
   padding: 0.75rem;
-  background: #fef2f2;
+  background: ${adminColors.dangerSoft};
   border-radius: 8px;
   margin-bottom: 1rem;
 `;
@@ -249,9 +250,9 @@ const ErrorBox = styled.div`
 const TopHint = styled.div`
   font-size: 0.8rem;
   line-height: 1.5;
-  color: #4b5563;
-  background: #f9fafb;
-  border: 1px solid #eceef1;
+  color: ${adminColors.textSub2};
+  background: ${adminColors.bgSubtle};
+  border: 1px solid ${adminColors.borderFaint2};
   border-radius: 10px;
   padding: 0.55rem 0.9rem;
   margin-bottom: 1rem;
@@ -268,8 +269,8 @@ const InfoIcon = styled.span`
   width: 15px;
   height: 15px;
   border-radius: 999px;
-  border: 1px solid #d1d5db;
-  color: #9ca3af;
+  border: 1px solid ${adminColors.borderInput};
+  color: ${adminColors.textFaint};
   font-size: 10px;
   font-weight: 700;
   margin-left: 6px;
@@ -290,7 +291,7 @@ const SummaryCell = styled.div`
 const SummaryLabel = styled.div`
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-bottom: 0.2rem;
 `;
 
@@ -299,7 +300,7 @@ const SummaryValue = styled.div<{ $accent?: boolean; $hero?: boolean }>`
   font-weight: ${(p) => (p.$hero ? 900 : 800)};
   line-height: 1.1;
   color: ${(p) =>
-    p.$accent ? "#15803d" : p.$hero ? "#312e81" : "#111827"};
+    p.$accent ? "#15803d" : p.$hero ? "#312e81" : adminColors.text};
 
   @media (min-width: 768px) {
     font-size: ${(p) => (p.$hero ? "2.1rem" : "1.2rem")};
@@ -309,7 +310,7 @@ const SummaryValue = styled.div<{ $accent?: boolean; $hero?: boolean }>`
 const SummaryUnit = styled.div<{ $hero?: boolean }>`
   font-size: ${(p) => (p.$hero ? "1.05rem" : "0.95rem")};
   font-weight: ${(p) => (p.$hero ? 700 : 600)};
-  color: ${(p) => (p.$hero ? "#374151" : "#6b7280")};
+  color: ${(p) => (p.$hero ? adminColors.textSub : adminColors.textMuted)};
   margin-top: 0.2rem;
 
   @media (min-width: 768px) {
@@ -356,15 +357,15 @@ const QuoteLine = styled.div`
 
 const QuoteItem = styled.span`
   font-size: 0.85rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   strong {
-    color: #111827;
+    color: ${adminColors.text};
     font-weight: 800;
     margin-left: 4px;
   }
 `;
 
-const StatusBadge = styled.span<{ $tone: StatusTone }>`
+const SignalBadge = styled.span<{ $tone: StatusTone }>`
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -380,14 +381,14 @@ const StatusBadge = styled.span<{ $tone: StatusTone }>`
 
 const StatusReasonLine = styled.div`
   font-size: 0.75rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-bottom: 0.85rem;
 `;
 
 const Tabs = styled.div`
   display: flex;
   gap: 0;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid ${adminColors.border};
   margin-bottom: 0.85rem;
 `;
 
@@ -398,38 +399,38 @@ const TabButton = styled.button<{ $active: boolean }>`
   background: none;
   font-size: 0.88rem;
   font-weight: ${(p) => (p.$active ? 800 : 600)};
-  color: ${(p) => (p.$active ? "#4338ca" : "#9ca3af")};
-  border-bottom: 2px solid ${(p) => (p.$active ? "#4338ca" : "transparent")};
+  color: ${(p) => (p.$active ? adminColors.primary : adminColors.textFaint)};
+  border-bottom: 2px solid ${(p) => (p.$active ? adminColors.primary : "transparent")};
   margin-bottom: -2px;
   cursor: pointer;
   transition: color 0.12s ease;
   &:hover {
-    color: ${(p) => (p.$active ? "#4338ca" : "#374151")};
+    color: ${(p) => (p.$active ? adminColors.primary : adminColors.textSub)};
   }
 `;
 
 const TabDesc = styled.div`
   font-size: 0.75rem;
   line-height: 1.5;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
   margin-bottom: 0.75rem;
 `;
 
 const VwapInfoLine = styled.div`
   font-size: 0.85rem;
-  color: #4b5563;
+  color: ${adminColors.textSub2};
   margin-bottom: 0.75rem;
   strong {
-    color: #111827;
+    color: ${adminColors.text};
     font-weight: 700;
   }
 `;
 
 /** 손님가(최종 결과) 박스 — 화면에서 가장 강조되는 "답". */
 const FinalBox = styled.div`
-  border: 2px solid #4338ca;
+  border: 2px solid ${adminColors.primary};
   border-radius: 14px;
-  background: linear-gradient(180deg, #fbfbff 0%, #fff 45%);
+  background: linear-gradient(180deg, #fbfbff 0%, ${adminColors.white} 45%);
   padding: 1.1rem 1.3rem;
   margin-top: 0.85rem;
   box-shadow: 0 2px 10px rgba(67, 56, 202, 0.1);
@@ -441,8 +442,8 @@ const VwapHero = styled.div`
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.15rem 0.6rem;
-  border: 1px solid #eceef1;
-  background: #f9fafb;
+  border: 1px solid ${adminColors.borderFaint2};
+  background: ${adminColors.bgSubtle};
   border-radius: 10px;
   padding: 0.55rem 0.85rem;
   margin-bottom: 0.85rem;
@@ -451,7 +452,7 @@ const VwapHero = styled.div`
 const VwapHeroLabel = styled.span`
   font-size: 0.76rem;
   font-weight: 700;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   display: inline-flex;
   align-items: center;
 `;
@@ -460,12 +461,12 @@ const VwapHeroValue = styled.span`
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.2;
-  color: #374151;
+  color: ${adminColors.textSub};
 `;
 
 const VwapHeroSub = styled.span`
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
 `;
 
 // ── 시장 환경 시각 요소 ──
@@ -485,11 +486,11 @@ const FgTrack = styled.div`
   margin-top: 0.5rem;
   background: linear-gradient(
     90deg,
-    #b91c1c 0%,
-    #ea580c 30%,
-    #ca8a04 50%,
+    ${adminColors.dangerText} 0%,
+    ${adminColors.alert} 30%,
+    ${adminColors.warnAmber} 50%,
     #65a30d 70%,
-    #16a34a 100%
+    ${adminColors.done} 100%
   );
 `;
 
@@ -500,24 +501,24 @@ const FgMarker = styled.span<{ $left: number }>`
   width: 11px;
   height: 11px;
   border-radius: 999px;
-  background: #fff;
-  border: 2px solid #374151;
+  background: ${adminColors.white};
+  border: 2px solid ${adminColors.textSub};
   transform: translate(-50%, -50%);
 `;
 
 const CopyButton = styled.button<{ $copied: boolean }>`
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  border: 1px solid ${(p) => (p.$copied ? "#0F6E56" : "#d1d5db")};
-  background: ${(p) => (p.$copied ? "#0F6E56" : "#fff")};
-  color: ${(p) => (p.$copied ? "#fff" : "#374151")};
+  border: 1px solid ${(p) => (p.$copied ? "#0F6E56" : adminColors.borderInput)};
+  background: ${(p) => (p.$copied ? "#0F6E56" : adminColors.white)};
+  color: ${(p) => (p.$copied ? adminColors.white : adminColors.textSub)};
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.12s ease;
   &:hover:not(:disabled) {
-    background: ${(p) => (p.$copied ? "#0F6E56" : "#f9fafb")};
+    background: ${(p) => (p.$copied ? "#0F6E56" : adminColors.bgSubtle)};
   }
   &:disabled {
     opacity: 0.55;
@@ -533,8 +534,8 @@ const MetricGrid = styled.div`
 `;
 
 const MetricBox = styled.div`
-  background: #f9fafb;
-  border: 1px solid #eceef1;
+  background: ${adminColors.bgSubtle};
+  border: 1px solid ${adminColors.borderFaint2};
   border-radius: 10px;
   padding: 0.7rem 0.85rem;
 `;
@@ -544,20 +545,20 @@ const MetricLabel = styled.div`
   align-items: center;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-bottom: 0.3rem;
 `;
 
 const MetricValue = styled.div`
   font-size: 1.05rem;
   font-weight: 800;
-  color: #111827;
+  color: ${adminColors.text};
   line-height: 1.25;
 `;
 
 const MetricSub = styled.div`
   font-size: 0.75rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-top: 0.2rem;
 `;
 
@@ -576,7 +577,7 @@ const PositionRow = styled.div<{ $head?: boolean }>`
   border-bottom: 1px solid #f1f3f5;
   ${(p) =>
     p.$head
-      ? "background: #fafafa; border-radius: 8px; padding: 0.5rem 0.6rem;"
+      ? "background: ${adminColors.bgHoverRow}; border-radius: 8px; padding: 0.5rem 0.6rem;"
       : ""}
 
   @media (min-width: 768px) {
@@ -591,13 +592,13 @@ const PositionRow = styled.div<{ $head?: boolean }>`
 const PositionLabel = styled.span`
   font-size: 0.82rem;
   font-weight: 600;
-  color: #374151;
+  color: ${adminColors.textSub};
 `;
 
 const PositionVal = styled.span`
   font-size: 1rem;
   font-weight: 800;
-  color: #111827;
+  color: ${adminColors.text};
   white-space: nowrap;
 
   @media (min-width: 768px) {
@@ -640,7 +641,7 @@ const ToggleRow = styled.button`
 
 const ProfileMeta = styled.div`
   font-size: 0.76rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin: 0.75rem 0 0.6rem;
 `;
 
@@ -652,8 +653,8 @@ const ProfileRow = styled.div<{ $current?: boolean }>`
   font-size: 0.76rem;
   padding: 0.18rem 0.35rem;
   border-radius: 6px;
-  background: ${(p) => (p.$current ? "#fff7ed" : "transparent")};
-  outline: ${(p) => (p.$current ? "1px solid #fdba74" : "none")};
+  background: ${(p) => (p.$current ? adminColors.alertSoft : "transparent")};
+  outline: ${(p) => (p.$current ? "1px solid ${adminColors.alertBorder}" : "none")};
 `;
 
 const ProfilePriceCell = styled.span`
@@ -667,7 +668,7 @@ const ProfilePriceCell = styled.span`
 const CurrentTag = styled.span`
   font-size: 0.64rem;
   font-weight: 700;
-  color: #c2410c;
+  color: ${adminColors.alertTextStrong};
   background: #ffedd5;
   border-radius: 4px;
   padding: 0 0.25rem;
@@ -675,7 +676,7 @@ const CurrentTag = styled.span`
 
 const ProfileBarTrack = styled.div`
   height: 14px;
-  background: #f1f5f9;
+  background: ${adminColors.rowDivider};
   border-radius: 4px;
   overflow: hidden;
 `;
@@ -701,30 +702,30 @@ const PartialNote = styled.div`
 
 const StatusLoading = styled.div`
   font-size: 0.85rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
 `;
 
 /** 섹션 사용 안내 — "언제 보는지"만(수치 해석 아님). 12px, 보조색, 1줄. */
 const SectionHint = styled.div`
   font-size: 0.75rem;
   line-height: 1.4;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
   margin: -0.4rem 0 0.85rem;
 `;
 
 const CopyHint = styled.span`
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
   line-height: 1.4;
 `;
 
 const ExtLink = styled.a`
   display: inline-flex;
   align-items: center;
-  color: #9ca3af;
+  color: ${adminColors.textFaint};
   margin-left: 4px;
   &:hover {
-    color: #4b5563;
+    color: ${adminColors.textSub2};
   }
 `;
 
@@ -866,9 +867,9 @@ const STATUS_STYLE: Record<
     label: "시장 주의 — 신중 검토",
   },
   neutral: {
-    border: "#9ca3af",
-    bg: "#f9fafb",
-    text: "#4b5563",
+    border: adminColors.textFaint,
+    bg: adminColors.bgSubtle,
+    text: adminColors.textSub2,
     label: "시장 지표",
   },
 };
@@ -1007,20 +1008,20 @@ function fmtUsdtSigned(n: number | null): string {
 
 /** Fear&Greed 공식 색 관습: 극공포 진빨강 ~ 극탐욕 초록. */
 function fearGreedColor(v: number): string {
-  if (v <= 24) return "#b91c1c";
-  if (v <= 44) return "#ea580c";
-  if (v <= 55) return "#ca8a04";
+  if (v <= 24) return adminColors.dangerText;
+  if (v <= 44) return adminColors.alert;
+  if (v <= 55) return adminColors.warnAmber;
   if (v <= 74) return "#65a30d";
-  return "#16a34a";
+  return adminColors.done;
 }
 
 /** 김프 부호 색 — 한국 관습상 +김프(과열)=빨강, −=파랑, 0 근처 회색. */
 function kimchiColor(v: number | null): string {
-  if (v == null) return "#6b7280";
+  if (v == null) return adminColors.textMuted;
   const r = Math.round(v * 10) / 10;
-  if (r > 0) return "#dc2626";
-  if (r < 0) return "#2563eb";
-  return "#6b7280";
+  if (r > 0) return adminColors.danger;
+  if (r < 0) return adminColors.info;
+  return adminColors.textMuted;
 }
 
 /** ti-trending-up / ti-trending-down 형태의 인라인 SVG. */
@@ -1651,7 +1652,7 @@ export default function AdminCalculatorPage() {
               판매자
             </SegmentButton>
           </Segment>
-          <span style={{ fontSize: 13, color: "#6b7280" }}>
+          <span style={{ fontSize: 13, color: adminColors.textMuted }}>
             {direction === "buy"
               ? "손님이 우리에게서 매수 (우리가 판매)"
               : "손님이 우리에게 매도 (우리가 매입)"}
@@ -1743,7 +1744,7 @@ export default function AdminCalculatorPage() {
             {fmtUsdt(parsedKrwInput / effectiveUsdtKrw)} USDT (환율{" "}
             {fmtKrw(effectiveUsdtKrw)} 기준)
             <br />
-            <span style={{ color: "#9ca3af" }}>
+            <span style={{ color: adminColors.textFaint }}>
               반올림 정수로 계산하므로 실제 총액은 입력 원화와 다를 수
               있습니다.
             </span>
@@ -1765,7 +1766,7 @@ export default function AdminCalculatorPage() {
             style={{ width: 140 }}
           />
           {effectiveUsdtKrw != null ? (
-            <span style={{ fontSize: 13, color: "#6b7280" }}>
+            <span style={{ fontSize: 13, color: adminColors.textMuted }}>
               자동: {fmtKrw(effectiveUsdtKrw)}원
             </span>
           ) : null}
@@ -1799,20 +1800,20 @@ export default function AdminCalculatorPage() {
               }
               usdtKrw={effectiveUsdtKrw}
             />
-            <StatusBadge $tone={statusTone}>
+            <SignalBadge $tone={statusTone}>
               <StatusDot $tone={statusTone} />
               {BADGE_LABEL[statusTone]}
-            </StatusBadge>
+            </SignalBadge>
           </TickerWrap>
         ) : (
           <QuoteLine>
             <QuoteItem>
               현재가 <strong>—</strong>
             </QuoteItem>
-            <StatusBadge $tone={statusTone}>
+            <SignalBadge $tone={statusTone}>
               <StatusDot $tone={statusTone} />
               {BADGE_LABEL[statusTone]}
-            </StatusBadge>
+            </SignalBadge>
           </QuoteLine>
         )}
         <StatusReasonLine>
@@ -2067,7 +2068,7 @@ export default function AdminCalculatorPage() {
                 const fillLabel = `${fmtLevelQty(qty)}개 체결`;
                 return (
                   <LevelRow key={`${lv.price}-${i}`}>
-                    <span style={{ color: "#374151", fontWeight: 500 }}>
+                    <span style={{ color: adminColors.textSub, fontWeight: 500 }}>
                       {fmtUsdt(lv.price)}
                     </span>
                     <BarTrack>
@@ -2170,14 +2171,14 @@ export default function AdminCalculatorPage() {
             <PositionRow $head>
               <PositionLabel>현재가 (기준)</PositionLabel>
               <PositionVal>{fmtUsdt(lastPriceUsdt)} USDT</PositionVal>
-              <PositionDiff $color="#6b7280">—</PositionDiff>
+              <PositionDiff $color={adminColors.textMuted}>—</PositionDiff>
             </PositionRow>
             {positionRows.map((r) => {
               const diff = r.value - lastPriceUsdt;
               const r2 = Math.round(diff * 100) / 100;
               const up = r2 > 0;
               const flat = r2 === 0;
-              const color = flat ? "#6b7280" : up ? "#16a34a" : "#dc2626";
+              const color = flat ? adminColors.textMuted : up ? adminColors.done : adminColors.danger;
               return (
                 <PositionRow key={r.key} title={r.tip}>
                   <PositionLabel>{r.label}</PositionLabel>
@@ -2221,7 +2222,7 @@ export default function AdminCalculatorPage() {
                 <MetricValue>
                   7일{" "}
                   {sbtc?.chg7 != null ? (
-                    <TrendValue $color={sbtc.chg7 >= 0 ? "#16a34a" : "#dc2626"}>
+                    <TrendValue $color={sbtc.chg7 >= 0 ? adminColors.done : adminColors.danger}>
                       <TrendIcon up={sbtc.chg7 >= 0} />
                       {fmtPctSigned(sbtc.chg7)}
                     </TrendValue>
@@ -2231,7 +2232,7 @@ export default function AdminCalculatorPage() {
                   / 30일{" "}
                   {sbtc?.chg30 != null ? (
                     <TrendValue
-                      $color={sbtc.chg30 >= 0 ? "#16a34a" : "#dc2626"}
+                      $color={sbtc.chg30 >= 0 ? adminColors.done : adminColors.danger}
                     >
                       <TrendIcon up={sbtc.chg30 >= 0} />
                       {fmtPctSigned(sbtc.chg30)}

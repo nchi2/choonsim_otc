@@ -18,12 +18,14 @@ export const STATUS_LABELS: Record<Miracle10Status, string> = {
 };
 
 // 접수(PENDING)=주황: 어드민 셸 알림 배지·대시보드 접수 카드와 같은 계열로 통일.
+// 접수=주황 · 연락완료=파랑 · 일정확정=틸 · 완료=초록 · 취소=회색
+// (components/admin/ui.ts statusColor와 동일 팔레트 — 두 곳을 함께 유지할 것)
 export const STATUS_COLORS: Record<Miracle10Status, string> = {
   PENDING: "#ea580c",
   CONTACTED: "#2563eb",
   VERIFIED: "#0d9488",
-  COMPLETED: "#64748b",
-  CANCELED: "#dc2626",
+  COMPLETED: "#16a34a",
+  CANCELED: "#6b7280",
 };
 
 /** 운영자 일정 지정·수정 가능 상태 (완료·취소 제외). */

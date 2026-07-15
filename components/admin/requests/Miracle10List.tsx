@@ -3,7 +3,7 @@
 // 10모의 기적 신청 목록 — /admin/requests 세그먼트에서 사용.
 // useAdminData 캐시(첫 페이지) + 서버 counts/?status + [테스트 포함] 토글.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import {
   MIRACLE10_STATUSES,
@@ -27,15 +27,25 @@ import {
   Skeleton,
 } from "@/components/admin/States";
 import {
+  CardId,
+  CardLink,
+  CardList,
+  CardMetaFaint,
+  CardName,
+  CardTop,
+  CardVisit,
+  CardVisitStrong,
+  ChipDivider,
+  ChipScroll,
   Hide,
   HeadRow,
   ListMeta,
+  ListMetaRow,
   LoadMoreBtn,
   Row,
   SortHead,
-  SubMobile,
+  StockSummary,
   Table,
-  Tabs,
   TestBadge,
   Toolbar,
 } from "@/components/admin/requests/list-ui";
@@ -155,8 +165,11 @@ const TAB_LABELS: Record<StatusFilter, string> = {
 
 export function Miracle10List({
   initialStatus,
+  wallet,
 }: {
   initialStatus?: string | null;
+  /** 우측 재고 요약 (10모 목록에만) — requests 페이지의 stats 캐시에서 전달 */
+  wallet?: { stock: number; reserved: number; onOrder: number };
 }) {
   const [filter, setFilter] = useState<StatusFilter>(() =>
     initialStatus === "ALL" ||
@@ -262,21 +275,24 @@ export function Miracle10List({
   return (
     <>
       <Toolbar>
-        <Tabs>
-          {STATUS_TAB_ORDER.map((tab) => (
-            <FilterTab
-              key={tab}
-              type="button"
-              $active={filter === tab}
-              onClick={() => setFilter(tab)}
-            >
-              {TAB_LABELS[tab]}
-              <FilterTabCount $active={filter === tab}>
-                {tabCount(tab)}
-              </FilterTabCount>
-            </FilterTab>
+        <ChipScroll>
+          {STATUS_TAB_ORDER.map((tab, i) => (
+            <Fragment key={tab}>
+              {/* 완료·취소·전체는 구분선 뒤로 (한 급 아래) */}
+              {tab === "COMPLETED" ? <ChipDivider /> : null}
+              <FilterTab
+                type="button"
+                $active={filter === tab}
+                onClick={() => setFilter(tab)}
+              >
+                {TAB_LABELS[tab]}
+                <FilterTabCount $active={filter === tab}>
+                  {tabCount(tab)}
+                </FilterTabCount>
+              </FilterTab>
+            </Fragment>
           ))}
-        </Tabs>
+        </ChipScroll>
         <IncludeTestToggle>
           <input
             type="checkbox"
@@ -298,13 +314,22 @@ export function Miracle10List({
         />
       ) : (
         <>
-          <ListMeta>
-            {TAB_LABELS[filter]} {filteredTotal}건
-            {filter !== "ALL" ? ` · 전체 ${counts?.total ?? 0}건` : ""}
-            {items.length < filteredTotal
-              ? ` · ${items.length}건 표시 중`
-              : ""}
-          </ListMeta>
+          <ListMetaRow>
+            <ListMeta>
+              {TAB_LABELS[filter]} {filteredTotal}건
+              {filter !== "ALL" ? ` · 전체 ${counts?.total ?? 0}건` : ""}
+              {items.length < filteredTotal
+                ? ` · ${items.length}건 표시 중`
+                : ""}
+            </ListMeta>
+            {wallet ? (
+              <StockSummary
+                stock={wallet.stock}
+                reserved={wallet.reserved}
+                onOrder={wallet.onOrder}
+              />
+            ) : null}
+          </ListMetaRow>
           {sortedItems.length === 0 ? (
             <EmptyState
               icon="🗂"
@@ -357,9 +382,6 @@ export function Miracle10List({
                           {it.unreadCommentCount}
                         </UnreadBadge>
                       ) : null}
-                      {visitBrief !== "-" ? (
-                        <SubMobile>{visitBrief}</SubMobile>
-                      ) : null}
                     </span>
                     <Hide>{it.contactMasked}</Hide>
                     <span>{it.quantity}모</span>
@@ -382,6 +404,46 @@ export function Miracle10List({
               })}
             </Table>
           )}
+
+          {/* 모바일 카드 — 방문일시 승격 (≤640px 전용) */}
+          {sortedItems.length > 0 ? (
+            <CardList>
+              {sortedItems.map((it) => {
+                const visitBrief = formatVisitBrief(it);
+                return (
+                  <CardLink
+                    key={it.id}
+                    href={`/admin/miracle10/${it.id}`}
+                    $test={it.isTest}
+                  >
+                    <CardTop>
+                      <CardId>#{it.id}</CardId>
+                      <CardName>
+                        {it.nameMasked}
+                        {it.isSbmbMember ? " · SBMB" : ""}
+                        {it.isTest ? <TestBadge>TEST</TestBadge> : null}
+                        {it.commentCount > 0 ? (
+                          <CommentBadge>💬{it.commentCount}</CommentBadge>
+                        ) : null}
+                        {it.unreadCommentCount > 0 ? (
+                          <UnreadBadge>{it.unreadCommentCount}</UnreadBadge>
+                        ) : null}
+                      </CardName>
+                      <StatusBadge $color={STATUS_COLORS[it.status]}>
+                        {STATUS_LABELS[it.status]}
+                      </StatusBadge>
+                    </CardTop>
+                    <CardVisit>
+                      <CardVisitStrong>
+                        {visitBrief !== "-" ? visitBrief : "방문 미정"}
+                      </CardVisitStrong>
+                      <CardMetaFaint>{it.quantity}모</CardMetaFaint>
+                    </CardVisit>
+                  </CardLink>
+                );
+              })}
+            </CardList>
+          ) : null}
           {hasMore ? (
             <LoadMoreBtn
               type="button"

@@ -19,13 +19,13 @@ export const OTC_REQUEST_STATUS_LABELS: Record<OtcRequestStatus, string> = {
   CANCELED: "취소",
 };
 
-// 색은 10모 STATUS_COLORS와 같은 계열 — 접수=주황, 진행=파랑, 합의=청록, 완료=슬레이트, 취소=빨강.
+// 색은 10모 STATUS_COLORS와 같은 계열 — 접수=주황, 연락완료=파랑, 합의=틸, 완료=초록, 취소=회색.
 export const OTC_REQUEST_STATUS_COLORS: Record<OtcRequestStatus, string> = {
   PENDING: "#ea580c",
   CONTACTED: "#2563eb",
   AGREED: "#0d9488",
-  COMPLETED: "#64748b",
-  CANCELED: "#dc2626",
+  COMPLETED: "#16a34a",
+  CANCELED: "#6b7280",
 };
 
 export function isOtcRequestStatus(v: unknown): v is OtcRequestStatus {

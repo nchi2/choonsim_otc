@@ -34,7 +34,7 @@ const Page = styled.div`
 const Card = styled.section`
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 `;
@@ -83,7 +83,7 @@ const TextInput = styled.input`
   border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
 
   &:read-only {
     background: ${adminColors.bgSubtle};
@@ -109,7 +109,7 @@ const SmallBtn = styled.button`
   padding: 0.3rem 0.7rem;
   border-radius: 6px;
   border: 1px solid ${adminColors.borderInput};
-  background: #fff;
+  background: ${adminColors.white};
   color: ${adminColors.textSub};
   font-size: 0.75rem;
   font-weight: 700;
@@ -131,7 +131,7 @@ const SaveBtn = styled.button`
   border-radius: 8px;
   border: none;
   background: ${adminColors.primary};
-  color: #fff;
+  color: ${adminColors.white};
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -144,7 +144,7 @@ const SaveBtn = styled.button`
 const Msg = styled.span<{ $error?: boolean }>`
   font-size: 0.8rem;
   font-weight: 600;
-  color: ${(p) => (p.$error ? adminColors.danger : "#059669")};
+  color: ${(p) => (p.$error ? adminColors.danger : adminColors.successStrong)};
 `;
 
 const ScheduleList = styled.ul`
@@ -497,7 +497,7 @@ export default function AdminProfilePage() {
           <div style={{ gridColumn: "1 / -1" }}>
             <FieldLabel htmlFor="p-account">계좌번호</FieldLabel>
             {accountRevealed ? (
-              <MaskedBox as="div" style={{ background: "#fff" }}>
+              <MaskedBox as="div" style={{ background: adminColors.white }}>
                 <TextInput
                   id="p-account"
                   style={{ border: "none", padding: 0 }}

@@ -64,17 +64,17 @@ const BackLink = styled(Link)`
   display: inline-block;
   margin-bottom: 0.75rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   text-decoration: none;
   &:hover {
-    color: #111827;
+    color: ${adminColors.text};
   }
 `;
 
 const Card = styled.div`
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 `;
@@ -82,13 +82,13 @@ const Card = styled.div`
 const SectionTitle = styled.h2`
   font-size: 0.95rem;
   font-weight: 700;
-  color: #374151;
+  color: ${adminColors.textSub};
   margin: 0 0 0.75rem;
 `;
 
 const SectionSub = styled.p`
   font-size: 0.78rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin: 0 0 0.75rem;
   line-height: 1.45;
 `;
@@ -98,7 +98,7 @@ const Field = styled.div`
   grid-template-columns: 140px 1fr;
   gap: 0.5rem;
   padding: 0.4rem 0;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid ${adminColors.borderFaint};
   font-size: 0.9rem;
   &:first-of-type {
     border-top: none;
@@ -112,11 +112,11 @@ const Field = styled.div`
 `;
 
 const Key = styled.span`
-  color: #6b7280;
+  color: ${adminColors.textMuted};
 `;
 
 const Val = styled.span`
-  color: #111827;
+  color: ${adminColors.text};
   font-weight: 500;
   word-break: break-all;
 `;
@@ -127,7 +127,7 @@ const Badge = styled.span<{ $color: string }>`
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  color: ${adminColors.white};
   background: ${(p) => p.$color};
 `;
 
@@ -141,8 +141,8 @@ const StatusButton = styled.button<{ $active: boolean; $color: string }>`
   padding: 0.5rem 1rem;
   border-radius: 8px;
   border: 1.5px solid ${(p) => p.$color};
-  background: ${(p) => (p.$active ? p.$color : "#fff")};
-  color: ${(p) => (p.$active ? "#fff" : p.$color)};
+  background: ${(p) => (p.$active ? p.$color : adminColors.white)};
+  color: ${(p) => (p.$active ? adminColors.white : p.$color)};
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -161,15 +161,15 @@ const DatePickerWrap = styled.div`
 const DateSelectButton = styled.button<{ $hasValue: boolean }>`
   width: 100%;
   padding: 0.55rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
-  background: #fff;
+  background: ${adminColors.white};
   font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  color: ${(p) => (p.$hasValue ? "#111827" : "#9ca3af")};
+  color: ${(p) => (p.$hasValue ? adminColors.text : adminColors.textFaint)};
 `;
 
 const CalendarDropdown = styled.div`
@@ -179,7 +179,7 @@ const CalendarDropdown = styled.div`
 const CalendarHint = styled.p`
   margin: 0.5rem 0 0;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   text-align: center;
 `;
 
@@ -206,10 +206,10 @@ const SlotChip = styled.button<{ $active: boolean; $booked?: boolean }>`
   border-radius: 10px;
   border: 1.5px solid
     ${(p) =>
-      p.$active ? "#4338ca" : p.$booked ? "#e5e7eb" : "#d1d5db"};
+      p.$active ? adminColors.primary : p.$booked ? adminColors.border : adminColors.borderInput};
   background: ${(p) =>
-    p.$active ? "#4338ca" : p.$booked ? "#f9fafb" : "#fff"};
-  color: ${(p) => (p.$active ? "#fff" : "#374151")};
+    p.$active ? adminColors.primary : p.$booked ? adminColors.bgSubtle : adminColors.white};
+  color: ${(p) => (p.$active ? adminColors.white : adminColors.textSub)};
   cursor: ${(p) => (p.$booked ? "not-allowed" : "pointer")};
   opacity: ${(p) => (p.$booked ? 0.55 : 1)};
   transition:
@@ -230,8 +230,8 @@ const SlotChipMeta = styled.span<{ $active?: boolean; $emphasis?: boolean }>`
     p.$active
       ? "rgba(255,255,255,0.85)"
       : p.$emphasis
-        ? "#b91c1c"
-        : "#9ca3af"};
+        ? adminColors.dangerText
+        : adminColors.textFaint};
 `;
 
 const SaveScheduleBtn = styled.button`
@@ -239,8 +239,8 @@ const SaveScheduleBtn = styled.button`
   padding: 0.5rem 1rem;
   border-radius: 8px;
   border: none;
-  background: #4338ca;
-  color: #fff;
+  background: ${adminColors.primary};
+  color: ${adminColors.white};
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -262,15 +262,15 @@ const ScheduleBtnRow = styled.div`
 const ScheduleError = styled.p`
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
-  color: #dc2626;
+  color: ${adminColors.danger};
 `;
 
 const OfficeSelect = styled.select`
   width: 100%;
   padding: 0.55rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
-  background: #fff;
+  background: ${adminColors.white};
   font-size: 0.9rem;
   margin-bottom: 0.75rem;
 `;
@@ -278,8 +278,8 @@ const OfficeSelect = styled.select`
 /* ── 다음 액션 (상태별 주 버튼) ── */
 
 const ActionCard = styled(Card)`
-  border-color: #c7d2fe;
-  background: #fafaff;
+  border-color: ${adminColors.primaryBorder};
+  background: ${adminColors.primarySofter};
 `;
 
 const NextActionRow = styled.div`
@@ -293,8 +293,8 @@ const PrimaryActionBtn = styled.button`
   padding: 0.7rem 1.5rem;
   border-radius: 10px;
   border: none;
-  background: #4338ca;
-  color: #fff;
+  background: ${adminColors.primary};
+  color: ${adminColors.white};
   font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
@@ -309,10 +309,10 @@ const TelLinkBtn = styled.a`
   align-items: center;
   gap: 0.4rem;
   padding: 0.65rem 1.1rem;
-  border: 1.5px solid #4338ca;
+  border: 1.5px solid ${adminColors.primary};
   border-radius: 10px;
-  background: #fff;
-  color: #4338ca;
+  background: ${adminColors.white};
+  color: ${adminColors.primary};
   font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
@@ -321,13 +321,13 @@ const TelLinkBtn = styled.a`
 const ActionHint = styled.p`
   margin: 0.6rem 0 0;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   line-height: 1.5;
 `;
 
 const ConfirmBox = styled.div`
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid ${adminColors.border};
+  background: ${adminColors.white};
   border-radius: 10px;
   padding: 0.9rem 1rem;
 `;
@@ -338,7 +338,7 @@ const CheckLabel = styled.label`
   align-items: flex-start;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #111827;
+  color: ${adminColors.text};
   line-height: 1.45;
   cursor: pointer;
   input {
@@ -356,9 +356,9 @@ const ConfirmActions = styled.div`
 const GhostBtn = styled.button`
   padding: 0.5rem 0.9rem;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
+  border: 1px solid ${adminColors.borderInput};
+  background: ${adminColors.white};
+  color: ${adminColors.textSub};
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -368,7 +368,7 @@ const CompleteWarnText = styled.p`
   margin: 0.6rem 0 0;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #dc2626;
+  color: ${adminColors.danger};
 `;
 
 /* ── 접기 (상태 직접 변경 · 거래 기록 · 접수 정보) ── */
@@ -376,7 +376,7 @@ const CompleteWarnText = styled.p`
 const CollapseCard = styled.div`
   border: 1px solid ${adminColors.border};
   border-radius: 12px;
-  background: #fff;
+  background: ${adminColors.white};
   margin-bottom: 1.25rem;
   overflow: hidden;
 `;
@@ -436,8 +436,8 @@ const ChecklistBox = styled.div`
 
 const ChecklistItem = styled.div<{ $done?: boolean }>`
   border: 1px solid
-    ${(p) => (p.$done ? "#99f6e4" : adminColors.border)};
-  background: ${(p) => (p.$done ? adminColors.successSoft : "#fff")};
+    ${(p) => (p.$done ? adminColors.successBorder : adminColors.border)};
+  background: ${(p) => (p.$done ? adminColors.successSoft : adminColors.white)};
   border-radius: 10px;
   padding: 0.7rem 0.9rem;
 `;
@@ -486,7 +486,7 @@ const CancelMiniBtn = styled.button`
   padding: 0.2rem 0.6rem;
   border-radius: 6px;
   border: 1px solid ${adminColors.dangerBorder};
-  background: #fff;
+  background: ${adminColors.white};
   color: ${adminColors.danger};
   font-size: 0.74rem;
   font-weight: 700;
@@ -523,7 +523,7 @@ const TriBtn = styled.button<{ $active: boolean; $tone: "yes" | "no" }>`
       ? p.$tone === "yes"
         ? adminColors.successSoft
         : adminColors.bgHover
-      : "#fff"};
+      : adminColors.white};
   color: ${(p) =>
     p.$active
       ? p.$tone === "yes"
@@ -577,7 +577,7 @@ const MiniEditBtn = styled.button`
   padding: 0.1rem 0.5rem;
   border-radius: 6px;
   border: 1px solid ${adminColors.borderInput};
-  background: #fff;
+  background: ${adminColors.white};
   color: ${adminColors.textMuted};
   font-size: 0.7rem;
   font-weight: 700;
@@ -590,10 +590,10 @@ const TestToggleLabel = styled.label`
   gap: 0.4rem;
   margin-top: 0.9rem;
   padding-top: 0.6rem;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed ${adminColors.border};
   font-size: 0.78rem;
   font-weight: 600;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   cursor: pointer;
 
   input {
@@ -605,7 +605,7 @@ const TestToggleLabel = styled.label`
 
 const CalcBox = styled.div`
   border: 1px solid #e0e7ff;
-  background: #eef2ff;
+  background: ${adminColors.primarySoft};
   border-radius: 10px;
   padding: 0.9rem 1rem;
   margin-bottom: 1rem;
@@ -618,9 +618,9 @@ const CalcRow = styled.div`
   gap: 0.75rem;
   padding: 0.18rem 0;
   font-size: 0.85rem;
-  color: #374151;
+  color: ${adminColors.textSub};
   strong {
-    color: #111827;
+    color: ${adminColors.text};
     text-align: right;
   }
 
@@ -641,10 +641,10 @@ const CalcRow = styled.div`
 const RateInput = styled.input`
   width: 7rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
   text-align: right;
 
   @media (max-width: 480px) {
@@ -671,10 +671,10 @@ const CalcActions = styled.div`
 const NextStepNote = styled.p`
   margin: 0 0 0.85rem;
   padding: 0.6rem 0.8rem;
-  border: 1px solid #c7d2fe;
+  border: 1px solid ${adminColors.primaryBorder};
   border-radius: 8px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: ${adminColors.primarySoft};
+  color: ${adminColors.primaryHover};
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.5;
@@ -683,9 +683,9 @@ const NextStepNote = styled.p`
 const SmallBtn = styled.button`
   padding: 0.45rem 0.85rem;
   border-radius: 8px;
-  border: 1px solid #4338ca;
-  background: #fff;
-  color: #4338ca;
+  border: 1px solid ${adminColors.primary};
+  background: ${adminColors.white};
+  color: ${adminColors.primary};
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
@@ -698,9 +698,9 @@ const SmallBtn = styled.button`
 const SmallLinkBtn = styled(Link)`
   padding: 0.45rem 0.85rem;
   border-radius: 8px;
-  border: 1px solid #4338ca;
-  background: #fff;
-  color: #4338ca;
+  border: 1px solid ${adminColors.primary};
+  background: ${adminColors.white};
+  color: ${adminColors.primary};
   font-size: 0.8rem;
   font-weight: 700;
   text-decoration: none;
@@ -711,8 +711,8 @@ const FloorNote = styled.span`
   margin-left: 0.4rem;
   padding: 1px 8px;
   border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
+  background: ${adminColors.warnSoft};
+  color: ${adminColors.warnText};
   font-size: 0.72rem;
   font-weight: 700;
 `;
@@ -735,31 +735,31 @@ const FieldLabel = styled.label`
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #6b7280;
+  color: ${adminColors.textMuted};
   margin-bottom: 0.3rem;
 `;
 
 const TextInput = styled.input`
   width: 100%;
   padding: 0.55rem 0.7rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid ${adminColors.borderInput};
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #fff;
+  background: ${adminColors.white};
   &:read-only {
-    background: #f9fafb;
-    color: #374151;
+    background: ${adminColors.bgSubtle};
+    color: ${adminColors.textSub};
   }
 `;
 
 const DerivedValue = styled.div`
   padding: 0.55rem 0.7rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${adminColors.border};
   border-radius: 8px;
-  background: #f9fafb;
+  background: ${adminColors.bgSubtle};
   font-size: 0.9rem;
   font-weight: 600;
-  color: #111827;
+  color: ${adminColors.text};
   min-height: 2.35rem;
 `;
 
@@ -774,7 +774,7 @@ const RecordFootRow = styled.div`
 const SaveMsg = styled.span<{ $error?: boolean }>`
   font-size: 0.8rem;
   font-weight: 600;
-  color: ${(p) => (p.$error ? "#dc2626" : "#059669")};
+  color: ${(p) => (p.$error ? adminColors.danger : adminColors.successStrong)};
 `;
 
 const ScanWrap = styled.div`
@@ -797,9 +797,9 @@ const AddressRow = styled.li`
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid ${adminColors.border};
   border-radius: 8px;
-  background: #f9fafb;
+  background: ${adminColors.bgSubtle};
 `;
 
 const AddressText = styled.span`
@@ -807,7 +807,7 @@ const AddressText = styled.span`
   min-width: 0;
   font-size: 0.82rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #111827;
+  color: ${adminColors.text};
   word-break: break-all;
 `;
 
@@ -819,9 +819,9 @@ const OursCheck = styled.label<{ $checked: boolean }>`
   gap: 3px;
   padding: 2px 7px;
   border-radius: 999px;
-  border: 1px solid ${(p) => (p.$checked ? "#99f6e4" : "#e5e7eb")};
-  background: ${(p) => (p.$checked ? "#ccfbf1" : "#fff")};
-  color: ${(p) => (p.$checked ? "#0f766e" : "#9ca3af")};
+  border: 1px solid ${(p) => (p.$checked ? adminColors.successBorder : adminColors.border)};
+  background: ${(p) => (p.$checked ? adminColors.successBg : adminColors.white)};
+  color: ${(p) => (p.$checked ? adminColors.successDeep : adminColors.textFaint)};
   font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
@@ -829,7 +829,7 @@ const OursCheck = styled.label<{ $checked: boolean }>`
 
   input {
     margin: 0;
-    accent-color: #0d9488;
+    accent-color: ${adminColors.success};
   }
 `;
 
@@ -837,9 +837,9 @@ const AddrRemoveBtn = styled.button`
   flex-shrink: 0;
   padding: 0.25rem 0.6rem;
   border-radius: 6px;
-  border: 1px solid #fca5a5;
-  background: #fff;
-  color: #b91c1c;
+  border: 1px solid ${adminColors.dangerBorder};
+  background: ${adminColors.white};
+  color: ${adminColors.dangerText};
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
@@ -860,8 +860,8 @@ const MismatchNote = styled.p`
   margin: 0 0 0.5rem;
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
-  background: #fef3c7;
-  color: #92400e;
+  background: ${adminColors.warnSoft};
+  color: ${adminColors.warnText};
   font-size: 0.76rem;
   font-weight: 600;
 `;
@@ -977,10 +977,11 @@ export default function Miracle10DetailPage({
       setData(json.order);
       setComments(json.comments ?? []);
       setMyAdminUserId(json.myAdminUserId ?? null);
-      // 상세 열람 = 읽음 처리(서버) → 목록·셸 안읽음 배지 즉시 반영
+      // 상세 열람 = 읽음 처리(서버) → 목록·셸 안읽음 배지·알림 벨 즉시 반영
       invalidate("admin:list:miracle10");
       invalidate(STATS_KEY);
       invalidate(DASHBOARD_KEY);
+      invalidate("admin:unread");
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
@@ -2451,7 +2452,7 @@ function DealRecordSection({
             <span>시세 불러오는 중…</span>
           </CalcRow>
         ) : calcError ? (
-          <CalcRow style={{ color: "#dc2626" }}>
+          <CalcRow style={{ color: adminColors.danger }}>
             <span>{calcError}</span>
           </CalcRow>
         ) : calc ? (
@@ -2474,7 +2475,7 @@ function DealRecordSection({
           <span>
             <FieldLabel
               htmlFor="deal-usdt-krw"
-              style={{ display: "inline", margin: 0, fontSize: "0.85rem", color: "#374151" }}
+              style={{ display: "inline", margin: 0, fontSize: "0.85rem", color: adminColors.textSub }}
             >
               USDT 환율 (원)
             </FieldLabel>
