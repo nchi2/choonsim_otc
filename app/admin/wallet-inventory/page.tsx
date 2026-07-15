@@ -128,6 +128,56 @@ const TypeToggle = styled.div`
   margin-bottom: 0.9rem;
 `;
 
+/* 흐름 안내 — 발주→수령 확인 순서 */
+const FlowHint = styled.p`
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid ${adminColors.primaryBorder};
+  border-radius: 8px;
+  background: ${adminColors.primarySoft};
+  color: ${adminColors.primary};
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.5;
+`;
+
+/* 수동 조정 접기 */
+const ManualCollapse = styled.div`
+  margin-top: 1rem;
+  border-top: 1px dashed ${adminColors.border};
+  padding-top: 0.75rem;
+`;
+
+const ManualToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.3rem 0;
+  border: none;
+  background: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: ${adminColors.textMuted};
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: ${adminColors.textSub};
+  }
+`;
+
+const ManualBody = styled.div`
+  margin-top: 0.6rem;
+`;
+
+const ManualNote = styled.p`
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  color: ${adminColors.textMuted};
+  line-height: 1.5;
+`;
+
 const TypeBtn = styled.button<{ $active: boolean; $tone: "in" | "out" | "order" }>`
   padding: 0.5rem 1rem;
   border: none;
@@ -275,7 +325,11 @@ const LedgerHead = styled.div`
   }
 `;
 
-const LedgerRow = styled.div<{ $pendingOrder?: boolean; $muted?: boolean }>`
+const LedgerRow = styled.div<{
+  $pendingOrder?: boolean;
+  $muted?: boolean;
+  $order?: boolean;
+}>`
   display: grid;
   grid-template-columns: 88px 84px 1fr 96px 130px;
   gap: 0.5rem;
@@ -295,6 +349,28 @@ const LedgerRow = styled.div<{ $pendingOrder?: boolean; $muted?: boolean }>`
 
   @media (max-width: 640px) {
     grid-template-columns: 78px 72px 1fr 96px;
+
+    /* 발주(ORDER) 행 — 2단 세로 배치(버튼이 내용을 덮지 않게). 자식 순서:
+       1 날짜 · 2 배지 · 3 내용 · 4 담당(숨김) · 5 버튼 */
+    ${(p) =>
+      p.$order
+        ? `
+    grid-template-columns: 76px 1fr;
+    row-gap: 0.45rem;
+    align-items: center;
+
+    & > *:nth-child(1) { grid-column: 1; grid-row: 1; }
+    & > *:nth-child(2) { grid-column: 2; grid-row: 1; justify-self: start; }
+    & > *:nth-child(3) {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+    & > *:nth-child(5) { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; }
+    `
+        : ""}
   }
 `;
 
@@ -506,11 +582,24 @@ function WalletInventoryPageInner() {
     ttl: STATS_TTL,
   });
 
-  // 등록 폼 — 10모 상세에서 ?type=OUT&orderId=&count=&receiver= 프리필 진입 지원.
+  // 등록 폼 — 기본 [발주 등록]. 10모 상세 「재고 불출 등록 →」(?type=OUT) 등 프리필 진입 지원.
   const initialType = searchParams.get("type");
   const [type, setType] = useState<FormType>(
-    initialType === "OUT" ? "OUT" : initialType === "ORDER" ? "ORDER" : "IN",
+    initialType === "OUT" ? "OUT" : initialType === "IN" ? "IN" : "ORDER",
   );
+  // ?type=OUT/IN 으로 오면 수동 조정을 자동으로 열어 불출/입고 폼을 바로 보여준다.
+  const [manualOpen, setManualOpen] = useState(
+    initialType === "OUT" || initialType === "IN",
+  );
+  // 수동 조정 열기/닫기 — 닫으면 기본(발주)로 복귀, 열면 입고 모드로 시작.
+  const toggleManual = () => {
+    setManualOpen((open) => {
+      const next = !open;
+      if (next && type === "ORDER") setType("IN");
+      if (!next) setType("ORDER");
+      return next;
+    });
+  };
   const [countInput, setCountInput] = useState(searchParams.get("count") ?? "");
   const [dateInput, setDateInput] = useState(todayKst());
   const [expectedInput, setExpectedInput] = useState("");
@@ -822,33 +911,19 @@ function WalletInventoryPageInner() {
       </SummaryCard>
 
       <Card>
-        <SectionTitle>입고 / 불출 / 발주 등록</SectionTitle>
-        <TypeToggle role="group" aria-label="기록 구분">
-          <TypeBtn
-            type="button"
-            $active={type === "IN"}
-            $tone="in"
-            onClick={() => setType("IN")}
-          >
-            입고 (+)
-          </TypeBtn>
-          <TypeBtn
-            type="button"
-            $active={type === "OUT"}
-            $tone="out"
-            onClick={() => setType("OUT")}
-          >
-            불출 (−)
-          </TypeBtn>
-          <TypeBtn
-            type="button"
-            $active={type === "ORDER"}
-            $tone="order"
-            onClick={() => setType("ORDER")}
-          >
-            발주 (예정)
-          </TypeBtn>
-        </TypeToggle>
+        <SectionTitle>
+          {type === "IN"
+            ? "입고 등록 (수동)"
+            : type === "OUT"
+              ? "불출 등록 (수동)"
+              : "발주 등록"}
+        </SectionTitle>
+        {type === "ORDER" ? (
+          <FlowHint>
+            지갑이 부족하면 [발주 등록] → 도착 시 발주 내역의 [수령 확인]을 누르면
+            재고에 반영됩니다.
+          </FlowHint>
+        ) : null}
 
         <FormGrid>
           <div>
@@ -982,6 +1057,41 @@ function WalletInventoryPageInner() {
             <FormMsg $error={formMsg.error}>{formMsg.text}</FormMsg>
           ) : null}
         </div>
+
+        <ManualCollapse>
+          <ManualToggle
+            type="button"
+            onClick={toggleManual}
+            aria-expanded={manualOpen}
+          >
+            {manualOpen ? "▾" : "▸"} 수동 조정 (직접 입고·불출)
+          </ManualToggle>
+          {manualOpen ? (
+            <ManualBody>
+              <ManualNote>
+                발주 없이 직접 입고하거나 수동 불출할 때만 사용하세요.
+              </ManualNote>
+              <TypeToggle role="group" aria-label="수동 조정 구분">
+                <TypeBtn
+                  type="button"
+                  $active={type === "IN"}
+                  $tone="in"
+                  onClick={() => setType("IN")}
+                >
+                  입고 (+)
+                </TypeBtn>
+                <TypeBtn
+                  type="button"
+                  $active={type === "OUT"}
+                  $tone="out"
+                  onClick={() => setType("OUT")}
+                >
+                  불출 (−)
+                </TypeBtn>
+              </TypeToggle>
+            </ManualBody>
+          ) : null}
+        </ManualCollapse>
       </Card>
 
       <SectionTitle as="h2" style={{ margin: "0 0 0.6rem" }}>
@@ -1006,7 +1116,7 @@ function WalletInventoryPageInner() {
           </LedgerHead>
           {/* 진행 중 발주 — 상단 고정 + 구분 스타일 */}
           {pendingOrders.map((en) => (
-            <LedgerRow key={en.id} $pendingOrder>
+            <LedgerRow key={en.id} $pendingOrder $order>
               <span>{en.entryDate}</span>
               <TypeTag $type="ORDER">발주 {en.count}장</TypeTag>
               <RowDetail
@@ -1042,7 +1152,7 @@ function WalletInventoryPageInner() {
             const isOrder = en.type === "ORDER";
             const scanned = en.walletAddresses?.length ?? 0;
             return (
-              <LedgerRow key={en.id} $muted={isOrder}>
+              <LedgerRow key={en.id} $muted={isOrder} $order={isOrder}>
                 <span>{en.entryDate}</span>
                 <TypeTag $type={en.type}>
                   {en.type === "IN"
