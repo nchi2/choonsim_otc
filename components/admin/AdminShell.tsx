@@ -48,6 +48,7 @@ import {
 const SIDE_ITEMS = [
   { href: "/admin", label: "대시보드", exact: true, badge: false },
   { href: "/admin/requests", label: "신청 관리", exact: false, badge: true },
+  { href: "/admin/education", label: "교육 관리", exact: false, badge: false },
   { href: "/admin/schedule", label: "일정 캘린더", exact: false, badge: false },
   { href: "/admin/calculator", label: "OTC 계산기", exact: false, badge: false },
   {
@@ -518,6 +519,12 @@ function resolvePageTitle(pathname: string): string {
     return "신청 관리";
   }
   if (pathname.startsWith("/admin/profile")) return "내 프로필";
+  if (/^\/admin\/education\/[^/]+\/applicants$/.test(pathname)) {
+    return "신청자 명단";
+  }
+  if (pathname === "/admin/education/slots") return "교육 슬롯";
+  if (/^\/admin\/education\/[^/]+$/.test(pathname)) return "행사 상세";
+  if (pathname.startsWith("/admin/education")) return "교육 관리";
   if (pathname.startsWith("/admin/schedule")) return "일정·근무 캘린더";
   if (pathname.startsWith("/admin/calculator")) return "BMB OTC 단가 계산기";
   if (pathname.startsWith("/admin/wallet-inventory")) {
