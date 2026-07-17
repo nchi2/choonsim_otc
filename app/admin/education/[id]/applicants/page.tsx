@@ -1,6 +1,7 @@
 "use client";
 
-// /admin/education/[id]/applicants — 신청자 명단. 입금 확인·출석 체크 UI(저장은 4-B).
+// /admin/education/[id]/applicants — 신청자 명단. 입금 확인·출석 체크 저장
+// (PATCH /api/admin/education/applicants/[appId], 낙관적 토글 + 실패 시 롤백).
 // 회차별 필터, 정원 대비 현황. 연락처는 운영 업무상 전체 표시.
 
 import { use, useMemo, useState } from "react";
@@ -153,10 +154,11 @@ export default function AdminEducationApplicantsPage({
   const { id } = use(params);
   const eventId = Number(id);
   const [sessionFilter, setSessionFilter] = useState<number | "ALL">("ALL");
-  const [placeholderMsg, setPlaceholderMsg] = useState<string | null>(null);
-  // 로컬 체크 상태(저장 배선은 4-B) — 표시 토글만
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  // 낙관적 토글 — PATCH 성공 유지, 실패 시 롤백
   const [localPaid, setLocalPaid] = useState<Record<number, boolean>>({});
   const [localAttended, setLocalAttended] = useState<Record<number, boolean>>({});
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   const { data, error, isLoading, refresh } = useAdminData<EduApplicantsResponse>(
     eduApplicantsKey(eventId),
@@ -176,8 +178,34 @@ export default function AdminEducationApplicantsPage({
     ),
   );
 
-  const notWired = (label: string) =>
-    setPlaceholderMsg(`[준비 중] ${label}은(는) 4-B에서 저장 배선됩니다.`);
+  // 체크 저장 — 낙관적 반영 후 PATCH, 실패 시 롤백
+  const saveCheck = async (
+    appId: number,
+    kind: "paid" | "attended",
+    next: boolean,
+  ) => {
+    if (busyId != null) return;
+    setBusyId(appId);
+    setSaveErr(null);
+    const setLocal = kind === "paid" ? setLocalPaid : setLocalAttended;
+    setLocal((p) => ({ ...p, [appId]: next }));
+    try {
+      const res = await fetch(`/api/admin/education/applicants/${appId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          kind === "paid" ? { paidConfirmed: next } : { attended: next },
+        ),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "저장 실패");
+    } catch (e) {
+      setLocal((p) => ({ ...p, [appId]: !next })); // 롤백
+      setSaveErr(e instanceof Error ? e.message : "저장에 실패했습니다.");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (isLoading && !data) {
     return (
@@ -217,7 +245,7 @@ export default function AdminEducationApplicantsPage({
         </span>
       </Summary>
 
-      {placeholderMsg ? <InlineError>{placeholderMsg}</InlineError> : null}
+      {saveErr ? <InlineError>{saveErr}</InlineError> : null}
 
       {hasSessions ? (
         <Tabs>
@@ -287,10 +315,8 @@ export default function AdminEducationApplicantsPage({
                 <CheckBtn
                   type="button"
                   $on={paidOn(a)}
-                  onClick={() => {
-                    setLocalPaid((p) => ({ ...p, [a.id]: !paidOn(a) }));
-                    notWired("입금 확인");
-                  }}
+                  disabled={busyId != null}
+                  onClick={() => void saveCheck(a.id, "paid", !paidOn(a))}
                 >
                   {paidOn(a) ? "확인" : "미확인"}
                 </CheckBtn>
@@ -299,10 +325,8 @@ export default function AdminEducationApplicantsPage({
                 <CheckBtn
                   type="button"
                   $on={attendedOn(a)}
-                  onClick={() => {
-                    setLocalAttended((p) => ({ ...p, [a.id]: !attendedOn(a) }));
-                    notWired("출석 체크");
-                  }}
+                  disabled={busyId != null}
+                  onClick={() => void saveCheck(a.id, "attended", !attendedOn(a))}
                 >
                   {attendedOn(a) ? "출석" : "-"}
                 </CheckBtn>

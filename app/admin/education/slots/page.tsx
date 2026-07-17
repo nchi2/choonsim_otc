@@ -1,7 +1,7 @@
 "use client";
 
-// /admin/education/slots — 교육 회관 슬롯(EducationSlot) 등록·조회. 기존 WorkSlot과 별개 모델·화면.
-// 리스트 + 등록 폼(간단). ★ 등록/삭제 저장 배선은 4-B — 여기선 조회 + placeholder 제출.
+// /admin/education/slots — 교육 회관 슬롯(EducationSlot) 등록·삭제·조회. WorkSlot과 별개.
+// POST /api/admin/education/slots · DELETE /slots/[id] (manageEducation 스코프). (4-B 배선 완료)
 
 import { useMemo, useState } from "react";
 import styled from "styled-components";
@@ -13,7 +13,7 @@ import {
 } from "@/components/admin/ui";
 import { EmptyState, ErrorState, Skeleton } from "@/components/admin/States";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
-import { useAdminData } from "@/lib/admin-data";
+import { invalidate, useAdminData } from "@/lib/admin-data";
 import {
   OFFICES_KEY,
   OFFICES_TTL,
@@ -101,7 +101,7 @@ const List = styled.div`
 
 const SlotRow = styled.div`
   display: grid;
-  grid-template-columns: 120px 1fr 140px;
+  grid-template-columns: 120px 1fr 140px 56px;
   gap: 0.6rem;
   align-items: center;
   padding: 0.7rem 1rem;
@@ -128,6 +128,24 @@ const SlotRow = styled.div`
   }
 `;
 
+const DeleteBtn = styled.button`
+  padding: 0.3rem 0.5rem;
+  border-radius: 7px;
+  border: 1px solid ${adminColors.dangerBorder};
+  background: ${adminColors.white};
+  color: ${adminColors.dangerText};
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover {
+    background: ${adminColors.dangerSoft};
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 function weekday(date: string) {
   return ["일", "월", "화", "수", "목", "금", "토"][
     new Date(`${date}T00:00:00+09:00`).getDay()
@@ -149,7 +167,8 @@ export default function AdminEducationSlotsPage() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [memo, setMemo] = useState("");
-  const [placeholderMsg, setPlaceholderMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
 
   useAdminPageHeader(
     "교육 슬롯",
@@ -168,13 +187,56 @@ export default function AdminEducationSlotsPage() {
   );
 
   const activeOffices = (offices.data ?? []).filter((o) => o.isActive);
-  const canSubmit = officeId !== "" && date !== "" && startTime !== "" && endTime !== "";
+  const canSubmit =
+    !busy && officeId !== "" && date !== "" && startTime !== "" && endTime !== "";
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return;
-    setPlaceholderMsg(
-      "[준비 중] 슬롯 등록 저장은 4-B에서 배선됩니다. 입력값은 유지됩니다.",
-    );
+    setBusy(true);
+    setErrMsg(null);
+    try {
+      const res = await fetch("/api/admin/education/slots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          officeId: Number(officeId),
+          date,
+          startTime,
+          endTime,
+          memo: memo.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "등록 실패");
+      setDate("");
+      setStartTime("");
+      setEndTime("");
+      setMemo("");
+      invalidate(EDU_SLOTS_KEY);
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "슬롯 등록에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: number) => {
+    if (busy) return;
+    if (!window.confirm("이 슬롯을 삭제할까요?")) return;
+    setBusy(true);
+    setErrMsg(null);
+    try {
+      const res = await fetch(`/api/admin/education/slots/${id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "삭제 실패");
+      invalidate(EDU_SLOTS_KEY);
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "삭제에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -220,10 +282,10 @@ export default function AdminEducationSlotsPage() {
             <Input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="예: 대관 확정" />
           </Field>
         </MemoRow>
-        {placeholderMsg ? <InlineError>{placeholderMsg}</InlineError> : null}
+        {errMsg ? <InlineError>{errMsg}</InlineError> : null}
         <div style={{ marginTop: "0.85rem" }}>
-          <PrimaryButton type="button" disabled={!canSubmit} onClick={submit}>
-            슬롯 등록
+          <PrimaryButton type="button" disabled={!canSubmit} onClick={() => void submit()}>
+            {busy ? "처리 중…" : "슬롯 등록"}
           </PrimaryButton>
         </div>
       </Card>
@@ -239,7 +301,7 @@ export default function AdminEducationSlotsPage() {
         <EmptyState
           icon="📅"
           title="등록된 교육 슬롯이 없습니다"
-          desc="위에서 회관·날짜·시간을 등록하세요. (저장은 4-B 배선 예정)"
+          desc="위에서 회관·날짜·시간을 등록하세요."
         />
       ) : (
         <List>
@@ -251,6 +313,13 @@ export default function AdminEducationSlotsPage() {
                 {weekday(s.date)}) {s.startTime}~{s.endTime}
               </span>
               <span className="memo">{s.memo ?? ""}</span>
+              <DeleteBtn
+                type="button"
+                disabled={busy}
+                onClick={() => void remove(s.id)}
+              >
+                삭제
+              </DeleteBtn>
             </SlotRow>
           ))}
         </List>

@@ -1,8 +1,9 @@
 "use client";
 
-// 신청 상세 하단 운영자 코멘트 스레드 — 10모/OTC 공용.
+// 신청 상세 하단 운영자 코멘트 스레드 — 10모/OTC/교육 행사 공용.
 // 초기 데이터는 상세 GET 응답에 병합되어 props로 받는다 (마운트 시 별도 호출 없음).
-// 읽음 처리도 상세 GET이 수행. 본인 코멘트만 수정/삭제.
+// (교육 상세는 병합 GET이 없어 페이지에서 별도 로드 후 initialComments로 전달 — 동일 규약)
+// 읽음 처리도 상세 GET(또는 markRead=1 로드)이 수행. 본인 코멘트만 수정/삭제.
 
 import { useCallback, useState } from "react";
 import styled from "styled-components";
@@ -161,7 +162,7 @@ export function CommentsSection({
   initialComments,
   myAdminUserId,
 }: {
-  targetType: "MIRACLE10" | "OTC_REQUEST";
+  targetType: "MIRACLE10" | "OTC_REQUEST" | "EDUCATION_EVENT";
   targetId: number;
   /** 상세 GET 응답에 병합된 초기 코멘트 (마운트 시 별도 호출 없음) */
   initialComments: CommentItem[];
@@ -182,7 +183,11 @@ export function CommentsSection({
     invalidate(DASHBOARD_KEY);
     invalidate("admin:unread");
     invalidate(
-      targetType === "MIRACLE10" ? "admin:list:miracle10" : "admin:list:otc",
+      targetType === "MIRACLE10"
+        ? "admin:list:miracle10"
+        : targetType === "OTC_REQUEST"
+          ? "admin:list:otc"
+          : "admin:edu",
     );
   }, [targetType]);
 

@@ -1,9 +1,9 @@
 "use client";
 
-// /admin/education/[id] — 행사 상세·관리. 전체 정보 표시 + 편집 폼 + 승인/반려/노출/추천 UI.
-// ★ 상태 전환·편집 저장·코멘트 실제 통합은 4-B(Fable). 여기선 UI + placeholder 핸들러만.
+// /admin/education/[id] — 행사 상세·관리. 승인/반려 상태머신·공개/추천 토글·내용 편집 저장
+// (PATCH /api/admin/education/[id]) + 코멘트(targetType=EDUCATION_EVENT) 통합. (4-B 배선 완료)
 
-import { use, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import {
@@ -16,7 +16,9 @@ import {
 } from "@/components/admin/ui";
 import { ErrorState, Skeleton } from "@/components/admin/States";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
-import { useAdminData } from "@/lib/admin-data";
+import { useAdminSession } from "@/components/admin/AdminSessionContext";
+import { CommentsSection } from "@/components/admin/CommentsSection";
+import { invalidate, useAdminData } from "@/lib/admin-data";
 import {
   EDU_CATEGORY_LABEL,
   EDU_DETAIL_TTL,
@@ -264,11 +266,17 @@ export default function AdminEducationDetailPage({
     );
   }
 
-  return <DetailBody event={event} />;
+  return <DetailBody event={event} refresh={refresh} />;
 }
 
-function DetailBody({ event }: { event: EduDetailEvent }) {
-  // 편집 폼 — 로컬 상태만(저장 배선은 4-B). 초기값=현재 값.
+function DetailBody({
+  event,
+  refresh,
+}: {
+  event: EduDetailEvent;
+  refresh: () => void;
+}) {
+  // 편집 폼 — 초기값=현재 값. 저장 시 PATCH.
   const [title, setTitle] = useState(event.title);
   const [descriptionMd, setDescriptionMd] = useState(event.descriptionMd ?? "");
   const [capacity, setCapacity] = useState(
@@ -276,14 +284,71 @@ function DetailBody({ event }: { event: EduDetailEvent }) {
   );
   const [notice, setNotice] = useState(event.notice ?? "");
 
-  // 승인/반려/노출/추천 — UI 상태만
+  // 승인/반려/노출/추천
   const [rejectReason, setRejectReason] = useState(event.rejectReason ?? "");
   const [isPublished, setIsPublished] = useState(event.isPublished);
   const [isFeatured, setIsFeatured] = useState(event.isFeatured);
-  const [placeholderMsg, setPlaceholderMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionErr, setActionErr] = useState<string | null>(null);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
-  const notWired = (label: string) =>
-    setPlaceholderMsg(`[준비 중] ${label}은(는) 다음 단계(4-B)에서 저장 배선됩니다.`);
+  // 공통 PATCH — 성공 시 교육 캐시 무효화 + 상세 재조회
+  const patch = useCallback(
+    async (body: Record<string, unknown>, doneLabel: string): Promise<boolean> => {
+      if (busy) return false;
+      setBusy(true);
+      setActionErr(null);
+      setSavedMsg(null);
+      try {
+        const res = await fetch(`/api/admin/education/${event.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok) throw new Error(json.error || "저장 실패");
+        invalidate("admin:edu");
+        refresh();
+        setSavedMsg(`${doneLabel} 완료`);
+        return true;
+      } catch (e) {
+        setActionErr(e instanceof Error ? e.message : "저장에 실패했습니다.");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, event.id, refresh],
+  );
+
+  const approve = () => patch({ status: "APPROVED" }, "승인 (자동 공개)");
+  const reject = () => {
+    if (!rejectReason.trim()) {
+      setActionErr("반려 사유를 입력해 주세요.");
+      return;
+    }
+    void patch({ status: "REJECTED", rejectReason: rejectReason.trim() }, "반려");
+  };
+  const togglePublished = async (next: boolean) => {
+    setIsPublished(next);
+    const ok = await patch({ isPublished: next }, next ? "공개" : "비공개");
+    if (!ok) setIsPublished(!next); // 실패 시 되돌림
+  };
+  const toggleFeatured = async (next: boolean) => {
+    setIsFeatured(next);
+    const ok = await patch({ isFeatured: next }, next ? "추천 설정" : "추천 해제");
+    if (!ok) setIsFeatured(!next);
+  };
+  const saveEdit = () =>
+    patch(
+      {
+        title: title.trim(),
+        capacity: capacity.trim() === "" ? null : Number(capacity),
+        descriptionMd: descriptionMd.trim() || null,
+        notice: notice.trim() || null,
+      },
+      "내용 저장",
+    );
 
   const locationName = event.office?.name ?? event.customLocation ?? "장소 미정";
 
@@ -301,12 +366,8 @@ function DetailBody({ event }: { event: EduDetailEvent }) {
         </BadgeRow>
       </TopRow>
 
-      <NoteBanner>
-        이 화면의 편집·승인/반려·노출/추천은 현재 화면(UI)만 배치돼 있습니다. 실제
-        저장은 4-B에서 배선됩니다.
-      </NoteBanner>
-
-      {placeholderMsg ? <InlineError>{placeholderMsg}</InlineError> : null}
+      {actionErr ? <InlineError>{actionErr}</InlineError> : null}
+      {savedMsg ? <NoteBanner as="p">{savedMsg}</NoteBanner> : null}
 
       {/* 승인 워크플로우 */}
       <Card>
@@ -332,10 +393,18 @@ function DetailBody({ event }: { event: EduDetailEvent }) {
           />
         </Field>
         <ActionRow>
-          <PrimaryButton type="button" onClick={() => notWired("승인")}>
+          <PrimaryButton
+            type="button"
+            disabled={busy || event.status === "APPROVED"}
+            onClick={approve}
+          >
             승인 (자동 공개)
           </PrimaryButton>
-          <RejectBtn type="button" onClick={() => notWired("반려")}>
+          <RejectBtn
+            type="button"
+            disabled={busy || event.status === "REJECTED"}
+            onClick={reject}
+          >
             반려
           </RejectBtn>
         </ActionRow>
@@ -344,10 +413,8 @@ function DetailBody({ event }: { event: EduDetailEvent }) {
             <input
               type="checkbox"
               checked={isPublished}
-              onChange={(e) => {
-                setIsPublished(e.target.checked);
-                notWired("공개 여부 변경");
-              }}
+              disabled={busy}
+              onChange={(e) => void togglePublished(e.target.checked)}
             />
             공개(isPublished) — 목록·공개 페이지 노출
           </ToggleRow>
@@ -355,10 +422,8 @@ function DetailBody({ event }: { event: EduDetailEvent }) {
             <input
               type="checkbox"
               checked={isFeatured}
-              onChange={(e) => {
-                setIsFeatured(e.target.checked);
-                notWired("추천 여부 변경");
-              }}
+              disabled={busy}
+              onChange={(e) => void toggleFeatured(e.target.checked)}
             />
             추천(isFeatured) — 메인 캐러셀 노출
           </ToggleRow>
@@ -474,21 +539,89 @@ function DetailBody({ event }: { event: EduDetailEvent }) {
           <Textarea value={notice} onChange={(e) => setNotice(e.target.value)} />
         </Field>
         <ActionRow>
-          <PrimaryButton type="button" onClick={() => notWired("내용 저장")}>
-            저장
+          <PrimaryButton type="button" disabled={busy} onClick={() => void saveEdit()}>
+            {busy ? "저장 중…" : "저장"}
           </PrimaryButton>
         </ActionRow>
       </Card>
 
-      {/* 코멘트 자리 */}
+      {/* 운영자 코멘트 — 기존 코멘트 시스템(targetType=EDUCATION_EVENT) */}
+      <EducationComments eventId={event.id} />
+    </Wrap>
+  );
+}
+
+/** 코멘트 로더 — 교육 상세는 병합 GET이 없어 여기서 markRead=1로 1회 로드 후
+ *  기존 CommentsSection(작성·수정·삭제·배지 무효화)에 initialComments로 전달. */
+function EducationComments({ eventId }: { eventId: number }) {
+  const session = useAdminSession();
+  const [comments, setComments] = useState<
+    | {
+        id: number;
+        createdAt: string;
+        editedAt: string | null;
+        authorId: number | null;
+        authorName: string;
+        body: string;
+      }[]
+    | null
+  >(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/comments?targetType=EDUCATION_EVENT&targetId=${eventId}&markRead=1`,
+        );
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || "코멘트를 불러오지 못했습니다.");
+        }
+        if (!cancelled) {
+          setComments(json.comments);
+          // 읽음 처리됨 — 벨·집계 배지 갱신
+          invalidate("admin:unread");
+          invalidate("admin:stats");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setLoadErr(e instanceof Error ? e.message : "오류가 발생했습니다.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  if (loadErr) {
+    return (
       <Card>
         <CardHead>
           <CardTitle>운영자 코멘트</CardTitle>
         </CardHead>
-        <CommentPlaceholder>
-          코멘트 통합(targetType=&quot;EDUCATION_EVENT&quot;)은 4-B에서 배선됩니다.
-        </CommentPlaceholder>
+        <InlineError>{loadErr}</InlineError>
       </Card>
-    </Wrap>
+    );
+  }
+  if (comments == null) {
+    return (
+      <Card>
+        <CardHead>
+          <CardTitle>운영자 코멘트</CardTitle>
+        </CardHead>
+        <CommentPlaceholder>불러오는 중…</CommentPlaceholder>
+      </Card>
+    );
+  }
+  return (
+    <CommentsSection
+      targetType="EDUCATION_EVENT"
+      targetId={eventId}
+      initialComments={comments}
+      myAdminUserId={session.adminUserId}
+    />
   );
 }
