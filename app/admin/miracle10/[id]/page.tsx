@@ -1134,7 +1134,7 @@ export default function Miracle10DetailPage({
             onCancelOrder={() => {
               if (
                 window.confirm(
-                  "P2P 판매 이력이 없어 이용 불가 안내 후 취소 처리합니다. 진행할까요?",
+                  "P2P 판매 이력이 있어 이용 불가 안내 후 취소 처리합니다. 진행할까요?",
                 )
               ) {
                 changeStatus("CANCELED");
@@ -1157,7 +1157,7 @@ export default function Miracle10DetailPage({
               <P2pOkBadge>P2P 확인됨 ✓</P2pOkBadge>
             </NextActionRow>
             <ActionHint>
-              연락 단계에서 P2P 판매 이력이 확인된 건입니다. 확정 시 세션
+              연락 단계에서 P2P 판매 이력 없음을 확인한 건입니다. 확정 시 세션
               운영자에게 배정되고 캘린더 정원에 반영됩니다.
               {data.officeId == null || !data.visitDate || !data.reservedStart
                 ? " ⚠ 방문 일정이 아직 완전히 지정되지 않았습니다 — 아래 「방문 일정」에서 지정 후 확정을 권장합니다."
@@ -1175,7 +1175,7 @@ export default function Miracle10DetailPage({
                   checked={p2pChecked}
                   onChange={(e) => setP2pChecked(e.target.checked)}
                 />
-                P2P 거래 앱에서의 판매 경험 여부를 확인했습니까?
+                P2P 거래 앱 판매 이력이 없음을 확인했습니까?
               </CheckLabel>
               <ConfirmActions>
                 <PrimaryActionBtn
@@ -1572,12 +1572,12 @@ function ContactChecklist({
             checked={p2pOk}
             onChange={(e) => setP2pOk(e.target.checked)}
           />
-          1. P2P 거래소 판매 이력 있음
+          1. P2P 거래소 판매 이력 없음
           <RequiredMark>필수</RequiredMark>
         </ChecklistMain>
         {!p2pOk ? (
           <ChecklistSub>
-            이력이 없으면 이용이 불가합니다 — 안내 후
+            이력이 있으면 이용이 불가합니다 — 안내 후
             <CancelMiniBtn type="button" disabled={saving} onClick={onCancelOrder}>
               취소 처리
             </CancelMiniBtn>{" "}
@@ -2096,8 +2096,8 @@ function VisitScheduleEditor({
               checked={p2pChecked}
               onChange={(e) => setP2pChecked(e.target.checked)}
             />
-            P2P 거래 앱에서의 판매 경험 여부를 확인했습니까? (판매 이력이
-            있으면 이용 불가)
+            P2P 거래 앱 판매 이력이 없음을 확인했습니까? (이력이 있으면
+            이용 불가)
           </CheckLabel>
           <ConfirmActions>
             <PrimaryActionBtn

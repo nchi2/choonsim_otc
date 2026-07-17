@@ -110,6 +110,11 @@ export const ECOSYSTEM_GROUPS: EcosystemGroup[] = [
         desc: "BMB 시세",
       },
       {
+        label: "BMB Compass",
+        href: "https://bmbcompass.org/",
+        desc: "아카이브·차트·온체인",
+      },
+      {
         label: "모빅경제",
         href: "https://www.mobickeconomy.com/",
         desc: "비트모빅 / 경제 뉴스",
