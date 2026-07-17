@@ -135,6 +135,13 @@ const SORT_DEFAULT_DIR: Record<SortKey, 1 | -1> = {
   status: 1,
 };
 
+/** 탭별 기본 정렬 — 완료·취소는 최근 처리(최종 수정)순, 그 외는 접수일 최신순. */
+function tabDefaultSort(f: StatusFilter): { key: SortKey; dir: 1 | -1 } {
+  return f === "COMPLETED" || f === "CANCELED"
+    ? { key: "edited", dir: -1 }
+    : { key: "createdAt", dir: -1 };
+}
+
 function sortValue(it: Item, key: SortKey): number | string | null {
   switch (key) {
     case "id":
@@ -171,12 +178,12 @@ export function Miracle10List({
   /** 우측 재고 요약 (10모 목록에만) — requests 페이지의 stats 캐시에서 전달 */
   wallet?: { stock: number; reserved: number; onOrder: number };
 }) {
-  const [filter, setFilter] = useState<StatusFilter>(() =>
+  const initialFilter: StatusFilter =
     initialStatus === "ALL" ||
     MIRACLE10_STATUSES.includes(initialStatus as Miracle10Status)
       ? (initialStatus as StatusFilter)
-      : "PENDING",
-  );
+      : "PENDING";
+  const [filter, setFilter] = useState<StatusFilter>(initialFilter);
   const [includeTest, setIncludeTest] = useState(false);
   // 더 보기 추가분 — 캐시(첫 페이지) 밖 컴포넌트 로컬
   const [extraItems, setExtraItems] = useState<Item[]>([]);
@@ -220,12 +227,19 @@ export function Miracle10List({
     }
   };
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
-    key: "createdAt",
-    dir: -1,
-  });
+  // 정렬: 헤더로 수동 정렬하기 전까지는 탭 기본을 따르고, 수동 정렬하면 그 선택을 유지.
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>(() =>
+    tabDefaultSort(initialFilter),
+  );
+  const [userSorted, setUserSorted] = useState(false);
+
+  // 탭 전환 시(수동 정렬 전이면) 해당 탭 기본 정렬로 맞춘다.
+  useEffect(() => {
+    if (!userSorted) setSort(tabDefaultSort(filter));
+  }, [filter, userSorted]);
 
   const toggleSort = (key: SortKey) => {
+    setUserSorted(true);
     setSort((prev) =>
       prev.key === key
         ? { key, dir: (prev.dir * -1) as 1 | -1 }

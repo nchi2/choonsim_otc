@@ -92,6 +92,7 @@ interface Item {
   quantity: number;
   desiredPrice: number | null;
   status: string;
+  lastEditedAt: string | null;
   isTest: boolean;
   commentCount: number;
   unreadCommentCount: number;
@@ -159,13 +160,24 @@ export function OtcRequestList({
     }
   };
 
-  const visible = useMemo(
-    () =>
+  const visible = useMemo(() => {
+    const filtered =
       sideFilter === "ALL"
         ? items
-        : items.filter((it) => it.side === sideFilter),
-    [items, sideFilter],
-  );
+        : items.filter((it) => it.side === sideFilter);
+    // 완료·취소 탭만 최근 처리(최종 수정)순 DESC. lastEditedAt 없으면 뒤로. 그 외 탭은 서버 순서(접수일 최신순) 유지.
+    if (statusFilter === "COMPLETED" || statusFilter === "CANCELED") {
+      return [...filtered].sort((a, b) => {
+        const ta = a.lastEditedAt ? Date.parse(a.lastEditedAt) : null;
+        const tb = b.lastEditedAt ? Date.parse(b.lastEditedAt) : null;
+        if (ta == null && tb == null) return b.id - a.id;
+        if (ta == null) return 1;
+        if (tb == null) return -1;
+        return tb - ta || b.id - a.id;
+      });
+    }
+    return filtered;
+  }, [items, sideFilter, statusFilter]);
 
   const sideCount = (side: SideFilter) =>
     side === "ALL"
