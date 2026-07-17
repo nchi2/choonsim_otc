@@ -47,6 +47,34 @@ enum OrderStatus {
   CANCELED
 }
 
+// ── 교육 플랫폼 enums ──
+// 신규 테이블이라 기존 데이터 제약이 없어 String+lib 검증 대신 enum 사용(DB 무결성 + Prisma 타입).
+// 값 추가는 add-only 마이그레이션으로 처리 가능.
+
+enum EducationCategory {
+  LECTURE
+  WORKSHOP
+  EVENT
+}
+
+enum EducationMode {
+  OFFLINE
+  ONLINE
+  HYBRID
+}
+
+// 개설 신청 승인 워크플로우 — 승인(APPROVED) + isPublished=true 여야 공개 노출.
+enum EducationEventStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventApplicationStatus {
+  APPLIED
+  CANCELED
+}
+
 // 어드민 콘솔 운영자 계정. 비밀번호는 bcrypt 해시로만 저장(평문 금지).
 model AdminUser {
   id           Int      @id @default(autoincrement())
@@ -69,6 +97,11 @@ model AdminUser {
   // 신청 알림 수신 종류 선택 — default true(기존 동작=전원 수신 유지).
   alertMiracle10 Boolean @default(true)
   alertOtc       Boolean @default(true)
+  alertEducation Boolean @default(true)
+
+  // 관리 스코프 — 운영자별 OTC/교육 관리 영역 분리 (default true = 기존 전원 전권 유지)
+  manageOtc       Boolean @default(true)
+  manageEducation Boolean @default(true)
 
   workSlots      WorkSlot[]
   assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
@@ -91,6 +124,8 @@ model Office {
   workSlots WorkSlot[]
   orders    OtcOrder[]
   otcRequests OtcRequest[]
+  educationEvents EducationEvent[]
+  educationSlots  EducationSlot[]
 }
 
 // 운영자 근무 가능 슬롯 — 30분 단위, KST date/startTime.
@@ -318,4 +353,138 @@ model CommentReadState {
   lastReadAt  DateTime
 
   @@unique([adminUserId, targetType, targetId])
+}
+
+// ─────────────────────────────────────────────
+// 교육 플랫폼 (2026-07 신설) — 행사·회차·수강신청·교육 슬롯.
+// OTC(WorkSlot/OtcOrder)와 자원 공유 없음. 코멘트는 OrderComment targetType="EDUCATION_EVENT" 재사용.
+// ─────────────────────────────────────────────
+
+// 교육 행사(강의·워크숍·이벤트) — 개설 신청(PENDING) → 승인/반려. 승인+isPublished 시 공개 노출.
+model EducationEvent {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title    String
+  slug     String            @unique
+  category EducationCategory
+
+  posterUrl      String?
+  descriptionMd  String? // 소개 (markdown)
+  instructorName String?
+  instructorBio  String?
+
+  // 장소 — 회관(Office) 매칭 또는 커스텀 텍스트 (둘 다 null 가능 = 장소 미정)
+  officeId       Int?
+  office         Office? @relation(fields: [officeId], references: [id])
+  customLocation String?
+
+  mode      EducationMode
+  streamUrl String? // ONLINE/HYBRID 스트림 링크
+
+  capacity Int? // null = 무제한. 정원 검사는 신청 API 트랜잭션에서 count로 원자 처리.
+  feeKrw   Int  @default(0) // 0 = 무료
+
+  // 입금 안내 (유료 행사) — OtcRequest sellerBank* 네이밍 관례와 정렬
+  depositBankName      String?
+  depositAccountNo     String?
+  depositAccountHolder String?
+
+  // 상세 안내 텍스트
+  eligibility  String? // 참여 조건
+  preparation  String? // 준비물
+  reward       String?
+  refundPolicy String?
+  notice       String? // 유의사항
+
+  applyDeadline DateTime? // null = 마감 미지정
+
+  // 개설 승인 워크플로우 — 반려 시 사유 필수(API에서 강제)
+  status       EducationEventStatus @default(PENDING)
+  rejectReason String?
+  isPublished  Boolean              @default(false)
+  isFeatured   Boolean              @default(false) // 메인 캐러셀 노출
+
+  // 개설 신청자(무계정) 스냅샷
+  hostName    String?
+  hostContact String?
+  hostEmail   String?
+
+  isTest Boolean @default(false)
+
+  lastEditedBy     String?
+  lastEditedByName String?
+  lastEditedAt     DateTime?
+
+  sessions     EventSession[]
+  applications EventApplication[]
+
+  @@index([status])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([isTest])
+}
+
+// 행사 회차(세션) — 시리즈 = 세션 N개. KST date/startTime 문자열 (WorkSlot과 동일 표기).
+model EventSession {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  eventId Int
+  event   EducationEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  date      String // "YYYY-MM-DD" (KST)
+  startTime String // "HH:MM"
+  endTime   String // "HH:MM"
+
+  applications EventApplication[]
+
+  @@index([eventId])
+  @@index([date, startTime])
+}
+
+// 수강 신청 — 비로그인(이름·연락처 스냅샷). 행사 삭제 시 함께 삭제, 세션 삭제 시 신청은 보존(SetNull).
+model EventApplication {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  eventId Int
+  event   EducationEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  sessionId Int?
+  session   EventSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  name          String
+  contact       String
+  depositorName String? // 입금자명
+  question      String? // 사전 질문
+  agreePrivacy  Boolean @default(false)
+
+  status          EventApplicationStatus @default(APPLIED)
+  paidConfirmedAt DateTime? // 입금 확인 시각
+  attendedAt      DateTime? // 출석 체크 시각
+
+  isTest Boolean @default(false)
+
+  // [eventId, status]가 정원 카운트 쿼리(count where eventId+APPLIED)와 eventId 단독 조회를 함께 커버
+  @@index([eventId, status])
+  @@index([sessionId])
+  @@index([isTest])
+}
+
+// 교육용 회관 슬롯 — 기존 WorkSlot(OTC 근무)과 별개 테이블, 자원 공유 없음.
+model EducationSlot {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  officeId Int
+  office   Office @relation(fields: [officeId], references: [id])
+
+  date      String // "YYYY-MM-DD" (KST)
+  startTime String // "HH:MM"
+  endTime   String // "HH:MM"
+  memo      String?
+
+  @@index([officeId, date])
 }

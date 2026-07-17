@@ -81,6 +81,120 @@ async function seedOffices() {
   }
 }
 
+/** 교육 행사 seed — slug 기준 upsert(재실행 안전). 전부 승인·공개 상태로 UI에서 바로 보이게. */
+const EDUCATION_EVENT_SEEDS = [
+  {
+    slug: "seocho-sbmb-lecture-2026-07",
+    title: "서초모빅회관 춘심 SBMB 강연",
+    category: "LECTURE",
+    mode: "OFFLINE",
+    isFeatured: true,
+    instructorName: "춘심이 동생",
+    customLocation: "서초모빅회관",
+    capacity: 40,
+    feeKrw: 10000,
+    depositBankName: "국민은행",
+    depositAccountNo: "366501-01-204058",
+    depositAccountHolder: "조용래/모빅스테이션",
+    preparation: "주차 불가, 대중교통 권장",
+    notice: "주차 불가, 대중교통 권장",
+    reward: "이더리움 지갑 1장",
+    refundPolicy: "신청 후 취소 불가, 불참 시 환불·리워드 없음",
+    descriptionMd: [
+      "## 강연 내용",
+      "",
+      "- SBMB Q&A",
+      "- Trust Wallet 기초 (EVM 종이지갑 · 지갑 생성 · 토큰 전송)",
+      "- 토큰 스테이킹",
+      "- Uniswap 스왑",
+      "- 지갑 운용 주의사항",
+    ].join("\n"),
+    sessions: [{ date: "2026-07-17", startTime: "14:00", endTime: "16:00" }],
+  },
+  {
+    slug: "seocho-sbmb-lecture-2026-06",
+    title: "서초모빅회관 춘심 SBMB 강연 6월",
+    category: "LECTURE",
+    mode: "OFFLINE",
+    isFeatured: false,
+    instructorName: "춘심팀",
+    customLocation: "서초모빅회관",
+    capacity: 40,
+    feeKrw: 10000,
+    depositBankName: "국민은행",
+    depositAccountNo: "366501-01-204058",
+    depositAccountHolder: "조용래/모빅스테이션",
+    preparation: null,
+    notice: null,
+    reward: null,
+    refundPolicy: "신청 후 취소 불가, 불참 시 환불·리워드 없음",
+    descriptionMd: [
+      "## 강연 내용",
+      "",
+      "- SBMB·콘솔 자유 질의응답",
+      "- 트러스트월렛·유니스왑 실습 (격주)",
+      "- 회관 중심 OTC 안내",
+    ].join("\n"),
+    sessions: [{ date: "2026-06-26", startTime: "14:00", endTime: "17:00" }],
+  },
+  {
+    slug: "suwon-harvest-movn-2026-07",
+    title: "수원모빅회관 Harvest MOVN(10모의 기적) 실습",
+    category: "WORKSHOP",
+    mode: "OFFLINE",
+    isFeatured: true,
+    instructorName: "가브리엘(수모크루)",
+    customLocation: "수원모빅회관",
+    capacity: 30,
+    feeKrw: 5000,
+    depositBankName: null,
+    depositAccountNo: null,
+    depositAccountHolder: null,
+    preparation: "10모의 기적 종이지갑 지참(WBMB 전송 실습 희망 시)",
+    notice: "주차 불가, 대중교통 권장",
+    reward: null,
+    refundPolicy: null,
+    descriptionMd: [
+      "## 실습 내용",
+      "",
+      "- 10모의 기적 소개 및 규칙 설명",
+      "- 모빅원(app) 지갑 스왑 및 전송 실습",
+    ].join("\n"),
+    sessions: [{ date: "2026-07-25", startTime: "14:00", endTime: "16:00" }],
+  },
+] as const;
+
+async function seedEducationEvents() {
+  for (const ev of EDUCATION_EVENT_SEEDS) {
+    const { sessions, slug, ...fields } = ev;
+    const common = {
+      ...fields,
+      status: "APPROVED" as const,
+      isPublished: true,
+      isTest: false,
+    };
+    const existing = await prisma.educationEvent.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.educationEvent.update({
+        where: { slug },
+        data: common,
+      });
+    } else {
+      await prisma.educationEvent.create({
+        data: {
+          slug,
+          ...common,
+          sessions: { create: [...sessions] },
+        },
+      });
+    }
+    console.log(`[seed] education event upsert done: ${slug}`);
+  }
+}
+
 interface SeedAccount {
   username: string;
   displayName: string;
@@ -134,7 +248,13 @@ async function main() {
   }
 
   const { accounts, missing } = collectAccounts();
-  if (missing.length > 0) {
+  // 비밀번호 env가 "전부" 없으면(이 머신은 계정 시드 대상 아님) 어드민 시드만 스킵하고
+  // 사무실·교육 시드는 진행한다. 일부만 없으면 기존대로 실패(반쪽 시드 방지).
+  if (missing.length > 0 && accounts.length === 0) {
+    console.warn(
+      `[seed] SEED_PW_* 미설정(${missing.join(", ")}) — 어드민 계정 시드는 건너뜀.`,
+    );
+  } else if (missing.length > 0) {
     throw new Error(
       `다음 비밀번호 환경변수가 비어 있습니다: ${missing.join(", ")}.`,
     );
@@ -160,6 +280,7 @@ async function main() {
   }
 
   await seedOffices();
+  await seedEducationEvents();
 }
 
 main()
