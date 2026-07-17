@@ -139,6 +139,7 @@ export function ApplyForm({
 }) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [email, setEmail] = useState(""); // 선택 — 리마인더 수신용
   const [depositorName, setDepositorName] = useState("");
   const [question, setQuestion] = useState("");
   const [sessionId, setSessionId] = useState<number | "">(
@@ -182,6 +183,7 @@ export function ApplyForm({
           sessionId: sessionId === "" ? null : sessionId,
           name: name.trim(),
           contact: contact.trim(),
+          email: email.trim() || null,
           depositorName: requiresDeposit ? depositorName.trim() : null,
           question: question.trim() || null,
           agreePrivacy: agree,
@@ -250,6 +252,16 @@ export function ApplyForm({
         />
       </Field>
 
+      <Field>
+        <FieldLabel>이메일 (선택)</FieldLabel>
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="행사 전일 리마인더를 받으시려면 입력해 주세요"
+        />
+      </Field>
+
       {requiresDeposit ? (
         <Field>
           <FieldLabel>
@@ -280,8 +292,9 @@ export function ApplyForm({
           onChange={(e) => setAgree(e.target.checked)}
         />
         <span>
-          개인정보 수집·이용에 동의합니다. 신청 정보(이름·전화·입금자명)는 행사
-          운영 목적으로만 사용되며, 행사 종료 후 30일 이내 파기됩니다.
+          개인정보 수집·이용에 동의합니다. 신청 정보(이름·전화·입금자명,
+          선택 입력한 이메일)는 행사 운영·안내 목적으로만 사용되며, 행사 종료 후
+          30일 이내 파기됩니다.
         </span>
       </AgreeRow>
 

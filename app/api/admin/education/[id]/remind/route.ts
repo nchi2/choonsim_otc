@@ -43,7 +43,7 @@ export async function POST(
         },
         applications: {
           where: { status: "APPLIED", isTest: false },
-          select: { name: true, contact: true },
+          select: { name: true, contact: true, email: true },
         },
       },
     });

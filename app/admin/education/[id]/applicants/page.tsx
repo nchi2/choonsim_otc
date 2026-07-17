@@ -255,6 +255,12 @@ export default function AdminEducationApplicantsPage({
   }
 
   const { event, applications, appliedCount } = data;
+  // 리마인더 실수신 가능 인원 — email 우선, 없으면 contact가 @형
+  const remindableCount = applications.filter(
+    (a) =>
+      a.status === "APPLIED" &&
+      (a.email?.includes("@") || a.contact.includes("@")),
+  ).length;
   const hasSessions = event.sessions.length > 1;
   const visible =
     sessionFilter === "ALL"
@@ -281,7 +287,7 @@ export default function AdminEducationApplicantsPage({
           disabled={reminding || appliedCount === 0}
           onClick={() => void sendReminder()}
         >
-          {reminding ? "발송 중…" : "전일 리마인더 발송"}
+          {reminding ? "발송 중…" : `전일 리마인더 발송 (이메일 ${remindableCount}명)`}
         </SecondaryButton>
       </Summary>
 
@@ -341,6 +347,7 @@ export default function AdminEducationApplicantsPage({
                 </div>
                 <div className="sub">
                   {a.contact}
+                  {a.email ? ` · ✉ ${a.email}` : ""}
                   {a.depositorName ? ` · 입금자 ${a.depositorName}` : ""}
                   {a.question ? ` · Q: ${a.question}` : ""}
                 </div>

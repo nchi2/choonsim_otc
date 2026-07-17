@@ -40,6 +40,7 @@ export async function POST(request: Request) {
   const eventId = Number(body.eventId);
   const name = asTrimmed(body.name);
   const contact = asTrimmed(body.contact);
+  const email = asTrimmed(body.email); // 선택 — 없으면 그대로 통과
   const depositorName = asTrimmed(body.depositorName);
   const question = asTrimmed(body.question);
   const sessionIdRaw = body.sessionId;
@@ -49,6 +50,10 @@ export async function POST(request: Request) {
   if (!Number.isInteger(eventId) || eventId <= 0) return bad("행사가 올바르지 않습니다.");
   if (!name || name.length > 50) return bad("이름을 입력해 주세요.");
   if (!contact || contact.length > 50) return bad("전화번호를 입력해 주세요.");
+  // 이메일은 선택 — 값이 있을 때만 느슨히 검증
+  if (email && (email.length > 100 || !email.includes("@"))) {
+    return bad("이메일 형식이 올바르지 않습니다.");
+  }
   if (depositorName && depositorName.length > 50) return bad("입금자명이 너무 깁니다.");
   if (question && question.length > 1000) return bad("사전 질문은 1000자 이내로 적어주세요.");
   if (body.agreePrivacy !== true) return bad("개인정보 수집·이용 동의가 필요합니다.");
@@ -120,6 +125,7 @@ export async function POST(request: Request) {
             sessionId,
             name,
             contact,
+            email,
             depositorName,
             question,
             agreePrivacy: true,

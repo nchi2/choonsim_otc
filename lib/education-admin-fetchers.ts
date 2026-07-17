@@ -146,6 +146,7 @@ export interface EduApplicant {
   sessionId: number | null;
   name: string;
   contact: string;
+  email: string | null;
   depositorName: string | null;
   question: string | null;
   status: string;

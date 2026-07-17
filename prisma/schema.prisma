@@ -457,6 +457,7 @@ model EventApplication {
 
   name          String
   contact       String
+  email         String? // 선택 — 전일 리마인더 수신용(없으면 리마인더 스킵)
   depositorName String? // 입금자명
   question      String? // 사전 질문
   agreePrivacy  Boolean @default(false)

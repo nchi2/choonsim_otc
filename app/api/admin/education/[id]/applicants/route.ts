@@ -51,6 +51,7 @@ export async function GET(
         sessionId: true,
         name: true,
         contact: true,
+        email: true,
         depositorName: true,
         question: true,
         status: true,

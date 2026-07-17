@@ -185,8 +185,8 @@ export async function sendEducationDecisionEmail(
 }
 
 /* ── 4. 신청자: 행사 전일 리마인더 (수동 트리거 — 어드민 버튼) ──
- * ★ 제약: EventApplication에 이메일 필드가 없어(스키마 무변경) contact가 이메일 형태(@)인
- *   신청자에게만 발송 가능. 전화번호 신청자는 skippedNoEmail로 집계·로그.
+ * 수신 주소 우선순위: email 필드(5.5에서 선택 수집) → contact가 이메일 형태(@)인 경우.
+ * 둘 다 없으면(전화번호만) skippedNoEmail로 집계·로그.
  * 발송 방식: 개별 send 루프(수신자별 try/catch·실패 로깅) — 규모(정원≤40)가 작고
  *   배치 API 대비 건별 실패 추적이 명확해서. */
 
@@ -197,7 +197,7 @@ export interface ReminderPayload {
   sessions: { date: string; startTime: string; endTime: string }[];
   preparation: string | null;
   notice: string | null;
-  recipients: { name: string; contact: string }[];
+  recipients: { name: string; contact: string; email: string | null }[];
 }
 
 export interface ReminderResult {
@@ -210,7 +210,17 @@ export interface ReminderResult {
 export async function sendEducationReminders(
   payload: ReminderPayload,
 ): Promise<ReminderResult> {
-  const emailish = payload.recipients.filter((r) => r.contact.includes("@"));
+  // 주소 결정: email 우선, 없으면 contact가 @형일 때 그것
+  const emailish = payload.recipients
+    .map((r) => ({
+      name: r.name,
+      address: r.email?.includes("@")
+        ? r.email
+        : r.contact.includes("@")
+          ? r.contact
+          : null,
+    }))
+    .filter((r): r is { name: string; address: string } => r.address != null);
   const result: ReminderResult = {
     attempted: payload.recipients.length,
     sent: 0,
@@ -243,7 +253,7 @@ export async function sendEducationReminders(
     try {
       const { error } = await resend.emails.send({
         from,
-        to: [r.contact],
+        to: [r.address],
         subject: `[춘심 교육] 내일 행사 안내 — ${payload.eventTitle}`,
         html,
       });
@@ -251,7 +261,7 @@ export async function sendEducationReminders(
       result.sent += 1;
     } catch (err) {
       result.failed += 1;
-      console.error("[education/reminder] send failed", r.contact, err);
+      console.error("[education/reminder] send failed", r.address, err);
     }
   }
   return result;
