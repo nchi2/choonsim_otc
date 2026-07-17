@@ -93,6 +93,19 @@ export const MODE_LABEL: Record<string, string> = {
   HYBRID: "혼합",
 };
 
+/** 포스터 폴백 카드(PosterCard)용 카테고리 톤 — 그라데이션 양끝 + 아이콘.
+ *  Phase 2 템플릿 도구의 "기본 템플릿 1번" 색 소스로도 재사용 예정. */
+export const CATEGORY_POSTER_TONE: Record<
+  string,
+  { from: string; to: string; icon: string }
+> = {
+  LECTURE: { from: "#6B5FD0", to: "#4A3FA8", icon: "🎓" }, // primary → primaryActive
+  WORKSHOP: { from: "#d97706", to: "#92400e", icon: "🛠️" }, // amber 계열
+  EVENT: { from: "#db2777", to: "#9d174d", icon: "🎉" }, // pink 계열
+};
+
+export const DEFAULT_POSTER_TONE = CATEGORY_POSTER_TONE.LECTURE;
+
 /** 반응형 브레이크포인트 — 데스크톱 그리드 ↔ 모바일 리스트/하단탭 전환 기준.
  *  sm 이하 = 모바일(리스트·1장 캐러셀·하단탭), md 이상 = 데스크톱 헤더 내비. */
 export const eduBp = {

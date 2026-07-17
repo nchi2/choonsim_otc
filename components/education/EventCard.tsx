@@ -3,12 +3,13 @@
 // 행사 카드 — 두 변주:
 //  - variant="grid" (기본): 데스크톱 그리드용. 포스터 상단(4:3) + 본문.
 //  - variant="list": 모바일 세로 리스트용. 썸네일 좌측(96px) + 본문 우측 1행 압축.
-// 링크는 /events/[slug]. 포스터 없으면 퍼플 그라데이션 placeholder(카테고리 라벨).
+// 링크는 /events/[slug]. 포스터 없으면 PosterCard의 카테고리별 디자인 폴백.
 
 import Link from "next/link";
 import styled from "styled-components";
-import { eduColors, eduLayout, media, CATEGORY_LABEL } from "./tokens";
+import { eduColors, eduLayout, media } from "./tokens";
 import { CategoryBadge, DDayBadge, FeeBadge } from "./Badge";
+import { PosterCard } from "./PosterCard";
 import {
   dDayFromKstYmd,
   formatSessionBrief,
@@ -32,10 +33,9 @@ const CardLink = styled(Link)`
   }
 `;
 
+/* 포스터 영역 래퍼 — 실제 렌더는 PosterCard(이미지 or 카테고리별 디자인 폴백) */
 const PosterBox = styled.div<{ $list?: boolean }>`
-  position: relative;
   flex-shrink: 0;
-  background: linear-gradient(135deg, ${eduColors.primary}, ${eduColors.primaryActive});
   ${(p) =>
     p.$list
       ? `
@@ -43,30 +43,14 @@ const PosterBox = styled.div<{ $list?: boolean }>`
   height: 96px;
   border-radius: 10px;
   overflow: hidden;
-  `
-      : `
-  aspect-ratio: 4 / 3;
-  width: 100%;
-  `}
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-`;
-
-const PosterFallback = styled.span<{ $list?: boolean }>`
-  position: absolute;
-  inset: 0;
+  /* 96px 정사각 썸네일 — PosterCard의 4:3보다 세로가 길어 살짝 크롭 */
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 800;
-  font-size: ${(p) => (p.$list ? "0.72rem" : "1rem")};
-  letter-spacing: 0.05em;
+  & > div { min-height: 100%; }
+  `
+      : `
+  width: 100%;
+  `}
 `;
 
 const Body = styled.div`
@@ -152,14 +136,15 @@ export function EventCard({
     formatSessionBrief(event.session) +
     (event.sessionCount > 1 ? ` 외 ${event.sessionCount - 1}회` : "");
   const href = `/events/${event.slug}`;
-  const poster = event.posterUrl ? (
-    // 외부 이미지 도메인 미등록 정책(next.config images 미설정)에 따라 native img 사용
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={event.posterUrl} alt="" loading="lazy" />
-  ) : (
-    <PosterFallback $list={variant === "list"}>
-      {CATEGORY_LABEL[event.category] ?? "행사"}
-    </PosterFallback>
+  const poster = (
+    <PosterCard
+      title={event.title}
+      subtitle={event.locationName}
+      dateLabel={event.session ? formatSessionBrief(event.session) : null}
+      category={event.category}
+      posterUrl={event.posterUrl}
+      compact={variant === "list"}
+    />
   );
 
   if (variant === "list") {

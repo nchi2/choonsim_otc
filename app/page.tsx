@@ -4,7 +4,10 @@
 // SBMB·링크모음은 PublicShell의 ☰메뉴·푸터로 이동, 유튜브만 본문 하단 유지.
 // (이전 조립: PageLayout + OTCSection/HighValueSection/YouTubeSection/EcosystemSection)
 
-import { loadPublishedEventCards } from "@/lib/education-public";
+import {
+  loadPublishedEventCards,
+  pickCarouselEvents,
+} from "@/lib/education-public";
 import { HomeClient } from "./page/HomeClient";
 
 export const dynamic = "force-dynamic";
@@ -12,5 +15,7 @@ export const runtime = "nodejs";
 
 export default async function Home() {
   const events = await loadPublishedEventCards();
-  return <HomeClient events={events} />;
+  // 캐러셀: 다가오는 featured 우선, 부족하면 지난 featured로 채움(개수 폴백)
+  const carousel = pickCarouselEvents(events);
+  return <HomeClient events={events} carousel={carousel} />;
 }

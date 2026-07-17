@@ -121,8 +121,14 @@ const YoutubeWrap = styled.div`
   border-top: 1px solid ${eduColors.border};
 `;
 
-export function HomeClient({ events }: { events: EventCardData[] }) {
-  const featured = events.filter((e) => e.isFeatured);
+export function HomeClient({
+  events,
+  carousel,
+}: {
+  events: EventCardData[];
+  /** 서버(pickCarouselEvents)에서 선별 — 다가오는 featured 우선 + 개수 폴백 */
+  carousel: EventCardData[];
+}) {
   // 다가오는(오늘 이후) 행사 — 조회 레이어가 이미 임박순 정렬. 이번 주(7일) 우선, 없으면 다가오는 순.
   const upcoming = events.filter((e) => {
     const d = dDayFromKstYmd(e.session?.date ?? null);
@@ -136,13 +142,13 @@ export function HomeClient({ events }: { events: EventCardData[] }) {
 
   return (
     <PublicShell>
-      {featured.length > 0 ? (
+      {carousel.length > 0 ? (
         <>
           <SectionHead>
             <SectionTitle>추천 행사</SectionTitle>
             <MoreLink href="/events">전체 행사 →</MoreLink>
           </SectionHead>
-          <EventCarousel events={featured} />
+          <EventCarousel events={carousel} />
         </>
       ) : null}
 

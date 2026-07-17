@@ -23,7 +23,8 @@ import {
   FeeBadge,
   ModeBadge,
 } from "@/components/education/Badge";
-import { eduColors, eduLayout, media, CATEGORY_LABEL } from "@/components/education/tokens";
+import { eduColors, eduLayout, media } from "@/components/education/tokens";
+import { PosterCard } from "@/components/education/PosterCard";
 import {
   dDayFromKstYmd,
   formatFee,
@@ -59,22 +60,10 @@ const Hero = styled.div`
   }
 `;
 
+/* 히어로 포스터 래퍼 — 실제 렌더는 PosterCard(이미지 or 디자인 폴백) */
 const Poster = styled.div`
-  aspect-ratio: 4 / 3;
   border-radius: ${eduLayout.radius}px;
   overflow: hidden;
-  background: linear-gradient(135deg, ${eduColors.primary}, ${eduColors.primaryActive});
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.92);
-  font-weight: 800;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
 `;
 
 const HeroInfo = styled.div``;
@@ -368,12 +357,13 @@ export function EventDetailClient({
 
       <Hero>
         <Poster>
-          {event.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={event.posterUrl} alt="" />
-          ) : (
-            (CATEGORY_LABEL[event.category] ?? "행사")
-          )}
+          <PosterCard
+            title={event.title}
+            subtitle={event.locationName}
+            dateLabel={primarySession ? formatSessionRange(primarySession) : null}
+            category={event.category}
+            posterUrl={event.posterUrl}
+          />
         </Poster>
         <HeroInfo>
           <BadgeRow>

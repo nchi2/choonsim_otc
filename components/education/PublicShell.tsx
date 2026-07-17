@@ -390,12 +390,10 @@ export function PublicShell({
             <Link href="/otc">OTC 거래</Link>
             <Link href="/scanner">EVM 스캐너</Link>
             <Link href="/contracts">토큰 컨트랙트</Link>
-            <Link href="/hwallets">하드월렛</Link>
           </FooterCol>
           <FooterCol>
             <h4>생태계</h4>
             <Link href="/sbmb">SBMB</Link>
-            <Link href="/ldt">LDT</Link>
             <a
               href={COMMUNITY_LINKTREE.choonsim.href}
               target="_blank"

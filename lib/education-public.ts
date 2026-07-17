@@ -83,6 +83,28 @@ export async function loadPublishedEventCards(): Promise<EventCardData[]> {
   });
 }
 
+/** 캐러셀 최소 채움 개수 — 다가오는 featured가 이보다 적으면 지난 featured로 뒤를 채운다. */
+export const CAROUSEL_MIN_ITEMS = 3;
+
+/**
+ * 메인 추천 캐러셀 목록 — isFeatured 중 "다가오는(일정 미정 포함)"을 앞에,
+ * 그 수가 CAROUSEL_MIN_ITEMS 미만일 때만 지난(종료) featured로 뒤를 채움.
+ * 다가오는 게 MIN 이상이면 지난 건 노출하지 않음. featured 0건이면 빈 배열(캐러셀 숨김).
+ */
+export function pickCarouselEvents(cards: EventCardData[]): EventCardData[] {
+  const today = todayKst();
+  const featured = cards.filter((c) => c.isFeatured);
+  if (featured.length === 0) return [];
+  const upcoming = featured.filter(
+    (c) => c.session == null || c.session.date >= today,
+  );
+  if (upcoming.length >= CAROUSEL_MIN_ITEMS) return upcoming;
+  const past = featured.filter(
+    (c) => c.session != null && c.session.date < today,
+  );
+  return [...upcoming, ...past.slice(0, CAROUSEL_MIN_ITEMS - upcoming.length)];
+}
+
 /** 활성 회관 — 필터·개설 폼 선택지. */
 export async function loadActiveOffices(): Promise<{ id: number; name: string }[]> {
   return prisma.office.findMany({
