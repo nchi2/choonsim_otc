@@ -509,7 +509,7 @@ export function EventDetailClient({
           <Section id="apply">
             <SectionTitle>수강 신청</SectionTitle>
             <ApplyForm
-              eventSlug={event.slug}
+              eventId={event.id}
               requiresDeposit={requiresDeposit}
               sessions={event.sessions}
               closedReason={closedReason}

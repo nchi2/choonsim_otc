@@ -1,8 +1,9 @@
 "use client";
 
-// 수강 신청 폼 — 표시·입력 UI만. 실제 제출(POST·정원 트랜잭션·검증)은 Step 3(Fable).
-// 지금은 제출 시 placeholder(콘솔 + 완료 메시지). 마감/정원초과면 비활성 + 사유.
+// 수강 신청 폼 — POST /api/education/apply 로 제출(정원·중복은 서버 트랜잭션이 원자 처리).
+// 마감/정원초과면 비활성 + 사유. 서버 거절(정원 마감 등)은 에러 메시지로 표시.
 // 필드: 세션(다회차 시)·이름·전화·입금자명(유료)·사전질문(선택)·개인정보 동의(30일 파기).
+// Turnstile: 키 장착 시 아래 [TURNSTILE 위젯 자리]에 위젯을 렌더하고 token을 body에 실으면 됨.
 
 import { useState } from "react";
 import styled from "styled-components";
@@ -125,12 +126,12 @@ export interface ApplyFormSession {
 }
 
 export function ApplyForm({
-  eventSlug,
+  eventId,
   requiresDeposit,
   sessions,
   closedReason,
 }: {
-  eventSlug: string;
+  eventId: number;
   requiresDeposit: boolean;
   sessions: ApplyFormSession[];
   /** 마감/정원초과/종료 사유 — 있으면 폼 비활성 */
@@ -145,6 +146,8 @@ export function ApplyForm({
   );
   const [agree, setAgree] = useState(false);
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (closedReason) {
     return <ClosedNote>{closedReason}</ClosedNote>;
@@ -152,33 +155,51 @@ export function ApplyForm({
   if (done) {
     return (
       <DoneNote>
-        신청 정보가 확인되었습니다. (제출 연동은 준비 중 — Step 3)
+        신청이 접수되었습니다. 안내된 연락처로 확인 연락을 드립니다.
       </DoneNote>
     );
   }
 
   const canSubmit =
+    !submitting &&
     name.trim() !== "" &&
     contact.trim() !== "" &&
     agree &&
     (!requiresDeposit || depositorName.trim() !== "") &&
     (sessions.length <= 1 || sessionId !== "");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    // Step 3에서 POST /api/events/[slug]/apply 로 교체 예정. 지금은 placeholder.
-    // eslint-disable-next-line no-console
-    console.log("[apply:placeholder]", {
-      eventSlug,
-      sessionId: sessionId || null,
-      name: name.trim(),
-      contact: contact.trim(),
-      depositorName: requiresDeposit ? depositorName.trim() : null,
-      question: question.trim() || null,
-      agreePrivacy: agree,
-    });
-    setDone(true);
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/education/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          sessionId: sessionId === "" ? null : sessionId,
+          name: name.trim(),
+          contact: contact.trim(),
+          depositorName: requiresDeposit ? depositorName.trim() : null,
+          question: question.trim() || null,
+          agreePrivacy: agree,
+          // [TURNSTILE 위젯 자리] NEXT_PUBLIC_TURNSTILE_SITE_KEY 장착 시
+          // 위젯 token을 여기(turnstileToken)에 실어 보내면 서버 검증이 켜진다.
+          turnstileToken: null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "신청 접수에 실패했습니다.");
+      }
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "신청 접수에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -264,8 +285,10 @@ export function ApplyForm({
         </span>
       </AgreeRow>
 
+      {error ? <ClosedNote role="alert">{error}</ClosedNote> : null}
+
       <SubmitBtn type="submit" disabled={!canSubmit}>
-        신청하기
+        {submitting ? "접수 중…" : "신청하기"}
       </SubmitBtn>
     </Form>
   );

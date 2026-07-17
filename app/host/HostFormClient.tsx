@@ -1,8 +1,8 @@
 "use client";
 
-// 행사 개설 신청 폼 — 표시·입력 UI 중심. 제출은 placeholder(콘솔 + 완료 메시지).
-// 실제 POST(status=PENDING 생성)·검증·Turnstile·알림은 Step 3~5(Fable).
+// 행사 개설 신청 폼 — POST /api/education/host 로 제출(status=PENDING 생성, 승인은 어드민 Step 4).
 // 장소: 회관 선택 or 직접 입력. 회차: 다중 세션 추가. 유료 시 입금계좌 안내.
+// Turnstile: 키 장착 시 제출 body의 turnstileToken 자리에 위젯 token을 실으면 서버 검증이 켜진다.
 
 import { useState } from "react";
 import styled from "styled-components";
@@ -158,6 +158,18 @@ const AgreeRow = styled.label`
   }
 `;
 
+const ErrorNote = styled.div`
+  margin-bottom: 0.8rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 9px;
+  background: ${eduColors.dangerSoft};
+  border: 1px solid ${eduColors.danger}33;
+  color: ${eduColors.danger};
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+`;
+
 const DoneCard = styled.div`
   max-width: 720px;
   padding: 2rem 1.5rem;
@@ -191,6 +203,8 @@ export function HostFormClient({
   offices: { id: number; name: string }[];
 }) {
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 기본 정보
   const [title, setTitle] = useState("");
@@ -236,6 +250,7 @@ export function HostFormClient({
     setSessions((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
   const canSubmit =
+    !submitting &&
     title.trim() !== "" &&
     (officeId !== "" || customLocation.trim() !== "") &&
     sessions.some((s) => s.date && s.startTime) &&
@@ -243,48 +258,66 @@ export function HostFormClient({
     hostContact.trim() !== "" &&
     agree;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    // Step 3에서 POST /api/host/apply (status=PENDING 생성)로 교체 예정.
-    // eslint-disable-next-line no-console
-    console.log("[host-apply:placeholder]", {
-      title: title.trim(),
-      category,
-      descriptionMd: descriptionMd.trim() || null,
-      instructorName: instructorName.trim() || null,
-      instructorBio: instructorBio.trim() || null,
-      sessions: sessions.filter((s) => s.date && s.startTime),
-      officeId: officeId ? Number(officeId) : null,
-      customLocation: officeId ? null : customLocation.trim() || null,
-      mode,
-      capacity: capacity ? Number(capacity) : null,
-      feeKrw: Number(feeKrw) || 0,
-      depositBankName: depositBankName.trim() || null,
-      depositAccountNo: depositAccountNo.trim() || null,
-      depositAccountHolder: depositAccountHolder.trim() || null,
-      eligibility: eligibility.trim() || null,
-      preparation: preparation.trim() || null,
-      reward: reward.trim() || null,
-      refundPolicy: refundPolicy.trim() || null,
-      notice: notice.trim() || null,
-      applyDeadline: applyDeadline || null,
-      hostName: hostName.trim(),
-      hostContact: hostContact.trim(),
-      hostEmail: hostEmail.trim() || null,
-    });
-    setDone(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/education/host", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          category,
+          descriptionMd: descriptionMd.trim() || null,
+          instructorName: instructorName.trim() || null,
+          instructorBio: instructorBio.trim() || null,
+          sessions: sessions.filter((s) => s.date && s.startTime),
+          officeId: officeId ? Number(officeId) : null,
+          customLocation: officeId ? null : customLocation.trim() || null,
+          mode,
+          capacity: capacity ? Number(capacity) : null,
+          feeKrw: Number(feeKrw) || 0,
+          depositBankName: depositBankName.trim() || null,
+          depositAccountNo: depositAccountNo.trim() || null,
+          depositAccountHolder: depositAccountHolder.trim() || null,
+          eligibility: eligibility.trim() || null,
+          preparation: preparation.trim() || null,
+          reward: reward.trim() || null,
+          refundPolicy: refundPolicy.trim() || null,
+          notice: notice.trim() || null,
+          applyDeadline: applyDeadline || null,
+          hostName: hostName.trim(),
+          hostContact: hostContact.trim(),
+          hostEmail: hostEmail.trim() || null,
+          // [TURNSTILE 위젯 자리] 사이트키 장착 시 위젯 token을 싣는다.
+          turnstileToken: null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "개설 신청 접수에 실패했습니다.");
+      }
+      setDone(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "개설 신청 접수에 실패했습니다.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (done) {
     return (
       <PublicShell>
         <DoneCard>
-          <h2>개설 신청이 접수되었습니다 (데모)</h2>
+          <h2>개설 신청이 접수되었습니다</h2>
           <p>
-            실제 제출·검토 연동은 준비 중입니다(Step 3). 검토 후 승인되면 행사가
-            공개됩니다.
+            운영팀이 내용을 검토한 뒤 남겨주신 연락처로 안내드립니다. 승인되면
+            행사가 공개됩니다.
           </p>
         </DoneCard>
       </PublicShell>
@@ -549,8 +582,10 @@ export function HostFormClient({
           </span>
         </AgreeRow>
 
+        {error ? <ErrorNote role="alert">{error}</ErrorNote> : null}
+
         <SubmitBtn type="submit" disabled={!canSubmit}>
-          개설 신청하기
+          {submitting ? "접수 중…" : "개설 신청하기"}
         </SubmitBtn>
       </Form>
     </PublicShell>

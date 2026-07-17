@@ -1,0 +1,198 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { isKstYmd } from "@/lib/kst";
+import { verifyTurnstile } from "@/lib/turnstile";
+import {
+  allowEducationHost,
+  clientIpOf,
+} from "@/lib/education-rate-limit";
+
+export const runtime = "nodejs";
+
+// 행사 개설 신청 — EducationEvent(status=PENDING, isPublished=false) + EventSession 다중 생성.
+// 승인/반려는 Step 4 어드민. slug는 제목 기반 + 숫자 접미사로 충돌 회피.
+
+const CATEGORIES = new Set(["LECTURE", "WORKSHOP", "EVENT"]);
+const MODES = new Set(["OFFLINE", "ONLINE", "HYBRID"]);
+const TIME_RE = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+
+function bad(error: string, status = 400) {
+  return NextResponse.json({ ok: false, error }, { status });
+}
+
+function asTrimmed(v: unknown, max = 200): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (!s) return null;
+  return s.slice(0, max);
+}
+
+/** 제목 → slug: 한글·영숫자 유지, 나머지 하이픈. 충돌 시 -2, -3… */
+function slugifyTitle(title: string): string {
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  return base || "event";
+}
+
+async function uniqueSlug(title: string): Promise<string> {
+  const base = slugifyTitle(title);
+  const existing = await prisma.educationEvent.findMany({
+    where: { slug: { startsWith: base } },
+    select: { slug: true },
+  });
+  const taken = new Set(existing.map((e) => e.slug));
+  if (!taken.has(base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${base}-${i}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`; // 사실상 도달 불가 폴백
+}
+
+interface SessionInput {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+function parseSessions(v: unknown): SessionInput[] | null {
+  if (!Array.isArray(v) || v.length === 0 || v.length > 20) return null;
+  const out: SessionInput[] = [];
+  for (const item of v) {
+    if (typeof item !== "object" || item == null) return null;
+    const o = item as Record<string, unknown>;
+    const date = asTrimmed(o.date, 10);
+    const startTime = asTrimmed(o.startTime, 5);
+    const endTime = asTrimmed(o.endTime, 5) ?? startTime;
+    if (!date || !isKstYmd(date)) return null;
+    if (!startTime || !TIME_RE.test(startTime)) return null;
+    if (!endTime || !TIME_RE.test(endTime)) return null;
+    out.push({ date, startTime, endTime });
+  }
+  return out;
+}
+
+function parseOptionalPositiveInt(v: unknown): number | null | "invalid" {
+  if (v === undefined || v === null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isInteger(n) || n <= 0) return "invalid";
+  return n;
+}
+
+export async function POST(request: Request) {
+  const ip = clientIpOf(request);
+  if (!allowEducationHost(ip)) {
+    return bad("요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.", 429);
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return bad("잘못된 요청입니다.");
+  }
+
+  const title = asTrimmed(body.title, 100);
+  const category = asTrimmed(body.category, 20) ?? "";
+  const mode = asTrimmed(body.mode, 20) ?? "";
+  const hostName = asTrimmed(body.hostName, 50);
+  const hostContact = asTrimmed(body.hostContact, 50);
+  const hostEmail = asTrimmed(body.hostEmail, 100);
+
+  if (!title) return bad("행사 제목을 입력해 주세요.");
+  if (!CATEGORIES.has(category)) return bad("분류가 올바르지 않습니다.");
+  if (!MODES.has(mode)) return bad("진행 방식이 올바르지 않습니다.");
+  if (!hostName) return bad("신청자 이름을 입력해 주세요.");
+  if (!hostContact) return bad("신청자 연락처를 입력해 주세요.");
+  if (hostEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail)) {
+    return bad("이메일 형식이 올바르지 않습니다.");
+  }
+
+  const sessions = parseSessions(body.sessions);
+  if (!sessions) return bad("회차 일시를 확인해 주세요. (최소 1개, 날짜·시작 시간 필수)");
+
+  const capacity = parseOptionalPositiveInt(body.capacity);
+  if (capacity === "invalid") return bad("정원이 올바르지 않습니다.");
+  const feeRaw = body.feeKrw ?? 0;
+  const feeKrw = typeof feeRaw === "number" ? feeRaw : Number(feeRaw);
+  if (!Number.isInteger(feeKrw) || feeKrw < 0 || feeKrw > 10_000_000) {
+    return bad("참가비가 올바르지 않습니다.");
+  }
+
+  // 장소 — 회관 선택 또는 직접 입력 중 하나 필수
+  const officeIdParsed = parseOptionalPositiveInt(body.officeId);
+  if (officeIdParsed === "invalid") return bad("회관이 올바르지 않습니다.");
+  const customLocation = asTrimmed(body.customLocation, 100);
+  if (officeIdParsed == null && !customLocation) {
+    return bad("장소(회관 선택 또는 직접 입력)를 알려주세요.");
+  }
+
+  const applyDeadlineRaw = asTrimmed(body.applyDeadline, 10);
+  if (applyDeadlineRaw && !isKstYmd(applyDeadlineRaw)) {
+    return bad("신청 마감일이 올바르지 않습니다.");
+  }
+  // 마감일은 그날 자정(KST)까지 유효로 저장
+  const applyDeadline = applyDeadlineRaw
+    ? new Date(`${applyDeadlineRaw}T23:59:59+09:00`)
+    : null;
+
+  const ts = await verifyTurnstile(asTrimmed(body.turnstileToken, 3000), ip);
+  if (!ts.ok) return bad("자동입력 방지 확인에 실패했습니다. 새로고침 후 다시 시도해 주세요.");
+
+  try {
+    if (officeIdParsed != null) {
+      const office = await prisma.office.findFirst({
+        where: { id: officeIdParsed, isActive: true },
+        select: { id: true },
+      });
+      if (!office) return bad("회관을 찾을 수 없습니다.");
+    }
+
+    const slug = await uniqueSlug(title);
+    const row = await prisma.educationEvent.create({
+      data: {
+        title,
+        slug,
+        category: category as "LECTURE" | "WORKSHOP" | "EVENT",
+        mode: mode as "OFFLINE" | "ONLINE" | "HYBRID",
+        descriptionMd: asTrimmed(body.descriptionMd, 20000),
+        instructorName: asTrimmed(body.instructorName, 50),
+        instructorBio: asTrimmed(body.instructorBio, 500),
+        officeId: officeIdParsed,
+        customLocation: officeIdParsed == null ? customLocation : null,
+        capacity: capacity,
+        feeKrw,
+        depositBankName: feeKrw > 0 ? asTrimmed(body.depositBankName, 50) : null,
+        depositAccountNo: feeKrw > 0 ? asTrimmed(body.depositAccountNo, 50) : null,
+        depositAccountHolder:
+          feeKrw > 0 ? asTrimmed(body.depositAccountHolder, 50) : null,
+        eligibility: asTrimmed(body.eligibility, 500),
+        preparation: asTrimmed(body.preparation, 500),
+        reward: asTrimmed(body.reward, 500),
+        refundPolicy: asTrimmed(body.refundPolicy, 500),
+        notice: asTrimmed(body.notice, 2000),
+        applyDeadline,
+        status: "PENDING",
+        isPublished: false,
+        isFeatured: false,
+        isTest: false,
+        hostName,
+        hostContact,
+        hostEmail,
+        sessions: { create: sessions },
+      },
+      select: { id: true, slug: true },
+    });
+
+    // 운영자 알림은 Step 5 — 접수 성공과 무관하게 처리 예정.
+    return NextResponse.json({ ok: true, id: row.id, slug: row.slug });
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? "unknown";
+    console.error("[education/host] failed", code);
+    return bad("개설 신청 접수에 실패했습니다.", 500);
+  }
+}
