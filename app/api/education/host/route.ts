@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isKstYmd } from "@/lib/kst";
+import { sendEducationHostApplyAlert } from "@/lib/education-alerts";
 import { verifyTurnstile } from "@/lib/turnstile";
 import {
   allowEducationHost,
@@ -144,12 +145,14 @@ export async function POST(request: Request) {
   if (!ts.ok) return bad("자동입력 방지 확인에 실패했습니다. 새로고침 후 다시 시도해 주세요.");
 
   try {
+    let officeName: string | null = null;
     if (officeIdParsed != null) {
       const office = await prisma.office.findFirst({
         where: { id: officeIdParsed, isActive: true },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!office) return bad("회관을 찾을 수 없습니다.");
+      officeName = office.name;
     }
 
     const slug = await uniqueSlug(title);
@@ -185,10 +188,25 @@ export async function POST(request: Request) {
         hostEmail,
         sessions: { create: sessions },
       },
-      select: { id: true, slug: true },
+      select: { id: true, slug: true, createdAt: true },
     });
 
-    // 운영자 알림은 Step 5 — 접수 성공과 무관하게 처리 예정.
+    // 운영자 알림 — 발송 실패해도 접수는 성공 유지.
+    try {
+      await sendEducationHostApplyAlert({
+        eventId: row.id,
+        title,
+        category,
+        instructorName: asTrimmed(body.instructorName, 50),
+        locationName: officeName ?? customLocation,
+        sessions,
+        hostName,
+        createdAt: row.createdAt,
+      });
+    } catch (alertErr) {
+      console.error("[education/host] alert failed", alertErr);
+    }
+
     return NextResponse.json({ ok: true, id: row.id, slug: row.slug });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

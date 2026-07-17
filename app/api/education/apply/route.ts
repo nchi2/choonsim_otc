@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { todayKst } from "@/lib/kst";
+import { sendEducationApplyAlert } from "@/lib/education-alerts";
 import { verifyTurnstile } from "@/lib/turnstile";
 import {
   allowEducationApply,
@@ -65,10 +66,13 @@ export async function POST(request: Request) {
       where: { id: eventId, status: "APPROVED", isPublished: true, isTest: false },
       select: {
         id: true,
+        title: true,
         capacity: true,
         feeKrw: true,
         applyDeadline: true,
-        sessions: { select: { id: true, date: true } },
+        sessions: {
+          select: { id: true, date: true, startTime: true, endTime: true },
+        },
       },
     });
     if (!event) return bad("신청할 수 없는 행사입니다.", 404);
@@ -131,7 +135,27 @@ export async function POST(request: Request) {
 
     if ("error" in result) return bad(result.error, result.status);
 
-    // 알림(운영자 메일)은 Step 5 — 여기서 트리거만 붙일 예정. 신청 성공과 무관.
+    // 운영자 알림(건별) — 발송 실패해도 신청은 성공 유지.
+    try {
+      const appliedCount = await prisma.eventApplication.count({
+        where: { eventId: event.id, status: "APPLIED", isTest: false },
+      });
+      const session =
+        sessionId != null
+          ? (event.sessions.find((s) => s.id === sessionId) ?? null)
+          : (event.sessions[0] ?? null);
+      await sendEducationApplyAlert({
+        eventId: event.id,
+        eventTitle: event.title,
+        applicantName: name,
+        session,
+        appliedCount,
+        capacity: event.capacity,
+      });
+    } catch (alertErr) {
+      console.error("[education/apply] alert failed", alertErr);
+    }
+
     return NextResponse.json({ ok: true, id: result.id });
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";

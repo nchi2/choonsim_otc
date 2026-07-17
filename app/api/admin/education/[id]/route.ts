@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { editorFieldsFromSession, getAdminUser } from "@/lib/admin-guard";
 import { requireEducationManager } from "@/lib/education-admin-guard";
+import { sendEducationDecisionEmail } from "@/lib/education-alerts";
 import {
   canTransitionEducationStatus,
   isEducationEventStatus,
@@ -146,6 +147,11 @@ export async function PATCH(
         isPublished: true,
         rejectReason: true,
         capacity: true,
+        // 승인/반려 메일용 스냅샷
+        title: true,
+        slug: true,
+        hostEmail: true,
+        hostName: true,
       },
     });
     if (!current) return bad("행사를 찾을 수 없습니다.", 404);
@@ -244,8 +250,25 @@ export async function PATCH(
       select: { id: true, status: true, isPublished: true, isFeatured: true },
     });
 
-    // [알림 훅 자리 — Step 5] 승인/반려 시 교육자(hostEmail) 메일·운영자 알림은 여기서 트리거 예정.
-    // 상태 전환 성공과 무관하게 처리한다(try/catch).
+    // 교육자(hostEmail) 승인/반려 메일 — 상태 전환 성공과 무관(발송 실패는 로그만).
+    if (data.status === "APPROVED" || data.status === "REJECTED") {
+      try {
+        await sendEducationDecisionEmail({
+          decision: data.status,
+          title: (data.title as string | undefined) ?? current.title,
+          slug: current.slug,
+          hostEmail: current.hostEmail,
+          hostName: current.hostName,
+          rejectReason:
+            data.status === "REJECTED"
+              ? ((data.rejectReason as string | null | undefined) ??
+                current.rejectReason)
+              : null,
+        });
+      } catch (alertErr) {
+        console.error("[admin/education/:id] decision email failed", alertErr);
+      }
+    }
 
     return NextResponse.json({ ok: true, event: updated });
   } catch (err) {

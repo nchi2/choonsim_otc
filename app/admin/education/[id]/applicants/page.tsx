@@ -10,6 +10,7 @@ import styled from "styled-components";
 import {
   FilterTab,
   InlineError,
+  SecondaryButton,
   StatusBadge,
   ToolbarButton,
   adminColors,
@@ -178,6 +179,37 @@ export default function AdminEducationApplicantsPage({
     ),
   );
 
+  // 전일 리마인더 수동 발송 — APPLIED 신청자 중 이메일 형태 contact에게만
+  const [reminding, setReminding] = useState(false);
+  const [remindMsg, setRemindMsg] = useState<string | null>(null);
+  const sendReminder = async () => {
+    if (reminding) return;
+    if (!window.confirm("APPLIED 신청자에게 전일 리마인더 메일을 발송할까요?")) return;
+    setReminding(true);
+    setRemindMsg(null);
+    setSaveErr(null);
+    try {
+      const res = await fetch(`/api/admin/education/${eventId}/remind`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "발송 실패");
+      const r = json.result as {
+        attempted: number;
+        sent: number;
+        skippedNoEmail: number;
+        failed: number;
+      };
+      setRemindMsg(
+        `리마인더: 대상 ${r.attempted} · 발송 ${r.sent} · 이메일 없음 ${r.skippedNoEmail} · 실패 ${r.failed}`,
+      );
+    } catch (e) {
+      setSaveErr(e instanceof Error ? e.message : "리마인더 발송에 실패했습니다.");
+    } finally {
+      setReminding(false);
+    }
+  };
+
   // 체크 저장 — 낙관적 반영 후 PATCH, 실패 시 롤백
   const saveCheck = async (
     appId: number,
@@ -243,9 +275,22 @@ export default function AdminEducationApplicantsPage({
           신청 {appliedCount}
           {event.capacity != null ? ` / 정원 ${event.capacity}` : "명"}
         </span>
+        <SecondaryButton
+          type="button"
+          style={{ marginLeft: "auto" }}
+          disabled={reminding || appliedCount === 0}
+          onClick={() => void sendReminder()}
+        >
+          {reminding ? "발송 중…" : "전일 리마인더 발송"}
+        </SecondaryButton>
       </Summary>
 
       {saveErr ? <InlineError>{saveErr}</InlineError> : null}
+      {remindMsg ? (
+        <InlineError as="p" style={{ borderColor: adminColors.successBorder, background: adminColors.successSoft, color: adminColors.successDeep }}>
+          {remindMsg}
+        </InlineError>
+      ) : null}
 
       {hasSessions ? (
         <Tabs>
