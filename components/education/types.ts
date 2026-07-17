@@ -10,6 +10,8 @@ export interface EventCardData {
   category: string; // "LECTURE" | "WORKSHOP" | "EVENT"
   mode: string; // "OFFLINE" | "ONLINE" | "HYBRID"
   posterUrl: string | null;
+  /** 회관 id — 회관 필터용(null=회관 없이 customLocation). 2-B 추가(하위호환). */
+  officeId: number | null;
   /** 장소 표시명 — office.name ?? customLocation ?? null */
   locationName: string | null;
   feeKrw: number;
@@ -47,4 +49,17 @@ export function formatSessionBrief(
 /** 무료/유료 라벨 — "무료" | "10,000원" */
 export function formatFee(feeKrw: number): string {
   return feeKrw <= 0 ? "무료" : `${feeKrw.toLocaleString("ko-KR")}원`;
+}
+
+/** "7/17(금) 14:00~16:00" — 시작·종료 포함 세션 범위 표기. */
+export function formatSessionRange(session: {
+  date: string;
+  startTime: string;
+  endTime: string;
+}): string {
+  const d = session.date;
+  const day = ["일", "월", "화", "수", "목", "금", "토"][
+    new Date(`${d}T00:00:00+09:00`).getDay()
+  ];
+  return `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}(${day}) ${session.startTime}~${session.endTime}`;
 }
