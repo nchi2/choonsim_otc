@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAdminUser } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 import { compareKstYmd, isKstYmd } from "@/lib/kst";
 import {
   isAllowedSlotTime,
@@ -29,10 +29,11 @@ function mapSlot(row: {
 }
 
 export async function GET(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   const { searchParams } = new URL(request.url);
   const officeIdRaw = searchParams.get("officeId");
@@ -136,10 +137,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   let body: { officeId?: unknown; date?: unknown; startTimes?: unknown };
   try {

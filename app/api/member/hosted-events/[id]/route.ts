@@ -209,8 +209,9 @@ export async function PATCH(
           : Number(body.officeId);
       if (officeId != null) {
         if (!Number.isInteger(officeId) || officeId <= 0) return bad("회관이 올바르지 않습니다.");
+        // Step 16: 교육 회관 선택지는 educationActive 기준(OTC isActive와 독립)
         const office = await prisma.office.findFirst({
-          where: { id: officeId, isActive: true },
+          where: { id: officeId, educationActive: true },
           select: { id: true },
         });
         if (!office) return bad("회관을 찾을 수 없습니다.");

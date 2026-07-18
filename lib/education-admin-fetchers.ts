@@ -199,6 +199,28 @@ export const eduSlotsFetcher = () =>
     (j) => j.items,
   );
 
+/* ── 교육 대시보드 (Step 16) ── */
+
+export interface EduDashboardData {
+  pendingEvents: number;
+  pendingEducators: number;
+  depositPending: number;
+  weekEvents: { id: number; title: string; date: string; startTime: string }[];
+  nearFull: {
+    id: number;
+    title: string;
+    capacity: number;
+    applied: number;
+    full: boolean;
+  }[];
+}
+
+export const EDU_DASHBOARD_KEY = "admin:edu:dashboard";
+export const EDU_DASHBOARD_TTL = 30_000;
+
+export const eduDashboardFetcher = () =>
+  fetchAdminJson<EduDashboardData>("/api/admin/education/dashboard");
+
 /* ── 표시 헬퍼 ── */
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];

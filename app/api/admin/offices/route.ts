@@ -18,6 +18,7 @@ export async function GET() {
         name: true,
         address: true,
         isActive: true,
+        educationActive: true,
         sortOrder: true,
       },
     });

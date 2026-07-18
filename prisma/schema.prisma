@@ -117,7 +117,9 @@ model Office {
   code      String   @unique // "GANGNAM", "SEONGSU" …
   name      String // "강남 사무실"
   address   String?
-  isActive  Boolean  @default(true) // 손님 노출 여부
+  isActive  Boolean  @default(true) // 손님 노출 여부(OTC 예약 — 기존 정책 그대로)
+  // 교육 플랫폼 노출 여부(Step 16) — OTC와 독립. /host 개설·교육 슬롯 선택지는 이 플래그 기준.
+  educationActive Boolean @default(false)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

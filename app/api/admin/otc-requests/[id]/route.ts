@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { editorFieldsFromSession, getAdminUser } from "@/lib/admin-guard";
+import { editorFieldsFromSession } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 import { isOtcRequestStatus } from "@/lib/otc-request-status";
 import {
   getCommentsForTarget,
@@ -21,13 +22,11 @@ export async function GET(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   const id = await parseId(ctx.params);
   if (id == null) {
@@ -81,13 +80,11 @@ export async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   const id = await parseId(ctx.params);
   if (id == null) {

@@ -186,7 +186,8 @@ export default function AdminEducationSlotsPage() {
     ),
   );
 
-  const activeOffices = (offices.data ?? []).filter((o) => o.isActive);
+  // Step 16: 교육 슬롯 회관 선택지는 educationActive 기준(OTC isActive와 독립)
+  const activeOffices = (offices.data ?? []).filter((o) => o.educationActive);
   const canSubmit =
     !busy && officeId !== "" && date !== "" && startTime !== "" && endTime !== "";
 

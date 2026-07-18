@@ -166,8 +166,9 @@ export async function POST(request: Request) {
   try {
     let officeName: string | null = null;
     if (officeIdParsed != null) {
+      // Step 16: 교육 개설 회관은 educationActive 기준(OTC isActive와 독립)
       const office = await prisma.office.findFirst({
-        where: { id: officeIdParsed, isActive: true },
+        where: { id: officeIdParsed, educationActive: true },
         select: { id: true, name: true },
       });
       if (!office) return bad("회관을 찾을 수 없습니다.");

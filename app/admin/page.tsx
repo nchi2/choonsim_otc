@@ -1,13 +1,16 @@
 "use client";
 
-// 운영 대시보드 — "할 일 중심".
+// 운영 대시보드 — "할 일 중심". Step 16: 교육/OTC 권한별 섹션 분리.
+// 교육 섹션(manageEducation): 승인 대기·교육자 신청·이번 주 행사·입금 대기·정원 임박.
+// OTC 섹션(manageOtc, 기존 내용 그대로 재배치):
 // ① 지금 할 일(접수 대기) ② 오늘 내 일정 ③ 현황 요약(압축) ④ 지갑 재고 ⑤ 바로가기.
-// 데이터는 /api/admin/dashboard 한 번으로 (구 stats+offices+사무실별 reservations 3+N회 → 1회).
+// 데이터: OTC=/api/admin/dashboard 1회, 교육=/api/admin/education/dashboard 1회(권한 있을 때만 마운트→호출).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import { adminColors } from "@/components/admin/ui";
+import { useAdminSession } from "@/components/admin/AdminSessionContext";
 import {
   ErrorState,
   RefreshingBar,
@@ -20,6 +23,13 @@ import {
   dashboardFetcher,
   type DashboardData,
 } from "@/lib/admin-fetchers";
+import {
+  EDU_DASHBOARD_KEY,
+  EDU_DASHBOARD_TTL,
+  eduDashboardFetcher,
+  fmtSessionBrief,
+  type EduDashboardData,
+} from "@/lib/education-admin-fetchers";
 
 const Page = styled.div`
   max-width: 1040px;
@@ -367,7 +377,214 @@ function relativeUpdated(ts: number, now: number): string {
   return `${Math.round(min / 60)}시간 전 갱신`;
 }
 
-export default function AdminHubPage() {
+/* ── 교육 대시보드 섹션 (Step 16) ── */
+
+const EduStatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+`;
+
+const EduListRow = styled(Link)`
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid ${adminColors.rowDivider};
+  border-radius: 10px;
+  background: ${adminColors.white};
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: ${adminColors.text};
+
+  &:hover {
+    border-color: ${adminColors.borderInput};
+  }
+`;
+
+const EduRowMeta = styled.span`
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: ${adminColors.textMuted};
+  white-space: nowrap;
+`;
+
+const EduFullBadge = styled.span<{ $full: boolean }>`
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: ${(p) => (p.$full ? adminColors.danger : adminColors.alert)};
+  white-space: nowrap;
+`;
+
+const EduSubGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const EduRowList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+`;
+
+function EducationDashboardSection() {
+  const { data, error, isLoading, refresh } = useAdminData<EduDashboardData>(
+    EDU_DASHBOARD_KEY,
+    eduDashboardFetcher,
+    { ttl: EDU_DASHBOARD_TTL },
+  );
+
+  if (isLoading && !data) {
+    return (
+      <div style={{ marginBottom: "1rem" }}>
+        <Skeleton variant="stat" count={2} />
+      </div>
+    );
+  }
+  if (error && !data) {
+    return (
+      <div style={{ marginBottom: "1rem" }}>
+        <ErrorState
+          message={error instanceof Error ? error.message : undefined}
+          onRetry={refresh}
+        />
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const eduTodo = data.pendingEvents + data.pendingEducators + data.depositPending;
+
+  return (
+    <>
+      <TodoCard $alert={eduTodo > 0} style={{ marginBottom: "1rem" }}>
+        <CardLabel>교육 — 처리 대기</CardLabel>
+        <EduStatGrid>
+          <TodoItem
+            href="/admin/education?status=PENDING"
+            $active={data.pendingEvents > 0}
+          >
+            <TodoNameRow>
+              <TodoName>개설 신청 승인 대기</TodoName>
+              <TodoChevron $active={data.pendingEvents > 0}>›</TodoChevron>
+            </TodoNameRow>
+            <TodoValue $active={data.pendingEvents > 0}>
+              {data.pendingEvents}
+              <TodoUnit>건</TodoUnit>
+            </TodoValue>
+          </TodoItem>
+          <TodoItem
+            href="/admin/education/educators"
+            $active={data.pendingEducators > 0}
+          >
+            <TodoNameRow>
+              <TodoName>교육자 자격 신청 대기</TodoName>
+              <TodoChevron $active={data.pendingEducators > 0}>›</TodoChevron>
+            </TodoNameRow>
+            <TodoValue $active={data.pendingEducators > 0}>
+              {data.pendingEducators}
+              <TodoUnit>명</TodoUnit>
+            </TodoValue>
+          </TodoItem>
+          <TodoItem
+            href="/admin/education?status=APPROVED"
+            $active={data.depositPending > 0}
+          >
+            <TodoNameRow>
+              <TodoName>입금 확인 대기</TodoName>
+              <TodoChevron $active={data.depositPending > 0}>›</TodoChevron>
+            </TodoNameRow>
+            <TodoValue $active={data.depositPending > 0}>
+              {data.depositPending}
+              <TodoUnit>건</TodoUnit>
+            </TodoValue>
+          </TodoItem>
+          <TodoItem href="/admin/education" $active={false}>
+            <TodoNameRow>
+              <TodoName>이번 주 예정 행사</TodoName>
+              <TodoChevron $active={false}>›</TodoChevron>
+            </TodoNameRow>
+            <TodoValue $active={false}>
+              {data.weekEvents.length}
+              <TodoUnit>개</TodoUnit>
+            </TodoValue>
+          </TodoItem>
+        </EduStatGrid>
+
+        {data.weekEvents.length > 0 || data.nearFull.length > 0 ? (
+          <EduSubGrid>
+            {data.weekEvents.length > 0 ? (
+              <div>
+                <CardLabel as="div" style={{ marginBottom: "0.5rem" }}>
+                  이번 주 예정
+                </CardLabel>
+                <EduRowList>
+                  {data.weekEvents.map((e) => (
+                    <EduListRow key={e.id} href={`/admin/education/${e.id}`}>
+                      <span style={{ fontWeight: 700 }}>{e.title}</span>
+                      <EduRowMeta>
+                        {fmtSessionBrief({ date: e.date, startTime: e.startTime })}
+                      </EduRowMeta>
+                    </EduListRow>
+                  ))}
+                </EduRowList>
+              </div>
+            ) : null}
+            {data.nearFull.length > 0 ? (
+              <div>
+                <CardLabel as="div" style={{ marginBottom: "0.5rem" }}>
+                  정원 임박·마감
+                </CardLabel>
+                <EduRowList>
+                  {data.nearFull.map((e) => (
+                    <EduListRow
+                      key={e.id}
+                      href={`/admin/education/${e.id}/applicants`}
+                    >
+                      <span style={{ fontWeight: 700 }}>{e.title}</span>
+                      <EduFullBadge $full={e.full}>
+                        {e.full ? "마감" : "임박"} {e.applied}/{e.capacity}
+                      </EduFullBadge>
+                    </EduListRow>
+                  ))}
+                </EduRowList>
+              </div>
+            ) : null}
+          </EduSubGrid>
+        ) : null}
+      </TodoCard>
+    </>
+  );
+}
+
+/* ── 권한 없음 안내 (양쪽 false — 빈 화면 방치 금지) ── */
+
+const NoScopeCard = styled.section`
+  border: 1px solid ${adminColors.border};
+  border-radius: 14px;
+  background: ${adminColors.white};
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: ${adminColors.textMuted};
+  font-size: 0.92rem;
+  line-height: 1.6;
+`;
+
+/* ── OTC 운영 섹션 — 기존 대시보드 내용 그대로 (Step 16: 컴포넌트로 재배치만) ── */
+
+function OtcDashboardSection() {
   // 단일 엔드포인트 + 캐시 — 재방문 시 즉시 렌더 + 백그라운드 갱신 (SWR)
   const { data, error, isLoading, isValidating, refresh, dataUpdatedAt } =
     useAdminData<DashboardData>(DASHBOARD_KEY, dashboardFetcher, {
@@ -384,21 +601,19 @@ export default function AdminHubPage() {
 
   if (isLoading) {
     return (
-      <Page>
+      <>
         <Skeleton variant="stat" count={3} />
         <div style={{ height: "1rem" }} />
         <Skeleton variant="card" count={2} />
-      </Page>
+      </>
     );
   }
   if (error && !data) {
     return (
-      <Page>
-        <ErrorState
-          message={error instanceof Error ? error.message : undefined}
-          onRetry={refresh}
-        />
-      </Page>
+      <ErrorState
+        message={error instanceof Error ? error.message : undefined}
+        onRetry={refresh}
+      />
     );
   }
   if (!data) return null;
@@ -409,7 +624,7 @@ export default function AdminHubPage() {
   const todoTotal = stats.pending + stats.otc.pending;
 
   return (
-    <Page>
+    <>
       <RefreshingBar active={isValidating} />
       <TopGrid>
         <TodoCard $alert={todoTotal > 0}>
@@ -587,6 +802,47 @@ export default function AdminHubPage() {
           <MenuTitle>내 프로필</MenuTitle>
         </MenuCard>
       </MenuGrid>
+    </>
+  );
+}
+
+/* ── 랜딩 — 권한별 조립 (Step 16). 양쪽 있으면 둘 다, 한쪽만 있으면 그쪽만. ── */
+
+export default function AdminHubPage() {
+  const session = useAdminSession();
+
+  // 세션 로딩 중엔 스켈레톤 — 권한 확정 전 다른 쪽 섹션이 마운트돼 403 플래시 나는 것 방지
+  if (session.loading) {
+    return (
+      <Page>
+        <Skeleton variant="stat" count={3} />
+        <div style={{ height: "1rem" }} />
+        <Skeleton variant="card" count={2} />
+      </Page>
+    );
+  }
+
+  // 양쪽 다 false — 빈 화면 방치 금지, 복구 경로 안내
+  if (!session.manageOtc && !session.manageEducation) {
+    return (
+      <Page>
+        <NoScopeCard>
+          <strong style={{ color: adminColors.text }}>
+            배정된 운영 권한이 없습니다.
+          </strong>
+          <br />
+          다른 운영자에게 사이드바의 &lsquo;운영자 권한&rsquo; 화면에서
+          <br />
+          OTC 운영 또는 교육 관리 권한을 켜 달라고 요청해 주세요.
+        </NoScopeCard>
+      </Page>
+    );
+  }
+
+  return (
+    <Page>
+      {session.manageEducation ? <EducationDashboardSection /> : null}
+      {session.manageOtc ? <OtcDashboardSection /> : null}
     </Page>
   );
 }

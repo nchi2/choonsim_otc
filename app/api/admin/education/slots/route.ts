@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAdminUser } from "@/lib/admin-guard";
 import { requireEducationManager } from "@/lib/education-admin-guard";
 import { isKstYmd } from "@/lib/kst";
 
@@ -10,9 +9,10 @@ export const runtime = "nodejs";
 // 선택 필터: ?officeId=&from=&to= (YMD). 기본은 날짜순 상위 200.
 
 export async function GET(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  // Step 16: 교육 읽기(GET)에도 manageEducation 게이트(기본 전원 true — 아무도 안 막힘)
+  const gate = await requireEducationManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   const { searchParams } = new URL(request.url);
@@ -115,8 +115,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Step 16: 교육 슬롯은 educationActive 회관만 허용(OTC isActive와 독립)
     const office = await prisma.office.findFirst({
-      where: { id: officeId, isActive: true },
+      where: { id: officeId, educationActive: true },
       select: { id: true },
     });
     if (!office) {

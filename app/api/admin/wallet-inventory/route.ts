@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
-import { getAdminUser } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 import { isKstYmd, todayKst } from "@/lib/kst";
 import {
   computeWalletTotals,
@@ -12,11 +12,9 @@ import {
 export const runtime = "nodejs";
 
 export async function GET() {
-  if (!(await getAdminUser())) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   try {
@@ -55,13 +53,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   let body: Record<string, unknown>;
   try {

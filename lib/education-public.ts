@@ -106,10 +106,10 @@ export function pickCarouselEvents(cards: EventCardData[]): EventCardData[] {
   return [...upcoming, ...past.slice(0, CAROUSEL_MIN_ITEMS - upcoming.length)];
 }
 
-/** 활성 회관 — 필터·개설 폼 선택지. */
+/** 교육 노출 회관 — 필터·개설 폼 선택지. Step 16: educationActive 기준(OTC isActive와 독립). */
 async function loadActiveOfficesUncached(): Promise<{ id: number; name: string }[]> {
   return prisma.office.findMany({
-    where: { isActive: true },
+    where: { educationActive: true },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: { id: true, name: true },
   });
@@ -292,7 +292,7 @@ export const loadPublishedEventCards = unstable_cache(
 
 export const loadActiveOffices = unstable_cache(
   loadActiveOfficesUncached,
-  ["edu-active-offices"],
+  ["edu-education-offices"], // Step 16: isActive→educationActive 전환으로 캐시 키 교체(스테일 방지)
   { revalidate: 300 }, // 회관 목록은 거의 불변 — 5분
 );
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { editorFieldsFromSession, getAdminUser } from "@/lib/admin-guard";
+import { editorFieldsFromSession } from "@/lib/admin-guard";
 import { requireEducationManager } from "@/lib/education-admin-guard";
 import { sendEducationDecisionEmail } from "@/lib/education-alerts";
 import {
@@ -16,9 +16,10 @@ export async function GET(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  // Step 16: 교육 읽기(GET)에도 manageEducation 게이트(기본 전원 true — 아무도 안 막힘)
+  const gate = await requireEducationManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   const { id: raw } = await ctx.params;
