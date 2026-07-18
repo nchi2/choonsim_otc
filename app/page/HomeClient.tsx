@@ -14,6 +14,7 @@ import {
   EventCardList,
 } from "@/components/education/EventCard";
 import { OfficeOtcCard } from "@/components/education/OfficeOtcCard";
+import { AuthNoticeBanner } from "@/components/education/AuthNoticeBanner";
 import { eduColors, eduLayout, media } from "@/components/education/tokens";
 import { dDayFromKstYmd, type EventCardData } from "@/components/education/types";
 import { YoutubeLite } from "@/components/education/YoutubeLite";
@@ -142,6 +143,7 @@ export function HomeClient({
 
   return (
     <PublicShell>
+      <AuthNoticeBanner />
       {carousel.length > 0 ? (
         <>
           <SectionHead>
