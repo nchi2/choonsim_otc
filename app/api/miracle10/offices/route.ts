@@ -16,7 +16,15 @@ export async function GET() {
         address: true,
       },
     });
-    return NextResponse.json({ ok: true, offices });
+    // 회관 목록은 거의 불변 — CDN 10분 + SWR 1시간 (Step 11: 콜드스타트+Neon 커넥션 비용 제거)
+    return NextResponse.json(
+      { ok: true, offices },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=600, stale-while-revalidate=3600",
+        },
+      },
+    );
   } catch (err) {
     const code = (err as { code?: string })?.code ?? "unknown";
     console.error("[miracle10/offices] list failed", code);

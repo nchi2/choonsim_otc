@@ -29,6 +29,10 @@ export async function GET(
       title: detail.title,
       body: detail.body,
       link: detail.link,
+    }, {
+      headers: {
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+      },
     });
   } catch (error) {
     console.error("[sbmb/notices/[slug]]", error);

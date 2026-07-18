@@ -1,6 +1,7 @@
 // 교육 공개 페이지 공용 조회 — /events, /events/[slug], /events/calendar 가 재사용.
 // ★ 공개 노출 조건은 항상: status=APPROVED AND isPublished=true AND isTest=false.
 // 정원/결제/권한 로직 없음(표시용 카운트만). 신청 트랜잭션은 Step 3(Fable).
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
 import { todayKst } from "@/lib/kst";
@@ -64,7 +65,7 @@ function toCard(r: CardRow, today: string): EventCardData {
 }
 
 /** 공개 행사 카드 목록 — 대표 세션 오름차순(임박 먼저), 세션 없으면 뒤로. */
-export async function loadPublishedEventCards(): Promise<EventCardData[]> {
+async function loadPublishedEventCardsUncached(): Promise<EventCardData[]> {
   const today = todayKst();
   const rows = await prisma.educationEvent.findMany({
     where: PUBLIC_EVENT_WHERE,
@@ -106,7 +107,7 @@ export function pickCarouselEvents(cards: EventCardData[]): EventCardData[] {
 }
 
 /** 활성 회관 — 필터·개설 폼 선택지. */
-export async function loadActiveOffices(): Promise<{ id: number; name: string }[]> {
+async function loadActiveOfficesUncached(): Promise<{ id: number; name: string }[]> {
   return prisma.office.findMany({
     where: { isActive: true },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -144,7 +145,7 @@ export interface EventDetailData {
 }
 
 /** slug 상세 — 공개 조건 미충족 시 null(→ notFound). */
-export async function loadEventDetail(
+async function loadEventDetailUncached(
   slug: string,
 ): Promise<EventDetailData | null> {
   const r = await prisma.educationEvent.findFirst({
@@ -214,7 +215,7 @@ export async function loadEventDetail(
 }
 
 /** 같은 회관 다른 공개 행사(상세 하단 "이 회관에서는"). officeId 없으면 빈 배열. */
-export async function loadSameOfficeEvents(
+async function loadSameOfficeEventsUncached(
   officeId: number | null,
   excludeId: number,
   limit = 4,
@@ -239,7 +240,7 @@ export interface CalendarSessionItem {
   startTime: string; // "HH:MM"
 }
 
-export async function loadCalendarSessions(
+async function loadCalendarSessionsUncached(
   fromYmd: string,
   toYmd: string,
 ): Promise<CalendarSessionItem[]> {
@@ -276,3 +277,39 @@ export async function loadCalendarSessions(
     a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.startTime < b.startTime ? -1 : 1,
   );
 }
+
+/* ── Step 11: 공개 조회 캐시 (unstable_cache, 60s) ──
+ * 페이지 ISR 전환 대신 DB 조회만 캐시 — 빌드타임 DB 의존 없이(force-dynamic 유지) Prisma 왕복·CPU 절감.
+ * 인자는 캐시 키에 자동 포함. 어드민 GET은 이 lib 미사용(무영향). 공개 반영 지연 최대 60초. */
+
+const REVALIDATE_SEC = 60;
+
+export const loadPublishedEventCards = unstable_cache(
+  loadPublishedEventCardsUncached,
+  ["edu-public-cards"],
+  { revalidate: REVALIDATE_SEC },
+);
+
+export const loadActiveOffices = unstable_cache(
+  loadActiveOfficesUncached,
+  ["edu-active-offices"],
+  { revalidate: 300 }, // 회관 목록은 거의 불변 — 5분
+);
+
+export const loadEventDetail = unstable_cache(
+  loadEventDetailUncached,
+  ["edu-event-detail"],
+  { revalidate: REVALIDATE_SEC },
+);
+
+export const loadSameOfficeEvents = unstable_cache(
+  loadSameOfficeEventsUncached,
+  ["edu-same-office"],
+  { revalidate: REVALIDATE_SEC },
+);
+
+export const loadCalendarSessions = unstable_cache(
+  loadCalendarSessionsUncached,
+  ["edu-calendar-sessions"],
+  { revalidate: REVALIDATE_SEC },
+);

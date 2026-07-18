@@ -5,7 +5,15 @@ import { sanitizeParticipantFacingError } from "@/lib/sbmb/participantFacingMess
 export async function GET() {
   try {
     const items = await fetchRoadmapItems();
-    return NextResponse.json({ items });
+    // 로드맵 — 거의 불변: CDN 1시간 + SWR 24시간 (Step 11)
+    return NextResponse.json(
+      { items },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      },
+    );
   } catch (error) {
     console.error("[sbmb/roadmap]", error);
     const raw =

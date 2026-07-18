@@ -29,7 +29,7 @@ interface MarketPricesResponse {
   lbankKrwPrice: number | null;
 }
 
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 120_000; // CPU 절감: 60s→120s (Step 11 — 메이저 시세 신선도 덜 중요)
 const FALLBACK_ERROR_MESSAGE = "시세를 일시적으로 불러올 수 없습니다.";
 
 async function safeJson<T>(res: Response): Promise<T | null> {

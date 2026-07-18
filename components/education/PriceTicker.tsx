@@ -1,6 +1,6 @@
 "use client";
 
-// 시세 스트립 — 헤더 아래 얇은 띠. 기존 공개 API /api/market-prices 재사용(30초 폴링,
+// 시세 스트립 — 헤더 아래 얇은 띠. 기존 공개 API /api/market-prices 재사용(60초 폴링,
 // 탭 숨김 중 중단). BMB/KRW(LBANK 원화 환산)·BMB/USDT·USDT/KRW + [OTC 거래하기 →] 상주 CTA.
 // 모바일: USDT/KRW 축약(숨김).
 
@@ -99,7 +99,7 @@ export function PriceTicker() {
       }
     };
     load();
-    const t = setInterval(load, 30_000);
+    const t = setInterval(load, 60_000); // CPU 절감: 30s→60s (Step 11)
     const onVisible = () => {
       if (!document.hidden) load();
     };
