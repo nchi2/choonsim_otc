@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { todayKst } from "@/lib/kst";
 import { sendEducationApplyAlert } from "@/lib/education-alerts";
+import { getMemberUser } from "@/lib/member-guard";
 import { verifyTurnstile } from "@/lib/turnstile";
 import {
   allowEducationApply,
@@ -65,6 +66,9 @@ export async function POST(request: Request) {
   const ts = await verifyTurnstile(asTrimmed(body.turnstileToken), ip);
   if (!ts.ok) return bad("자동입력 방지 확인에 실패했습니다. 새로고침 후 다시 시도해 주세요.");
 
+  // 로그인 상태면 신청을 회원에 연결(B-1) — 비로그인이면 null(기존 동작 그대로).
+  const memberSession = await getMemberUser();
+
   try {
     // 공개 조건 + 마감/종료 검사 (표시 레이어와 동일 규칙)
     const event = await prisma.educationEvent.findFirst({
@@ -126,6 +130,7 @@ export async function POST(request: Request) {
             name,
             contact,
             email,
+            memberId: memberSession?.memberId ?? null,
             depositorName,
             question,
             agreePrivacy: true,

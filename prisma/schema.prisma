@@ -411,6 +411,10 @@ model EducationEvent {
   hostContact String?
   hostEmail   String?
 
+  // 교육자(회원) 개설 연결 자리 — B-3에서 사용, 지금은 필드만
+  hostMemberId String?
+  hostMember   Member? @relation(fields: [hostMemberId], references: [id], onDelete: SetNull)
+
   isTest Boolean @default(false)
 
   lastEditedBy     String?
@@ -458,6 +462,10 @@ model EventApplication {
   name          String
   contact       String
   email         String? // 선택 — 전일 리마인더 수신용(없으면 리마인더 스킵)
+
+  // 로그인 상태 신청이면 회원 연결(B-1). 비로그인 신청은 null — 기존 동작 유지.
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
   depositorName String? // 입금자명
   question      String? // 사전 질문
   agreePrivacy  Boolean @default(false)
@@ -472,6 +480,57 @@ model EventApplication {
   @@index([eventId, status])
   @@index([sessionId])
   @@index([isTest])
+}
+
+// ─────────────────────────────────────────────
+// 회원 (B-1) — 참여자·교육자 공용. ★AdminUser(운영자)와 완전 분리(테이블·쿠키·세션 sub).
+// 가입 시 전원 참여자, 교육자는 educatorStatus 신청→승인(B-3).
+// ─────────────────────────────────────────────
+
+model Member {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email        String    @unique
+  passwordHash String? // 구글 전용 계정은 null (평문 저장 금지)
+  name         String
+  // 자체가입은 API에서 필수 강제. 구글 가입은 전화가 없어 null 허용 — 마이페이지에서 보완(B-2).
+  phone        String?
+  emailVerifiedAt DateTime?
+
+  provider          String  @default("local") // "local" | "google" (가입 경로)
+  providerAccountId String? // 구글 sub — 이메일 일치 시 기존 계정에 연결
+
+  // 교육자 승인 워크플로우(B-3에서 사용) — NONE | PENDING | APPROVED | REJECTED
+  educatorStatus       String    @default("NONE")
+  educatorRejectReason String?
+  educatorAppliedAt    DateTime?
+  educatorApprovedAt   DateTime?
+
+  status String @default("ACTIVE") // ACTIVE | SUSPENDED
+
+  verificationTokens EmailVerificationToken[]
+  applications       EventApplication[]
+  hostedEvents       EducationEvent[]
+
+  @@index([provider, providerAccountId])
+}
+
+// 이메일 인증 토큰 — 원문 저장 금지, sha256 해시만. 만료·1회 사용.
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  tokenHash String // sha256(token) hex
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([memberId])
+  @@index([tokenHash])
 }
 
 // 교육용 회관 슬롯 — 기존 WorkSlot(OTC 근무)과 별개 테이블, 자원 공유 없음.
