@@ -26,8 +26,10 @@ export async function middleware(request: NextRequest) {
         { status: 401 },
       );
     }
-    // 로그인 화면은 B-2에서 — 그때 /login 으로 변경 예정
-    return NextResponse.redirect(new URL("/", request.url));
+    // 비로그인 회원 페이지 접근 → 로그인 화면(복귀 경로 next로 전달)
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   // ── 운영자 구역 (기존 로직 그대로) ──

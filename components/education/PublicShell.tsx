@@ -9,12 +9,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import styled from "styled-components";
 import {
   COMMUNITY_ECOSYSTEM_LINKTREE,
   COMMUNITY_LINKTREE,
 } from "@/lib/community-linktree";
+import { memberLogout, useMemberSession } from "@/lib/member-client";
 import { eduColors, eduLayout, media } from "./tokens";
 import { PriceTicker } from "./PriceTicker";
 
@@ -94,8 +95,7 @@ const HeaderRight = styled.div`
   gap: 0.5rem;
 `;
 
-// Phase 1: 자리·틀만. 실제 인증은 Phase 2 — onClick placeholder.
-const LoginBtn = styled.button`
+const LoginLink = styled(Link)`
   padding: 0.45rem 0.95rem;
   border-radius: 999px;
   border: 1px solid ${eduColors.primary};
@@ -103,6 +103,7 @@ const LoginBtn = styled.button`
   color: ${eduColors.primary};
   font-size: 0.82rem;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
 
   &:hover {
@@ -111,6 +112,53 @@ const LoginBtn = styled.button`
 
   ${media.md} {
     display: none; /* 모바일은 ☰ 안 */
+  }
+`;
+
+/* 로그인 상태 — 이름 → 마이페이지, 옆에 로그아웃 */
+const AccountRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  ${media.md} {
+    display: none; /* 모바일은 ☰ 안 */
+  }
+`;
+
+const AccountLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: ${eduColors.primarySoft};
+  color: ${eduColors.primaryText};
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    background: ${eduColors.primaryBorder};
+  }
+`;
+
+const LogoutBtn = styled.button`
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid ${eduColors.border};
+  background: ${eduColors.surface};
+  color: ${eduColors.textMuted};
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover {
+    color: ${eduColors.text};
+    border-color: ${eduColors.borderInput};
   }
 `;
 
@@ -319,9 +367,16 @@ export function PublicShell({
   fullWidth?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  // Phase 1 placeholder — Phase 2에서 실제 인증 연결
-  const onLogin = () => alert("로그인은 준비 중입니다.");
+  const { member } = useMemberSession();
+
+  const onLogout = async () => {
+    setMenuOpen(false);
+    await memberLogout();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <>
@@ -344,9 +399,16 @@ export function PublicShell({
             ))}
           </Nav>
           <HeaderRight>
-            <LoginBtn type="button" onClick={onLogin}>
-              로그인
-            </LoginBtn>
+            {member ? (
+              <AccountRow>
+                <AccountLink href="/mypage">{member.name}님</AccountLink>
+                <LogoutBtn type="button" onClick={onLogout}>
+                  로그아웃
+                </LogoutBtn>
+              </AccountRow>
+            ) : (
+              <LoginLink href="/login">로그인</LoginLink>
+            )}
             <MenuBtn
               type="button"
               aria-label="메뉴"
@@ -379,9 +441,24 @@ export function PublicShell({
             >
               {COMMUNITY_ECOSYSTEM_LINKTREE.label}
             </MobileMenuLink>
-            <MobileLoginBtn type="button" onClick={onLogin}>
-              로그인 (준비 중)
-            </MobileLoginBtn>
+            {member ? (
+              <>
+                <MobileMenuLink href="/mypage" onClick={() => setMenuOpen(false)}>
+                  마이페이지 ({member.name}님)
+                </MobileMenuLink>
+                <MobileLoginBtn type="button" onClick={onLogout}>
+                  로그아웃
+                </MobileLoginBtn>
+              </>
+            ) : (
+              <MobileLoginBtn
+                as={Link}
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+              >
+                로그인 / 회원가입
+              </MobileLoginBtn>
+            )}
           </MobileMenu>
         ) : null}
       </HeaderBar>
