@@ -16,7 +16,7 @@ import {
 import { OfficeOtcCard } from "@/components/education/OfficeOtcCard";
 import { eduColors, eduLayout, media } from "@/components/education/tokens";
 import { dDayFromKstYmd, type EventCardData } from "@/components/education/types";
-import YouTubeSection from "./components/YouTubeSection";
+import { YoutubeLite } from "@/components/education/YoutubeLite";
 
 const SectionHead = styled.div`
   display: flex;
@@ -196,7 +196,7 @@ export function HomeClient({
       </CalendarCta>
 
       <YoutubeWrap>
-        <YouTubeSection />
+        <YoutubeLite />
       </YoutubeWrap>
     </PublicShell>
   );

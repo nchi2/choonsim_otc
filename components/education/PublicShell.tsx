@@ -182,6 +182,18 @@ const Main = styled.main`
   }
 `;
 
+/* fullWidth 모드 — 기존 PageLayout MainContent와 동일한 배치(가운데 정렬 세로 flex, 폭 제한 없음).
+ * 레거시 공개 페이지(/otc·/sbmb·/scanner·/contracts)가 본문 레이아웃 변경 없이 셸만 갈아타게 함. */
+const MainFull = styled.main`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 60vh;
+`;
+
 /* ── 푸터 ── */
 
 const Footer = styled.footer`
@@ -300,10 +312,13 @@ export function BottomTabBar() {
 export function PublicShell({
   children,
   showTicker = true,
+  fullWidth = false,
 }: {
   children: React.ReactNode;
   /** 시세 스트립 표시 여부 (기본 true — 메인·목록. 상세 등에서 끌 수 있음) */
   showTicker?: boolean;
+  /** 본문 폭 제한 해제 — 레거시 페이지(자체 섹션 레이아웃)용 opt-in. 기본 false */
+  fullWidth?: boolean;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -375,7 +390,7 @@ export function PublicShell({
 
       {showTicker ? <PriceTicker /> : null}
 
-      <Main>{children}</Main>
+      {fullWidth ? <MainFull>{children}</MainFull> : <Main>{children}</Main>}
 
       <Footer>
         <FooterInner>

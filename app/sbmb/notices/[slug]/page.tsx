@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import { PublicShell } from "@/components/education/PublicShell";
 import { IconChevronLeft } from "@/components/sbmb/shared/SbmbIcons";
 import { SbmbSectionCard } from "@/components/sbmb/shared/SectionCard";
 import { T } from "@/lib/sbmb/tokens";
@@ -239,8 +238,8 @@ export default function SbmbNoticeDetailPage() {
   }, [load]);
 
   return (
+    <PublicShell fullWidth showTicker={false}>
     <Shell>
-      <Header />
       <Main>
         <BackRow>
           <BackBtn
@@ -282,7 +281,7 @@ export default function SbmbNoticeDetailPage() {
           </SbmbSectionCard>
         )}
       </Main>
-      <Footer />
     </Shell>
+    </PublicShell>
   );
 }

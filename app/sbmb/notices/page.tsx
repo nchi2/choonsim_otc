@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import { PublicShell } from "@/components/education/PublicShell";
 import {
   IconAlertCircle,
   IconBell,
@@ -232,8 +231,8 @@ export default function SbmbNoticesListPage() {
   }, [load]);
 
   return (
+    <PublicShell fullWidth showTicker={false}>
     <Shell>
-      <Header />
       <Main>
         <BackLink href="/sbmb">← SBMB 메인으로</BackLink>
         <PageTitle>공지사항</PageTitle>
@@ -289,7 +288,7 @@ export default function SbmbNoticesListPage() {
           )}
         </SbmbSectionCard>
       </Main>
-      <Footer />
     </Shell>
+    </PublicShell>
   );
 }

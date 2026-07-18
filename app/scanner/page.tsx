@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type FormEvent } from "react";
-import PageLayout from "@/components/layouts/PageLayout";
+import { PublicShell } from "@/components/education/PublicShell";
 import SbmbHeroBanner from "@/components/sbmb/hero/SbmbHeroBanner";
 import { NetworkTab } from "./page/components/NetworkTab";
 import { SupportedTokensOverview } from "./page/components/SupportedTokensOverview";
@@ -104,7 +104,7 @@ export default function ScannerPage() {
   );
 
   return (
-    <PageLayout>
+    <PublicShell fullWidth showTicker={false}>
       <SbmbHeroBanner />
       <S.ScannerPageWrapper>
         <S.ScannerTopBar>
@@ -232,6 +232,6 @@ export default function ScannerPage() {
           </S.ScannerGuideLinkButton>
         </S.ScannerSection>
       </S.ScannerPageWrapper>
-    </PageLayout>
+    </PublicShell>
   );
 }
