@@ -24,6 +24,7 @@ import {
   fetchGoogleEnabled,
 } from "@/components/education/auth-ui";
 import { eduColors } from "@/components/education/tokens";
+import { formatPhone } from "@/lib/format-phone";
 import { useMemberSession } from "@/lib/member-client";
 
 export default function SignupPage() {
@@ -144,7 +145,7 @@ export default function SignupPage() {
               </FieldLabel>
               <Input
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
                 inputMode="tel"
                 placeholder="010-0000-0000"
                 required

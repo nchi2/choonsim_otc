@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { PublicShell } from "@/components/education/PublicShell";
 import { eduColors, eduLayout, media } from "@/components/education/tokens";
+import { formatPhone } from "@/lib/format-phone";
 import { useMemberSession } from "@/lib/member-client";
 
 const Wrap = styled.div`
@@ -583,7 +584,7 @@ export default function MyPage() {
             <FieldLabel>전화번호</FieldLabel>
             <Input
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               inputMode="tel"
               placeholder="010-0000-0000"
             />
