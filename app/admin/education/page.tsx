@@ -183,9 +183,18 @@ function EducationListInner() {
   const doRefresh = useCallback(() => invalidate("admin:edu:list"), []);
   const headerActions = useMemo(
     () => (
-      <ToolbarButton type="button" style={{ marginLeft: 0 }} onClick={doRefresh}>
-        새로고침
-      </ToolbarButton>
+      <>
+        <ToolbarButton
+          as={Link}
+          href="/admin/education/educators"
+          style={{ marginLeft: 0, textDecoration: "none" }}
+        >
+          교육자 신청
+        </ToolbarButton>
+        <ToolbarButton type="button" style={{ marginLeft: 0 }} onClick={doRefresh}>
+          새로고침
+        </ToolbarButton>
+      </>
     ),
     [doRefresh],
   );

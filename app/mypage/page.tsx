@@ -211,6 +211,68 @@ const EducatorBox = styled.div`
   }
 `;
 
+const Textarea = styled.textarea`
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid ${eduColors.borderInput};
+  border-radius: 8px;
+  font-size: 0.88rem;
+  min-height: 72px;
+  resize: vertical;
+  background: ${eduColors.surface};
+  color: ${eduColors.text};
+  &:focus {
+    outline: none;
+    border-color: ${eduColors.primary};
+  }
+`;
+
+const StatusPill = styled.span<{ $tone: "amber" | "green" | "red" }>`
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  ${(p) =>
+    p.$tone === "green"
+      ? `background:${eduColors.successSoft};color:${eduColors.success};`
+      : p.$tone === "amber"
+        ? `background:${eduColors.warnSoft};color:${eduColors.warn};`
+        : `background:${eduColors.dangerSoft};color:${eduColors.danger};`}
+`;
+
+const HostedRow = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid ${eduColors.border};
+  border-radius: 9px;
+  margin-bottom: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.84rem;
+
+  &:hover {
+    border-color: ${eduColors.primaryBorder};
+  }
+
+  .t {
+    flex: 1;
+    min-width: 0;
+    font-weight: 700;
+    color: ${eduColors.text};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .n {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: ${eduColors.textMuted};
+  }
+`;
+
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 function fmtSession(s: { date: string; startTime: string } | null): string {
   if (!s) return "일정 미정";
@@ -229,6 +291,158 @@ interface AppItem {
   eventSlug: string;
   feeKrw: number;
   locationName: string | null;
+}
+
+interface HostedItem {
+  id: number;
+  title: string;
+  slug: string;
+  status: string;
+  isPublished: boolean;
+  rejectReason: string | null;
+  firstSession: { date: string; startTime: string } | null;
+  applicationCount: number;
+}
+
+/** 교육자 섹션 — 상태별: NONE 신청폼 / PENDING 검토중 / APPROVED 개설링크+내 강의 / REJECTED 사유+재신청 */
+function EducatorSection({
+  status,
+  rejectReason,
+  onChanged,
+}: {
+  status: string;
+  rejectReason: string | null;
+  onChanged: () => void;
+}) {
+  const [intro, setIntro] = useState("");
+  const [plan, setPlan] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [hosted, setHosted] = useState<HostedItem[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (status === "APPROVED") {
+      void fetch("/api/member/hosted-events")
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j) => {
+          if (!cancelled) setHosted(j.items ?? []);
+        })
+        .catch(() => {
+          if (!cancelled) setHosted([]);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  const apply = async () => {
+    setSubmitting(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/member/educator/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intro: intro.trim() || null, plan: plan.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "신청에 실패했습니다.");
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "신청에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (status === "PENDING") {
+    return (
+      <EducatorBox>
+        <p>
+          <StatusPill $tone="amber">검토 중</StatusPill>
+        </p>
+        <p>
+          교육자 신청을 검토하고 있어요. 결과는 이메일로 안내드립니다.
+        </p>
+      </EducatorBox>
+    );
+  }
+
+  if (status === "APPROVED") {
+    return (
+      <div>
+        <p style={{ margin: "0 0 0.7rem" }}>
+          <StatusPill $tone="green">승인된 교육자</StatusPill>
+        </p>
+        <div style={{ marginBottom: "1rem" }}>
+          <Btn as={Link} href="/host" style={{ textDecoration: "none", display: "inline-block" }}>
+            행사 개설하기 →
+          </Btn>
+        </div>
+        <CardTitle as="h3" style={{ fontSize: "0.9rem" }}>
+          내가 연 강의
+        </CardTitle>
+        {hosted == null ? (
+          <Empty>불러오는 중…</Empty>
+        ) : hosted.length === 0 ? (
+          <Empty>아직 개설한 행사가 없습니다.</Empty>
+        ) : (
+          hosted.map((h) => (
+            <HostedRow key={h.id} href={`/events/${h.slug}`}>
+              <span className="t">{h.title}</span>
+              {h.status === "PENDING" ? (
+                <StatusPill $tone="amber">검토 중</StatusPill>
+              ) : h.status === "APPROVED" ? (
+                <StatusPill $tone="green">{h.isPublished ? "공개 중" : "승인(비공개)"}</StatusPill>
+              ) : (
+                <StatusPill $tone="red">반려</StatusPill>
+              )}
+              <span className="n">신청 {h.applicationCount}명</span>
+            </HostedRow>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  // NONE 또는 REJECTED — 신청 폼(재신청 포함)
+  return (
+    <EducatorBox>
+      {status === "REJECTED" ? (
+        <p>
+          <StatusPill $tone="red">반려됨</StatusPill>
+          {rejectReason ? ` 사유: ${rejectReason}` : null}
+        </p>
+      ) : null}
+      <p>
+        강의·워크숍을 직접 열고 싶으신가요? 교육자로 신청하면 운영팀 승인 후 행사를
+        개설할 수 있습니다.
+      </p>
+      <Field>
+        <FieldLabel>강사 소개 (선택)</FieldLabel>
+        <Textarea
+          value={intro}
+          onChange={(e) => setIntro(e.target.value)}
+          placeholder="어떤 주제를 가르쳐 오셨나요?"
+        />
+      </Field>
+      <Field>
+        <FieldLabel>활동 계획 (선택)</FieldLabel>
+        <Textarea
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
+          placeholder="어떤 강의·행사를 열고 싶으신가요?"
+        />
+      </Field>
+      {err ? <Msg $error>{err}</Msg> : null}
+      <div style={{ marginTop: "0.6rem" }}>
+        <Btn type="button" disabled={submitting} onClick={() => void apply()}>
+          {submitting ? "신청 중…" : status === "REJECTED" ? "다시 신청하기" : "교육자 신청하기"}
+        </Btn>
+      </div>
+    </EducatorBox>
+  );
 }
 
 export default function MyPage() {
@@ -422,18 +636,14 @@ export default function MyPage() {
           )}
         </Card>
 
-        {/* 교육자 — placeholder (B-3에서 신청·승인 배선) */}
+        {/* 교육자 — 신청·상태·내가 연 강의 (B-3 배선) */}
         <Card>
           <CardTitle>교육자</CardTitle>
-          <EducatorBox>
-            <p>
-              강의·워크숍을 직접 열고 싶으신가요? 교육자로 신청하면 운영팀 승인 후
-              행사를 개설할 수 있습니다.
-            </p>
-            <p style={{ color: eduColors.textFaint, fontSize: "0.78rem" }}>
-              교육자 신청 기능은 곧 제공될 예정입니다.
-            </p>
-          </EducatorBox>
+          <EducatorSection
+            status={member.educatorStatus}
+            rejectReason={member.educatorRejectReason}
+            onChanged={() => void refresh()}
+          />
         </Card>
       </Wrap>
     </PublicShell>

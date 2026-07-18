@@ -199,8 +199,11 @@ interface SessionInput {
 
 export function HostFormClient({
   offices,
+  host,
 }: {
   offices: { id: number; name: string }[];
+  /** 로그인한 승인 교육자 — 개설자 정보는 회원 정보로 자동(서버도 회원 정보로 스냅샷) */
+  host: { name: string; email: string; phone: string | null };
 }) {
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -234,10 +237,6 @@ export function HostFormClient({
   const [notice, setNotice] = useState("");
   const [applyDeadline, setApplyDeadline] = useState("");
 
-  // 신청자(무계정)
-  const [hostName, setHostName] = useState("");
-  const [hostContact, setHostContact] = useState("");
-  const [hostEmail, setHostEmail] = useState("");
   const [agree, setAgree] = useState(false);
 
   const paid = Number(feeKrw) > 0;
@@ -254,8 +253,6 @@ export function HostFormClient({
     title.trim() !== "" &&
     (officeId !== "" || customLocation.trim() !== "") &&
     sessions.some((s) => s.date && s.startTime) &&
-    hostName.trim() !== "" &&
-    hostContact.trim() !== "" &&
     agree;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -288,9 +285,7 @@ export function HostFormClient({
           refundPolicy: refundPolicy.trim() || null,
           notice: notice.trim() || null,
           applyDeadline: applyDeadline || null,
-          hostName: hostName.trim(),
-          hostContact: hostContact.trim(),
-          hostEmail: hostEmail.trim() || null,
+          // 개설자 정보(hostName/Contact/Email)는 서버가 로그인 회원 정보로 채움(B-3)
           // [TURNSTILE 위젯 자리] 사이트키 장착 시 위젯 token을 싣는다.
           turnstileToken: null,
         }),
@@ -539,34 +534,20 @@ export function HostFormClient({
         </Fieldset>
 
         <Fieldset>
-          <legend>신청자 정보</legend>
+          <legend>개설자 정보 (회원 정보 자동 사용)</legend>
           <Grid2>
             <Field>
-              <FieldLabel>
-                이름 <em>*</em>
-              </FieldLabel>
-              <Input value={hostName} onChange={(e) => setHostName(e.target.value)} required />
+              <FieldLabel>이름</FieldLabel>
+              <Input value={host.name} readOnly />
             </Field>
             <Field>
-              <FieldLabel>
-                연락처 <em>*</em>
-              </FieldLabel>
-              <Input
-                value={hostContact}
-                onChange={(e) => setHostContact(e.target.value)}
-                inputMode="tel"
-                placeholder="010-0000-0000"
-                required
-              />
+              <FieldLabel>연락처</FieldLabel>
+              <Input value={host.phone ?? "미등록 — 마이페이지에서 등록"} readOnly />
             </Field>
           </Grid2>
           <Field>
-            <FieldLabel>이메일 (선택)</FieldLabel>
-            <Input
-              type="email"
-              value={hostEmail}
-              onChange={(e) => setHostEmail(e.target.value)}
-            />
+            <FieldLabel>이메일</FieldLabel>
+            <Input value={host.email} readOnly />
           </Field>
         </Fieldset>
 

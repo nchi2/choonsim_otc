@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isKstYmd } from "@/lib/kst";
 import { sendEducationHostApplyAlert } from "@/lib/education-alerts";
+import { getMemberUser } from "@/lib/member-guard";
 import { verifyTurnstile } from "@/lib/turnstile";
 import {
   allowEducationHost,
@@ -90,6 +91,28 @@ export async function POST(request: Request) {
     return bad("요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.", 429);
   }
 
+  // ★ B-3 게이트: 개설은 로그인 + 교육자 승인(APPROVED) 필수.
+  //   기존 무계정 개설 경로는 여기서 차단(비활성) — 아래 코드·필드는 보존, 되돌리려면 이 블록만 제거.
+  const session = await getMemberUser();
+  if (!session) return bad("로그인이 필요합니다.", 401);
+  const hostMember = await prisma.member.findUnique({
+    where: { id: session.memberId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      educatorStatus: true,
+      status: true,
+    },
+  });
+  if (!hostMember || hostMember.status !== "ACTIVE") {
+    return bad("로그인이 필요합니다.", 401);
+  }
+  if (hostMember.educatorStatus !== "APPROVED") {
+    return bad("교육자 승인 후 행사를 개설할 수 있습니다.", 403);
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -100,18 +123,14 @@ export async function POST(request: Request) {
   const title = asTrimmed(body.title, 100);
   const category = asTrimmed(body.category, 20) ?? "";
   const mode = asTrimmed(body.mode, 20) ?? "";
-  const hostName = asTrimmed(body.hostName, 50);
-  const hostContact = asTrimmed(body.hostContact, 50);
-  const hostEmail = asTrimmed(body.hostEmail, 100);
+  // 개설자 스냅샷 — 회원 정보로 자동(요청 body의 host*는 무시. 무계정 시절 검증 코드는 비활성 보존)
+  const hostName = hostMember.name;
+  const hostContact = hostMember.phone ?? hostMember.email;
+  const hostEmail = hostMember.email;
 
   if (!title) return bad("행사 제목을 입력해 주세요.");
   if (!CATEGORIES.has(category)) return bad("분류가 올바르지 않습니다.");
   if (!MODES.has(mode)) return bad("진행 방식이 올바르지 않습니다.");
-  if (!hostName) return bad("신청자 이름을 입력해 주세요.");
-  if (!hostContact) return bad("신청자 연락처를 입력해 주세요.");
-  if (hostEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail)) {
-    return bad("이메일 형식이 올바르지 않습니다.");
-  }
 
   const sessions = parseSessions(body.sessions);
   if (!sessions) return bad("회차 일시를 확인해 주세요. (최소 1개, 날짜·시작 시간 필수)");
@@ -186,6 +205,7 @@ export async function POST(request: Request) {
         hostName,
         hostContact,
         hostEmail,
+        hostMemberId: hostMember.id, // ★ 교육자(회원) 연결
         sessions: { create: sessions },
       },
       select: { id: true, slug: true, createdAt: true },

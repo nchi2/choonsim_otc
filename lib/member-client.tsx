@@ -13,6 +13,7 @@ export interface MemberMe {
   emailVerifiedAt: string | null;
   provider: string;
   educatorStatus: string;
+  educatorRejectReason: string | null;
   status: string;
   createdAt: string;
 }

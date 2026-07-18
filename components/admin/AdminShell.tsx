@@ -522,6 +522,7 @@ function resolvePageTitle(pathname: string): string {
   if (/^\/admin\/education\/[^/]+\/applicants$/.test(pathname)) {
     return "신청자 명단";
   }
+  if (pathname === "/admin/education/educators") return "교육자 신청";
   if (pathname === "/admin/education/slots") return "교육 슬롯";
   if (/^\/admin\/education\/[^/]+$/.test(pathname)) return "행사 상세";
   if (pathname.startsWith("/admin/education")) return "교육 관리";

@@ -184,6 +184,89 @@ export async function sendEducationDecisionEmail(
   if (error) throw new Error(error.message || "Resend send failed");
 }
 
+/* ── 5. 운영자: 교육자 자격 신청 (B-3) ──
+ * ★ 신청 소개·계획 텍스트는 저장 필드가 없어(스키마 무변경) 이 메일로만 전달된다. */
+
+export interface EducatorApplyAlertPayload {
+  memberName: string;
+  memberEmail: string;
+  memberPhone: string | null;
+  intro: string | null; // 강사 소개
+  plan: string | null; // 활동 계획
+  isReapply: boolean;
+}
+
+export async function sendEducatorApplyAlert(
+  payload: EducatorApplyAlertPayload,
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[educator/apply-alert] RESEND_API_KEY not set, skip email");
+    return;
+  }
+  const to = await getAlertRecipients("education");
+  if (to.length === 0) return;
+
+  const html = wrapHtml(
+    `<p style="margin:0 0 12px">${payload.isReapply ? "교육자 자격 <strong>재신청</strong>" : "새 교육자 자격 신청"}이 접수되었습니다.</p>` +
+      rowsTable([
+        ["이름", payload.memberName],
+        ["이메일", payload.memberEmail],
+        ["전화", payload.memberPhone ?? "-"],
+        ["강사 소개", payload.intro ?? "-"],
+        ["활동 계획", payload.plan ?? "-"],
+      ]) +
+      `<p style="margin:16px 0 0"><a href="${ADMIN_EDU_URL}/educators" style="color:#4338ca">어드민에서 검토 →</a></p>`,
+  );
+
+  const { error } = await resend.emails.send({
+    from: getAlertFromAddress(),
+    to,
+    subject: `[춘심 교육] 교육자 신청 — ${payload.memberName}`,
+    html,
+  });
+  if (error) throw new Error(error.message || "Resend send failed");
+}
+
+/* ── 6. 신청자: 교육자 승인/반려 결과 (B-3) ── */
+
+export interface EducatorDecisionPayload {
+  decision: "APPROVED" | "REJECTED";
+  memberName: string;
+  memberEmail: string;
+  rejectReason: string | null;
+}
+
+export async function sendEducatorDecisionEmail(
+  payload: EducatorDecisionPayload,
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[educator/decision-email] RESEND_API_KEY not set, skip email");
+    return;
+  }
+  const approved = payload.decision === "APPROVED";
+  const html = wrapHtml(
+    approved
+      ? `<p style="margin:0 0 12px">${escapeAlertHtml(payload.memberName)}님, <strong>교육자 자격이 승인</strong>되었습니다.</p>` +
+          `<p style="margin:0 0 16px">이제 행사 개설을 신청할 수 있습니다. 개설한 행사는 운영팀 검토 후 공개됩니다.</p>` +
+          `<p style="margin:0"><a href="https://choonsim.com/host" style="color:#4338ca">행사 개설하러 가기 →</a></p>`
+      : `<p style="margin:0 0 12px">${escapeAlertHtml(payload.memberName)}님, 교육자 자격 신청이 <strong>반려</strong>되었습니다.</p>` +
+          rowsTable([["반려 사유", payload.rejectReason ?? "-"]]) +
+          `<p style="margin:16px 0 0;color:#6b7280">내용을 보완해 마이페이지에서 다시 신청하실 수 있습니다.</p>`,
+  );
+
+  const { error } = await resend.emails.send({
+    from: getAlertFromAddress(),
+    to: [payload.memberEmail],
+    subject: approved
+      ? "[춘심 교육] 교육자 자격 승인 안내"
+      : "[춘심 교육] 교육자 자격 신청 결과 안내",
+    html,
+  });
+  if (error) throw new Error(error.message || "Resend send failed");
+}
+
 /* ── 4. 신청자: 행사 전일 리마인더 (수동 트리거 — 어드민 버튼) ──
  * 수신 주소 우선순위: email 필드(5.5에서 선택 수집) → contact가 이메일 형태(@)인 경우.
  * 둘 다 없으면(전화번호만) skippedNoEmail로 집계·로그.
