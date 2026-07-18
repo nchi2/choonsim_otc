@@ -68,6 +68,7 @@ enum EducationEventStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELED // 교육자/운영자 취소 (Step 15) — 공개 조회(APPROVED 조건)에서 자동 제외
 }
 
 enum EventApplicationStatus {

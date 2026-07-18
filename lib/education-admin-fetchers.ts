@@ -15,6 +15,7 @@ export const EDU_STATUS_LABEL: Record<string, string> = {
   PENDING: "검토 대기",
   APPROVED: "승인됨",
   REJECTED: "반려됨",
+  CANCELED: "취소됨",
 };
 
 export function eduStatusColor(status: string): string {
@@ -64,7 +65,7 @@ export interface EduListItem {
 
 export interface EduListResponse {
   total: number;
-  counts: { PENDING: number; APPROVED: number; REJECTED: number; total: number };
+  counts: { PENDING: number; APPROVED: number; REJECTED: number; CANCELED: number; total: number };
   items: EduListItem[];
 }
 

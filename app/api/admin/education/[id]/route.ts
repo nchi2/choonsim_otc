@@ -184,6 +184,10 @@ export async function PATCH(
         // 승인=자동 공개 기본. 같은 요청의 명시적 isPublished가 있으면 아래 ②에서 덮어씀.
         data.isPublished = true;
       }
+      if (body.status === "CANCELED") {
+        // 취소(교육자 요청 처리 등) — 공개 목록에서 제외
+        data.isPublished = false;
+      }
     } else if (body.rejectReason !== undefined) {
       // 상태 전환 없이 사유만 수정
       const reason = optTrimmed(body.rejectReason, 500);

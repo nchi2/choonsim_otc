@@ -41,10 +41,20 @@ export async function POST(request: Request) {
         name: true,
         email: true,
         phone: true,
+        emailVerifiedAt: true,
         educatorStatus: true,
       },
     });
     if (!member) return bad("unauthorized", 401);
+
+    // ★ Step 15: 교육자 신청은 이메일 인증 필수(승인/반려 메일 수신 보장).
+    //   일반 회원 기능(로그인·수강신청·이력)은 인증 없이 그대로 — 여기만 게이트.
+    if (member.emailVerifiedAt == null) {
+      return bad(
+        "이메일 인증 후 교육자 신청이 가능합니다. 마이페이지에서 인증 메일을 확인해 주세요.",
+        403,
+      );
+    }
 
     if (member.educatorStatus === "PENDING") {
       return bad("이미 신청이 접수되어 검토 중입니다.", 409);

@@ -5,6 +5,7 @@ export const EDUCATION_EVENT_STATUSES = [
   "PENDING",
   "APPROVED",
   "REJECTED",
+  "CANCELED",
 ] as const;
 
 export type EducationEventStatus = (typeof EDUCATION_EVENT_STATUSES)[number];
@@ -13,6 +14,7 @@ export const EDUCATION_STATUS_LABELS: Record<EducationEventStatus, string> = {
   PENDING: "검토 대기",
   APPROVED: "승인됨",
   REJECTED: "반려됨",
+  CANCELED: "취소됨",
 };
 
 export function isEducationEventStatus(
@@ -25,9 +27,9 @@ export function isEducationEventStatus(
 }
 
 /**
- * 허용 전환 — PENDING→APPROVED/REJECTED(기본 워크플로우) +
- * REJECTED→APPROVED(재검토 승인) · APPROVED→REJECTED(승인 철회).
- * PENDING으로 되돌리는 전환은 없음(개설 신청은 검토 결과가 남는다).
+ * 허용 전환 — PENDING→APPROVED/REJECTED(기본) + REJECTED→APPROVED(재검토)·APPROVED→REJECTED(철회)
+ * + PENDING/APPROVED/REJECTED→CANCELED(취소, Step 15)·CANCELED→APPROVED(실수 복구).
+ * PENDING 복귀는 교육자 재제출 경로(member API)에서만 별도로 다룬다(어드민 전환으론 없음).
  */
 export function canTransitionEducationStatus(
   from: EducationEventStatus,
@@ -35,5 +37,33 @@ export function canTransitionEducationStatus(
 ): boolean {
   if (from === to) return false;
   if (to === "PENDING") return false;
-  return true;
+  if (from === "CANCELED") return to === "APPROVED"; // 취소 복구만
+  return true; // → APPROVED/REJECTED/CANCELED
 }
+
+/** 승인·공개 후 교육자가 자유 수정 가능한 안내성 필드(신청자 실질 영향 없음) — Step 15. */
+export const EDUCATOR_EDITABLE_AFTER_APPROVAL = [
+  "descriptionMd",
+  "instructorBio",
+  "preparation",
+  "notice",
+  "eligibility",
+  "reward",
+  "streamUrl",
+] as const;
+
+/** 승인 후 운영자만 변경 가능한 잠금 필드(신청자 영향) — API 거부·화면 읽기전용 안내에 공용. */
+export const EDUCATOR_LOCKED_AFTER_APPROVAL = [
+  "title",
+  "category",
+  "mode",
+  "sessions",
+  "officeId",
+  "customLocation",
+  "capacity",
+  "feeKrw",
+  "depositBankName",
+  "depositAccountNo",
+  "depositAccountHolder",
+  "applyDeadline",
+] as const;

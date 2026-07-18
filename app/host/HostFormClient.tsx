@@ -191,6 +191,22 @@ const AgreeRow = styled.label`
   }
 `;
 
+const LockNote = styled.div`
+  max-width: 720px;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 9px;
+  border: 1px solid ${eduColors.warnSoft};
+  background: ${eduColors.warnSoft};
+  color: ${eduColors.warn};
+  font-size: 0.8rem;
+  line-height: 1.55;
+
+  strong {
+    font-weight: 800;
+  }
+`;
+
 const ErrorNote = styled.div`
   margin-bottom: 0.8rem;
   padding: 0.7rem 0.85rem;
@@ -279,46 +295,94 @@ interface SessionInput {
 const MAX_POSTER_BYTES = 5 * 1024 * 1024;
 const POSTER_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+export interface HostFormInitial {
+  status: string; // PENDING | APPROVED | REJECTED (수정 모드)
+  rejectReason: string | null;
+  title: string;
+  category: string;
+  mode: string;
+  streamUrl: string | null;
+  descriptionMd: string | null;
+  instructorName: string | null;
+  instructorBio: string | null;
+  officeId: number | null;
+  customLocation: string | null;
+  capacity: number | null;
+  feeKrw: number;
+  depositBankName: string | null;
+  depositAccountNo: string | null;
+  depositAccountHolder: string | null;
+  eligibility: string | null;
+  preparation: string | null;
+  reward: string | null;
+  refundPolicy: string | null;
+  notice: string | null;
+  applyDeadline: string | null; // "YYYY-MM-DD" or null
+  sessions: { date: string; startTime: string; endTime: string }[];
+}
+
 export function HostFormClient({
   offices,
   host,
+  initial,
+  editId,
 }: {
   offices: { id: number; name: string }[];
   /** 로그인한 승인 교육자 — 개설자 정보는 회원 정보로 자동(서버도 회원 정보로 스냅샷) */
   host: { name: string; email: string; phone: string | null };
+  /** 수정 모드(Step 15) — 기존 값 프리필. editId와 함께 전달 */
+  initial?: HostFormInitial;
+  /** 수정 대상 행사 id — 있으면 PATCH /api/member/hosted-events/[id] 로 제출 */
+  editId?: number;
 }) {
+  const isEdit = editId != null && initial != null;
+  // 승인·공개 후에는 신청자 영향 항목 잠금(운영자만 변경) — API도 동일 거부
+  const locked = isEdit && initial.status === "APPROVED";
+  const isRejected = isEdit && initial.status === "REJECTED";
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 기본 정보
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("LECTURE");
-  const [descriptionMd, setDescriptionMd] = useState("");
-  const [instructorName, setInstructorName] = useState(host.name);
-  const [instructorBio, setInstructorBio] = useState("");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [category, setCategory] = useState(initial?.category ?? "LECTURE");
+  const [descriptionMd, setDescriptionMd] = useState(initial?.descriptionMd ?? "");
+  const [instructorName, setInstructorName] = useState(
+    initial?.instructorName ?? host.name,
+  );
+  const [instructorBio, setInstructorBio] = useState(initial?.instructorBio ?? "");
 
   // 일시·장소·방식
-  const [sessions, setSessions] = useState<SessionInput[]>([
-    { date: "", startTime: "", endTime: "" },
-  ]);
-  const [officeId, setOfficeId] = useState<string>(""); // "" = 직접 입력
-  const [customLocation, setCustomLocation] = useState("");
-  const [mode, setMode] = useState("OFFLINE");
-  const [streamUrl, setStreamUrl] = useState("");
-  const [capacity, setCapacity] = useState("");
-  const [feeKrw, setFeeKrw] = useState("");
+  const [sessions, setSessions] = useState<SessionInput[]>(
+    initial?.sessions?.length
+      ? initial.sessions
+      : [{ date: "", startTime: "", endTime: "" }],
+  );
+  const [officeId, setOfficeId] = useState<string>(
+    initial?.officeId != null ? String(initial.officeId) : "",
+  ); // "" = 직접 입력
+  const [customLocation, setCustomLocation] = useState(initial?.customLocation ?? "");
+  const [mode, setMode] = useState(initial?.mode ?? "OFFLINE");
+  const [streamUrl, setStreamUrl] = useState(initial?.streamUrl ?? "");
+  const [capacity, setCapacity] = useState(
+    initial?.capacity != null ? String(initial.capacity) : "",
+  );
+  const [feeKrw, setFeeKrw] = useState(
+    initial != null && initial.feeKrw > 0 ? String(initial.feeKrw) : "",
+  );
 
   // 입금·안내
-  const [depositBankName, setDepositBankName] = useState("");
-  const [depositAccountNo, setDepositAccountNo] = useState("");
-  const [depositAccountHolder, setDepositAccountHolder] = useState("");
-  const [eligibility, setEligibility] = useState("");
-  const [preparation, setPreparation] = useState("");
-  const [reward, setReward] = useState("");
-  const [refundPolicy, setRefundPolicy] = useState("");
-  const [notice, setNotice] = useState("");
-  const [applyDeadline, setApplyDeadline] = useState("");
+  const [depositBankName, setDepositBankName] = useState(initial?.depositBankName ?? "");
+  const [depositAccountNo, setDepositAccountNo] = useState(initial?.depositAccountNo ?? "");
+  const [depositAccountHolder, setDepositAccountHolder] = useState(
+    initial?.depositAccountHolder ?? "",
+  );
+  const [eligibility, setEligibility] = useState(initial?.eligibility ?? "");
+  const [preparation, setPreparation] = useState(initial?.preparation ?? "");
+  const [reward, setReward] = useState(initial?.reward ?? "");
+  const [refundPolicy, setRefundPolicy] = useState(initial?.refundPolicy ?? "");
+  const [notice, setNotice] = useState(initial?.notice ?? "");
+  const [applyDeadline, setApplyDeadline] = useState(initial?.applyDeadline ?? "");
 
   // 포스터(미리보기 전용) + 동의
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
@@ -380,6 +444,57 @@ export function HostFormClient({
     setSubmitting(true);
     setError(null);
     try {
+      // ── 수정 모드: 본인 행사 PATCH (Step 15) ──
+      if (isEdit) {
+        const body: Record<string, unknown> = locked
+          ? {
+              // 승인·공개 후에는 안내성 필드만 — 잠긴 필드는 서버가 403으로 거부하므로 보내지 않음
+              descriptionMd: descriptionMd.trim() || null,
+              instructorBio: instructorBio.trim() || null,
+              preparation: preparation.trim() || null,
+              notice: notice.trim() || null,
+              eligibility: eligibility.trim() || null,
+              reward: reward.trim() || null,
+              streamUrl: isOnlineMode ? streamUrl.trim() || null : null,
+            }
+          : {
+              title: title.trim(),
+              category,
+              mode,
+              streamUrl: isOnlineMode ? streamUrl.trim() || null : null,
+              descriptionMd: descriptionMd.trim() || null,
+              instructorName: instructorName.trim() || null,
+              instructorBio: instructorBio.trim() || null,
+              sessions: sessions.filter((s) => s.date && s.startTime),
+              officeId: officeId ? Number(officeId) : null,
+              customLocation: officeId ? null : customLocation.trim() || null,
+              capacity: capacity ? Number(capacity) : null,
+              feeKrw: Number(feeKrw) || 0,
+              depositBankName: depositBankName.trim() || null,
+              depositAccountNo: depositAccountNo.trim() || null,
+              depositAccountHolder: depositAccountHolder.trim() || null,
+              eligibility: eligibility.trim() || null,
+              preparation: preparation.trim() || null,
+              reward: reward.trim() || null,
+              refundPolicy: refundPolicy.trim() || null,
+              notice: notice.trim() || null,
+              applyDeadline: applyDeadline || null,
+              ...(isRejected ? { resubmit: true } : {}),
+            };
+        const res = await fetch(`/api/member/hosted-events/${editId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || "저장에 실패했습니다.");
+        }
+        setDone(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       const res = await fetch("/api/education/host", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -430,10 +545,21 @@ export function HostFormClient({
     return (
       <PublicShell showTicker={false}>
         <DoneCard>
-          <h2>개설 신청이 접수되었습니다</h2>
+          <h2>
+            {isEdit
+              ? isRejected
+                ? "수정 내용이 재제출되었습니다"
+                : "수정이 저장되었습니다"
+              : "개설 신청이 접수되었습니다"}
+          </h2>
           <p>
-            운영팀이 내용을 검토한 뒤 안내드립니다. 승인되면 행사가 공개되며,
-            마이페이지 &quot;내가 연 강의&quot;에서 상태를 확인할 수 있습니다.
+            {isEdit
+              ? isRejected
+                ? "운영팀이 다시 검토한 뒤 안내드립니다."
+                : locked
+                  ? "안내 내용이 갱신되었습니다. 공개 페이지에는 최대 1분 내 반영됩니다."
+                  : "수정 내용이 저장되었습니다."
+              : "운영팀이 내용을 검토한 뒤 안내드립니다. 승인되면 행사가 공개되며, 마이페이지 \"내가 연 강의\"에서 상태를 확인할 수 있습니다."}
           </p>
         </DoneCard>
       </PublicShell>
@@ -442,11 +568,27 @@ export function HostFormClient({
 
   return (
     <PublicShell showTicker={false}>
-      <PageTitle>행사 개설 신청</PageTitle>
+      <PageTitle>{isEdit ? "행사 수정" : "행사 개설 신청"}</PageTitle>
       <PageSub>
-        모빅회관에서 강의·워크숍·이벤트를 열어보세요. 아래 내용을 작성해
-        신청하시면 운영팀 검토 후 공개됩니다. <em>*</em> 표시는 필수 항목입니다.
+        {isEdit
+          ? locked
+            ? "승인·공개된 행사입니다. 소개·준비물 등 안내 내용만 수정할 수 있어요."
+            : isRejected
+              ? "반려된 행사입니다. 내용을 보완해 다시 제출하면 재검토됩니다."
+              : "승인 전이라 모든 항목을 자유롭게 수정할 수 있습니다."
+          : "모빅회관에서 강의·워크숍·이벤트를 열어보세요. 아래 내용을 작성해 신청하시면 운영팀 검토 후 공개됩니다. * 표시는 필수 항목입니다."}
       </PageSub>
+      {locked ? (
+        <LockNote>
+          🔒 제목·일정·장소·정원·참가비 등 <strong>신청자에게 영향을 주는 항목</strong>은
+          승인 후에 바꿀 수 없습니다. 변경이 필요하면 운영자에게 문의해 주세요.
+        </LockNote>
+      ) : null}
+      {isRejected && initial?.rejectReason ? (
+        <LockNote as="p" style={{ borderColor: undefined }}>
+          반려 사유: {initial.rejectReason}
+        </LockNote>
+      ) : null}
 
       <Form onSubmit={handleSubmit}>
         {/* ── 기본 정보 ── */}
@@ -461,13 +603,14 @@ export function HostFormClient({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="행사 이름을 입력하세요"
+              disabled={locked}
               required
             />
           </Field>
           <Grid2>
             <Field>
               <FieldLabel>분류</FieldLabel>
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)} disabled={locked}>
                 {Object.entries(CATEGORY_LABEL).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
@@ -477,7 +620,7 @@ export function HostFormClient({
             </Field>
             <Field>
               <FieldLabel>진행 방식</FieldLabel>
-              <Select value={mode} onChange={(e) => setMode(e.target.value)}>
+              <Select value={mode} onChange={(e) => setMode(e.target.value)} disabled={locked}>
                 {Object.entries(MODE_LABEL).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
@@ -550,6 +693,7 @@ export function HostFormClient({
                   value={s.date}
                   onChange={(e) => updateSession(i, { date: e.target.value })}
                   aria-label={`${i + 1}회차 날짜`}
+                  disabled={locked}
                 />
               </label>
               <label>
@@ -559,6 +703,7 @@ export function HostFormClient({
                   value={s.startTime}
                   onChange={(e) => updateSession(i, { startTime: e.target.value })}
                   aria-label={`${i + 1}회차 시작`}
+                  disabled={locked}
                 />
               </label>
               <label>
@@ -568,9 +713,10 @@ export function HostFormClient({
                   value={s.endTime}
                   onChange={(e) => updateSession(i, { endTime: e.target.value })}
                   aria-label={`${i + 1}회차 종료`}
+                  disabled={locked}
                 />
               </label>
-              {sessions.length > 1 ? (
+              {sessions.length > 1 && !locked ? (
                 <SmallBtn type="button" onClick={() => removeSession(i)}>
                   삭제
                 </SmallBtn>
@@ -579,9 +725,11 @@ export function HostFormClient({
               )}
             </SessionRow>
           ))}
-          <AddBtn type="button" onClick={addSession}>
-            + 회차 추가
-          </AddBtn>
+          {locked ? null : (
+            <AddBtn type="button" onClick={addSession}>
+              + 회차 추가
+            </AddBtn>
+          )}
 
           <Grid2 style={{ marginTop: "1.1rem" }}>
             <Field>
@@ -589,7 +737,7 @@ export function HostFormClient({
                 회관 선택 <em>*</em>
               </FieldLabel>
               <FieldHint>회관이 없으면 &quot;직접 입력&quot;을 골라 장소를 적으세요.</FieldHint>
-              <Select value={officeId} onChange={(e) => setOfficeId(e.target.value)}>
+              <Select value={officeId} onChange={(e) => setOfficeId(e.target.value)} disabled={locked}>
                 <option value="">직접 입력</option>
                 {offices.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -605,7 +753,7 @@ export function HostFormClient({
                 value={customLocation}
                 onChange={(e) => setCustomLocation(e.target.value)}
                 placeholder="예: 수원모빅회관"
-                disabled={officeId !== ""}
+                disabled={locked || officeId !== ""}
               />
             </Field>
           </Grid2>
@@ -624,6 +772,7 @@ export function HostFormClient({
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
                 placeholder="예: 40"
+                disabled={locked}
               />
             </Field>
             <Field>
@@ -635,6 +784,7 @@ export function HostFormClient({
                 value={feeKrw}
                 onChange={(e) => setFeeKrw(e.target.value)}
                 placeholder="예: 10000"
+                disabled={locked}
               />
             </Field>
           </Grid2>
@@ -645,6 +795,7 @@ export function HostFormClient({
               type="date"
               value={applyDeadline}
               onChange={(e) => setApplyDeadline(e.target.value)}
+              disabled={locked}
             />
           </Field>
           {paid ? (
@@ -658,6 +809,7 @@ export function HostFormClient({
                     value={depositBankName}
                     onChange={(e) => setDepositBankName(e.target.value)}
                     placeholder="예: 국민은행"
+                    disabled={locked}
                   />
                 </Field>
                 <Field>
@@ -666,6 +818,7 @@ export function HostFormClient({
                     value={depositAccountNo}
                     onChange={(e) => setDepositAccountNo(e.target.value)}
                     placeholder="예: 366501-01-204058"
+                    disabled={locked}
                   />
                 </Field>
               </Grid2>
@@ -675,6 +828,7 @@ export function HostFormClient({
                   value={depositAccountHolder}
                   onChange={(e) => setDepositAccountHolder(e.target.value)}
                   placeholder="예: 홍길동"
+                  disabled={locked}
                 />
               </Field>
             </>
@@ -793,7 +947,13 @@ export function HostFormClient({
         {error ? <ErrorNote role="alert">{error}</ErrorNote> : null}
 
         <SubmitBtn type="submit" disabled={!canSubmit}>
-          {submitting ? "접수 중…" : "개설 신청하기"}
+          {submitting
+            ? "저장 중…"
+            : isEdit
+              ? isRejected
+                ? "수정 후 재제출"
+                : "수정 저장"
+              : "개설 신청하기"}
         </SubmitBtn>
       </Form>
     </PublicShell>

@@ -267,6 +267,50 @@ export async function sendEducatorDecisionEmail(
   if (error) throw new Error(error.message || "Resend send failed");
 }
 
+/* ── 7. 운영자: 교육자의 행사 취소 요청 (Step 15) ──
+ * 신청자가 있는 APPROVED 행사는 교육자가 직접 취소 불가 — 사유와 함께 운영자에게 요청.
+ * ★ 요청은 저장 필드가 없어(스키마 컬럼 추가 금지) 이 메일로만 전달 — 어드민이 메일 보고 판단. */
+
+export interface CancelRequestAlertPayload {
+  eventId: number;
+  eventTitle: string;
+  applicationCount: number;
+  hostName: string;
+  hostEmail: string;
+  reason: string;
+}
+
+export async function sendEducatorCancelRequestAlert(
+  payload: CancelRequestAlertPayload,
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[educator/cancel-request] RESEND_API_KEY not set, skip email");
+    return;
+  }
+  const to = await getAlertRecipients("education");
+  if (to.length === 0) return;
+
+  const html = wrapHtml(
+    `<p style="margin:0 0 12px">교육자가 <strong>행사 취소를 요청</strong>했습니다. (신청자가 있어 직접 취소 불가)</p>` +
+      rowsTable([
+        ["행사", payload.eventTitle],
+        ["신청자 수", `${payload.applicationCount}명`],
+        ["교육자", `${payload.hostName} (${payload.hostEmail})`],
+        ["취소 사유", payload.reason],
+      ]) +
+      `<p style="margin:16px 0 0"><a href="${ADMIN_EDU_URL}/${payload.eventId}" style="color:#4338ca">어드민에서 처리 →</a></p>`,
+  );
+
+  const { error } = await resend.emails.send({
+    from: getAlertFromAddress(),
+    to,
+    subject: `[춘심 교육] 행사 취소 요청 — ${payload.eventTitle}`,
+    html,
+  });
+  if (error) throw new Error(error.message || "Resend send failed");
+}
+
 /* ── 4. 신청자: 행사 전일 리마인더 (수동 트리거 — 어드민 버튼) ──
  * 수신 주소 우선순위: email 필드(5.5에서 선택 수집) → contact가 이메일 형태(@)인 경우.
  * 둘 다 없으면(전화번호만) skippedNoEmail로 집계·로그.

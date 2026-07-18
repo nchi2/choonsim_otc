@@ -30,12 +30,13 @@ import {
   type EduListResponse,
 } from "@/lib/education-admin-fetchers";
 
-type StatusFilter = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
-const TAB_ORDER: StatusFilter[] = ["PENDING", "APPROVED", "REJECTED", "ALL"];
+type StatusFilter = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED" | "ALL";
+const TAB_ORDER: StatusFilter[] = ["PENDING", "APPROVED", "REJECTED", "CANCELED", "ALL"];
 const TAB_LABEL: Record<StatusFilter, string> = {
   PENDING: "검토 대기",
   APPROVED: "승인됨",
   REJECTED: "반려됨",
+  CANCELED: "취소됨",
   ALL: "전체",
 };
 
@@ -164,6 +165,7 @@ function EducationListInner() {
   const filter: StatusFilter =
     statusRaw === "APPROVED" ||
     statusRaw === "REJECTED" ||
+    statusRaw === "CANCELED" ||
     statusRaw === "ALL"
       ? statusRaw
       : "PENDING";

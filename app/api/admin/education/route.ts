@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 // 어드민 교육 행사 통합 목록 — status 필터(PENDING/APPROVED/REJECTED/ALL) + 서버 건수 집계.
 // isTest 기본 제외(?includeTest=1 포함). 읽기 전용 — 승인/반려 등 쓰기는 4-B.
 
-const VALID_STATUS = new Set(["PENDING", "APPROVED", "REJECTED"]);
+const VALID_STATUS = new Set(["PENDING", "APPROVED", "REJECTED", "CANCELED"]);
 
 export async function GET(request: Request) {
   const admin = await getAdminUser();
@@ -28,7 +28,11 @@ export async function GET(request: Request) {
     : { isTest: false };
   const where: Prisma.EducationEventWhereInput = { ...baseWhere };
   if (statusParam && VALID_STATUS.has(statusParam)) {
-    where.status = statusParam as "PENDING" | "APPROVED" | "REJECTED";
+    where.status = statusParam as
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
+      | "CANCELED";
   }
 
   try {
@@ -76,6 +80,7 @@ export async function GET(request: Request) {
       PENDING: countOf("PENDING"),
       APPROVED: countOf("APPROVED"),
       REJECTED: countOf("REJECTED"),
+      CANCELED: countOf("CANCELED"),
       total: grouped.reduce((sum, g) => sum + g._count._all, 0),
     };
 

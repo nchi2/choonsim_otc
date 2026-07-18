@@ -242,7 +242,7 @@ const StatusPill = styled.span<{ $tone: "amber" | "green" | "red" }>`
         : `background:${eduColors.dangerSoft};color:${eduColors.danger};`}
 `;
 
-const HostedRow = styled(Link)`
+const HostedRow = styled.div`
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -272,6 +272,28 @@ const HostedRow = styled(Link)`
     font-size: 0.75rem;
     color: ${eduColors.textMuted};
   }
+
+  a.t {
+    text-decoration: none;
+    color: ${eduColors.text};
+    &:hover { color: ${eduColors.primary}; }
+  }
+`;
+
+const RowBtn = styled.button<{ $danger?: boolean }>`
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 7px;
+  border: 1px solid ${(p) => (p.$danger ? eduColors.danger + "55" : eduColors.borderInput)};
+  background: ${eduColors.surface};
+  color: ${(p) => (p.$danger ? eduColors.danger : eduColors.textSub)};
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover {
+    border-color: ${(p) => (p.$danger ? eduColors.danger : eduColors.primary)};
+  }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
@@ -309,10 +331,13 @@ interface HostedItem {
 function EducatorSection({
   status,
   rejectReason,
+  emailVerified,
   onChanged,
 }: {
   status: string;
   rejectReason: string | null;
+  /** Step 15: 교육자 신청은 이메일 인증 필수 — 미인증이면 신청 버튼 대신 안내 */
+  emailVerified: boolean;
   onChanged: () => void;
 }) {
   const [intro, setIntro] = useState("");
@@ -337,6 +362,47 @@ function EducatorSection({
       cancelled = true;
     };
   }, [status]);
+
+  const reloadHosted = () => {
+    void fetch("/api/member/hosted-events")
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((j) => setHosted(j.items ?? []))
+      .catch(() => {});
+  };
+
+  // 취소 — 신청자 있는 승인 행사는 사유 입력 → 운영자 취소 요청, 그 외 즉시 취소
+  const [cancelBusy, setCancelBusy] = useState<number | null>(null);
+  const cancelEvent = async (h: HostedItem) => {
+    const needsRequest = h.status === "APPROVED" && h.applicationCount > 0;
+    let reason: string | null = null;
+    if (needsRequest) {
+      reason = window.prompt(
+        `신청자가 ${h.applicationCount}명 있어 직접 취소할 수 없습니다.\n운영자에게 취소 요청을 보낼까요? 사유를 입력해 주세요.`,
+      );
+      if (!reason || !reason.trim()) return;
+    } else if (!window.confirm(`"${h.title}" 행사를 취소할까요?`)) {
+      return;
+    }
+    setCancelBusy(h.id);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/member/hosted-events/${h.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason?.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "취소에 실패했습니다.");
+      if (json.requested) {
+        window.alert("취소 요청이 운영자에게 전달되었습니다. 처리 후 안내드립니다.");
+      }
+      reloadHosted();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "취소에 실패했습니다.");
+    } finally {
+      setCancelBusy(null);
+    }
+  };
 
   const apply = async () => {
     setSubmitting(true);
@@ -381,6 +447,7 @@ function EducatorSection({
             행사 개설하기 →
           </Btn>
         </div>
+        {err ? <Msg $error>{err}</Msg> : null}
         <CardTitle as="h3" style={{ fontSize: "0.9rem" }}>
           내가 연 강의
         </CardTitle>
@@ -390,20 +457,57 @@ function EducatorSection({
           <Empty>아직 개설한 행사가 없습니다.</Empty>
         ) : (
           hosted.map((h) => (
-            <HostedRow key={h.id} href={`/events/${h.slug}`}>
-              <span className="t">{h.title}</span>
+            <HostedRow key={h.id}>
+              <Link className="t" href={`/events/${h.slug}`}>
+                {h.title}
+              </Link>
               {h.status === "PENDING" ? (
                 <StatusPill $tone="amber">검토 중</StatusPill>
               ) : h.status === "APPROVED" ? (
                 <StatusPill $tone="green">{h.isPublished ? "공개 중" : "승인(비공개)"}</StatusPill>
+              ) : h.status === "CANCELED" ? (
+                <StatusPill $tone="red">취소됨</StatusPill>
               ) : (
                 <StatusPill $tone="red">반려</StatusPill>
               )}
               <span className="n">신청 {h.applicationCount}명</span>
+              {h.status !== "CANCELED" ? (
+                <>
+                  <RowBtn as={Link} href={`/host/edit/${h.id}`}>
+                    {h.status === "REJECTED" ? "수정·재제출" : "수정"}
+                  </RowBtn>
+                  <RowBtn
+                    type="button"
+                    $danger
+                    disabled={cancelBusy != null}
+                    onClick={() => void cancelEvent(h)}
+                  >
+                    {h.status === "APPROVED" && h.applicationCount > 0
+                      ? "취소 요청"
+                      : "취소"}
+                  </RowBtn>
+                </>
+              ) : null}
             </HostedRow>
           ))
         )}
       </div>
+    );
+  }
+
+  // Step 15: 이메일 미인증이면 신청 폼 대신 안내(상단 배너의 재발송 동선 이용)
+  if (!emailVerified) {
+    return (
+      <EducatorBox>
+        <p>
+          <StatusPill $tone="amber">이메일 인증 필요</StatusPill>
+        </p>
+        <p>
+          교육자 신청은 <strong>이메일 인증 후</strong> 가능합니다. 승인·반려 결과를
+          이메일로 안내드리기 때문이에요. 위의 &quot;인증 메일 재발송&quot; 버튼으로
+          인증을 완료해 주세요.
+        </p>
+      </EducatorBox>
     );
   }
 
@@ -643,6 +747,7 @@ export default function MyPage() {
           <EducatorSection
             status={member.educatorStatus}
             rejectReason={member.educatorRejectReason}
+            emailVerified={member.emailVerifiedAt != null}
             onChanged={() => void refresh()}
           />
         </Card>
