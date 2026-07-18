@@ -182,14 +182,12 @@ const Main = styled.main`
   }
 `;
 
-/* fullWidth 모드 — 기존 PageLayout MainContent와 동일한 배치(가운데 정렬 세로 flex, 폭 제한 없음).
- * 레거시 공개 페이지(/otc·/sbmb·/scanner·/contracts)가 본문 레이아웃 변경 없이 셸만 갈아타게 함. */
+/* fullWidth 모드 — 폭 제한 없는 전체폭 패스스루(블록).
+ * ★ align-items:center를 쓰면 폭 미지정 flex 컨테이너(예: /otc PageContainer·/sbmb Shell)가
+ *   flex-item으로 수축해 히어로가 좁아진다(Step 8 회귀). 레거시 페이지는 전부 자체 컨테이너에서
+ *   margin:auto·max-width로 스스로 정렬하므로, 여기선 전체폭만 보장하고 정렬은 관여하지 않는다. */
 const MainFull = styled.main`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
+  display: block;
   width: 100%;
   min-height: 60vh;
 `;
