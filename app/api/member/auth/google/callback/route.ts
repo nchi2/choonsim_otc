@@ -50,8 +50,24 @@ export async function GET(request: Request) {
         grant_type: "authorization_code",
       }),
     });
-    const tokenJson = (await tokenRes.json()) as { id_token?: string };
-    if (!tokenRes.ok || !tokenJson.id_token) return fail(request, "token");
+    const tokenJson = (await tokenRes.json()) as {
+      id_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+    if (!tokenRes.ok || !tokenJson.id_token) {
+      // 진단 로그 — 구글 에러 본문(민감정보 없음)과 사용한 redirect_uri를 남긴다.
+      // (Step 13에서 추가: invalid_client=시크릿 불일치 / redirect_uri_mismatch / invalid_grant=code 만료·재사용)
+      console.error(
+        "[member/google/callback] token exchange failed",
+        tokenRes.status,
+        tokenJson.error ?? "(no error field)",
+        tokenJson.error_description ?? "",
+        "redirect_uri=",
+        `${origin}/api/member/auth/google/callback`,
+      );
+      return fail(request, "token");
+    }
 
     // id_token payload 디코드(직접 교환 응답 — 신뢰 가능)
     const payloadB64 = tokenJson.id_token.split(".")[1] ?? "";
