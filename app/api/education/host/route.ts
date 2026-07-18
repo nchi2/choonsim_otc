@@ -181,6 +181,11 @@ export async function POST(request: Request) {
         slug,
         category: category as "LECTURE" | "WORKSHOP" | "EVENT",
         mode: mode as "OFFLINE" | "ONLINE" | "HYBRID",
+        // 스트림 링크는 온라인·혼합일 때만 저장(오프라인은 무시)
+        streamUrl:
+          mode === "ONLINE" || mode === "HYBRID"
+            ? asTrimmed(body.streamUrl, 500)
+            : null,
         descriptionMd: asTrimmed(body.descriptionMd, 20000),
         instructorName: asTrimmed(body.instructorName, 50),
         instructorBio: asTrimmed(body.instructorBio, 500),
