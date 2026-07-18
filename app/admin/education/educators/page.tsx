@@ -2,7 +2,7 @@
 
 // /admin/education/educators — 교육자 자격 신청 목록·승인/반려. 기존 어드민 패턴
 // (useAdminData·States·FilterTab·StatusBadge) 재사용. 쓰기는 manageEducation 스코프(API 게이트).
-// 신청 소개·계획 텍스트는 미저장(알림 메일 참조) — 회원 프로필 기준 검토.
+// 신청 소개·활동 계획은 educatorIntro로 저장·화면 표시(12A). 알림 메일에도 포함.
 
 import { Suspense, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
@@ -45,6 +45,7 @@ interface EducatorItem {
   emailVerified: boolean;
   joinedAt: string;
   educatorStatus: string;
+  educatorIntro: string | null;
   educatorRejectReason: string | null;
   educatorAppliedAt: string | null;
   educatorApprovedAt: string | null;
@@ -110,6 +111,23 @@ const Detail = styled.p`
   font-size: 0.78rem;
   color: ${adminColors.textMuted};
   line-height: 1.5;
+`;
+
+/* 신청 소개·활동 계획 본문 (educatorIntro — 12A) */
+const IntroBox = styled.pre`
+  margin: 0.6rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid ${adminColors.rowDivider};
+  border-radius: 8px;
+  background: ${adminColors.bgSubtle};
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: ${adminColors.textSub};
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
 `;
 
 const ActionRow = styled.div`
@@ -264,8 +282,12 @@ function EducatorsInner() {
               {m.educatorStatus === "REJECTED" && m.educatorRejectReason
                 ? ` · 반려 사유: ${m.educatorRejectReason}`
                 : ""}
-              {" · 신청 소개는 알림 메일 참조"}
             </Detail>
+            {m.educatorIntro ? (
+              <IntroBox>{m.educatorIntro}</IntroBox>
+            ) : (
+              <Detail>신청 소개 미작성</Detail>
+            )}
             <ActionRow>
               {m.educatorStatus !== "APPROVED" ? (
                 <PrimaryButton

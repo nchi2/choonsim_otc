@@ -504,6 +504,8 @@ model Member {
 
   // 교육자 승인 워크플로우(B-3에서 사용) — NONE | PENDING | APPROVED | REJECTED
   educatorStatus       String    @default("NONE")
+  // 신청 시 소개·활동 계획(자유 텍스트) — 어드민 승인 판단 근거. 재신청 시 갱신. (12A)
+  educatorIntro        String?   @db.Text
   educatorRejectReason String?
   educatorAppliedAt    DateTime?
   educatorApprovedAt   DateTime?

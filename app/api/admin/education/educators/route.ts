@@ -5,7 +5,7 @@ import { getAdminUser } from "@/lib/admin-guard";
 export const runtime = "nodejs";
 
 // 교육자 신청 목록 — status 필터(PENDING/APPROVED/REJECTED/ALL) + 건수. 읽기는 전 운영자.
-// (신청 소개·계획 텍스트는 저장하지 않음 — 알림 메일 참조. 화면 검토는 회원 프로필 기준.)
+// (신청 소개·활동 계획은 educatorIntro 저장분을 함께 반환 — 12A.)
 
 const VALID = new Set(["PENDING", "APPROVED", "REJECTED"]);
 
@@ -38,6 +38,7 @@ export async function GET(request: Request) {
           emailVerifiedAt: true,
           createdAt: true,
           educatorStatus: true,
+          educatorIntro: true,
           educatorRejectReason: true,
           educatorAppliedAt: true,
           educatorApprovedAt: true,
@@ -68,6 +69,7 @@ export async function GET(request: Request) {
       emailVerified: r.emailVerifiedAt != null,
       joinedAt: r.createdAt,
       educatorStatus: r.educatorStatus,
+      educatorIntro: r.educatorIntro,
       educatorRejectReason: r.educatorRejectReason,
       educatorAppliedAt: r.educatorAppliedAt,
       educatorApprovedAt: r.educatorApprovedAt,

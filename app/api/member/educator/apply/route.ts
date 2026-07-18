@@ -6,8 +6,8 @@ import { sendEducatorApplyAlert } from "@/lib/education-alerts";
 export const runtime = "nodejs";
 
 // 교육자 자격 신청 — NONE→PENDING, REJECTED→PENDING(재신청 허용·이전 사유 비움).
-// PENDING/APPROVED 상태에선 중복 신청 차단. 소개·계획 텍스트는 저장 필드가 없어(스키마 무변경)
-// 운영자 알림 메일로만 전달 — 어드민 화면 검토는 회원 프로필 기준.
+// PENDING/APPROVED 상태에선 중복 신청 차단. 소개·계획은 educatorIntro에 저장(12A —
+// 어드민 화면 표시 근거)하고 운영자 알림 메일에도 포함. 재신청 시 새 내용으로 갱신.
 // ★ 미들웨어(/api/member 보호) + getMemberUser 이중 가드.
 
 function bad(error: string, status = 400) {
@@ -54,11 +54,18 @@ export async function POST(request: Request) {
     }
     const isReapply = member.educatorStatus === "REJECTED";
 
+    // 소개·계획을 한 필드에 라벨 붙여 저장(둘 다 없으면 null)
+    const introParts: string[] = [];
+    if (intro) introParts.push(`[강사 소개]\n${intro}`);
+    if (plan) introParts.push(`[활동 계획]\n${plan}`);
+    const educatorIntro = introParts.length > 0 ? introParts.join("\n\n") : null;
+
     await prisma.member.update({
       where: { id: member.id },
       data: {
         educatorStatus: "PENDING",
         educatorAppliedAt: new Date(),
+        educatorIntro, // 재신청 시 새 내용으로 갱신
         educatorRejectReason: null, // 재신청 시 이전 사유 비움
       },
     });
