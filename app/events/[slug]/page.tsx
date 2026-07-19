@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import {
   loadEventDetail,
   loadSameOfficeEvents,
+  normalizePublicSlug,
 } from "@/lib/education-public";
 import { EventDetailClient } from "./EventDetailClient";
 
@@ -18,7 +19,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const event = await loadEventDetail(slug);
+  const event = await loadEventDetail(normalizePublicSlug(slug));
   if (!event) return { title: "행사를 찾을 수 없습니다 — Choonsim Hub" };
   return {
     title: `${event.title} — Choonsim Hub`,
@@ -34,7 +35,7 @@ export default async function EventDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const event = await loadEventDetail(slug);
+  const event = await loadEventDetail(normalizePublicSlug(slug));
   if (!event) notFound();
 
   const sameOffice = await loadSameOfficeEvents(event.officeId, event.id);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isKstYmd } from "@/lib/kst";
+import { isKstYmd, todayKst } from "@/lib/kst";
 import { sendEducationHostApplyAlert } from "@/lib/education-alerts";
 import { getMemberUser } from "@/lib/member-guard";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -12,7 +12,10 @@ import {
 export const runtime = "nodejs";
 
 // 행사 개설 신청 — EducationEvent(status=PENDING, isPublished=false) + EventSession 다중 생성.
-// 승인/반려는 Step 4 어드민. slug는 제목 기반 + 숫자 접미사로 충돌 회피.
+// 승인/반려는 Step 4 어드민.
+// slug 정책(Step 17): URL은 짧고 ASCII-safe하게 자동 생성한다(공유·복사 편의).
+//   제목의 ASCII 단어만 살린 prefix + 랜덤 토큰. 한글 제목이면 날짜 prefix로 폴백.
+//   ★기존 slug(시드 영문·사람이 만든 한글)는 조회 시 디코딩으로 계속 동작하므로 마이그레이션 없음.
 
 const CATEGORIES = new Set(["LECTURE", "WORKSHOP", "EVENT"]);
 const MODES = new Set(["OFFLINE", "ONLINE", "HYBRID"]);
@@ -29,30 +32,45 @@ function asTrimmed(v: unknown, max = 200): string | null {
   return s.slice(0, max);
 }
 
-/** 제목 → slug: 한글·영숫자 유지, 나머지 하이픈. 충돌 시 -2, -3… */
-function slugifyTitle(title: string): string {
-  const base = title
+/** 제목 → ASCII prefix: 영숫자만 유지(한글 등은 버림), 하이픈 정리, 40자 컷. 없으면 빈 문자열. */
+function asciiSlugPrefix(title: string): string {
+  return title
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣]+/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 60);
-  return base || "event";
+    .slice(0, 40);
 }
 
-async function uniqueSlug(title: string): Promise<string> {
-  const base = slugifyTitle(title);
-  const existing = await prisma.educationEvent.findMany({
-    where: { slug: { startsWith: base } },
-    select: { slug: true },
-  });
-  const taken = new Set(existing.map((e) => e.slug));
-  if (!taken.has(base)) return base;
-  for (let i = 2; i < 1000; i++) {
-    const candidate = `${base}-${i}`;
-    if (!taken.has(candidate)) return candidate;
+const SLUG_TOKEN_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+/** 짧은 ASCII 랜덤 토큰(기본 6자) — slug 유일성·공유 편의. */
+function randomSlugToken(len = 6): string {
+  let s = "";
+  for (let i = 0; i < len; i++) {
+    s += SLUG_TOKEN_CHARS[Math.floor(Math.random() * SLUG_TOKEN_CHARS.length)];
   }
-  return `${base}-${Date.now().toString(36)}`; // 사실상 도달 불가 폴백
+  return s;
+}
+
+/**
+ * 짧고 ASCII-safe한 유일 slug 생성.
+ * - 제목에 ASCII 단어가 있으면 `<ascii>-<token>`, 아니면 `<오늘(KST)>-<token>`.
+ * - 랜덤 토큰이라 충돌은 극히 드물지만, unique 확인 후 재시도.
+ */
+async function uniqueSlug(title: string): Promise<string> {
+  const ascii = asciiSlugPrefix(title);
+  const prefix = ascii || todayKst(); // "2026-07-25" 형태 폴백
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = `${prefix}-${randomSlugToken()}`.slice(0, 60);
+    const exists = await prisma.educationEvent.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+    if (!exists) return candidate;
+  }
+  // 사실상 도달 불가 폴백 — 더 긴 토큰
+  return `${prefix}-${randomSlugToken(12)}`.slice(0, 60);
 }
 
 interface SessionInput {

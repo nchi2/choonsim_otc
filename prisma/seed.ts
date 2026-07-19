@@ -14,17 +14,19 @@ const prisma = new PrismaClient({ adapter });
 const BCRYPT_ROUNDS = 10;
 
 /**
- * 사무실 seed — code 기준 upsert. 강남만 isActive=true(OTC 예약 노출 — 기존 정책 그대로).
+ * 사무실 seed — code 기준 upsert. 강남(=서초)만 isActive=true(OTC 예약 노출 — 기존 정책 그대로).
  * Step 16: educationActive = 교육 플랫폼(/host·교육 슬롯) 노출 여부. OTC(isActive)와 독립.
- * - GANGNAM = 서초 모빅회관과 같은 회관(주소 동일) → 기존 행에 educationActive만 켬(개명·주소 축소 금지).
- * - DAEGU/DAEJEON/GWANGJU/BUSAN: 같은 도시 회관 → 주소 채움 + educationActive 켬(이름은 기존 유지 — 개명 금지).
+ * Step 17: 사람 승인으로 회관 개명(name만). code·id·isActive·educationActive는 불변.
+ *   ⚠️ OTC 화면 표시명도 함께 바뀌는 것을 알고 내린 결정.
+ * - GANGNAM 행 = 서초 모빅회관(주소 동일한 같은 건물). 상세 주소(지하층)는 OTC 안내 정확성 위해 유지.
  * - SUWON: 신규(교육 전용, isActive=false — OTC 예약에 뜨면 안 됨).
+ * - 대전만 "커뮤니티센터"(모빅회관 아님).
  */
 const OFFICE_SEEDS = [
   {
     code: "GANGNAM",
-    name: "강남 사무실",
-    // 서초 모빅회관과 동일 건물 — 기존 상세 주소(지하층) 유지가 OTC 안내에 더 정확
+    name: "서초 모빅회관",
+    // 서초 모빅회관 — 기존 상세 주소(지하층) 유지가 OTC 안내에 더 정확
     address: "서울 서초구 사임당로 149-5 지하층" as string | null,
     isActive: true,
     educationActive: true,
@@ -48,7 +50,7 @@ const OFFICE_SEEDS = [
   },
   {
     code: "DAEJEON",
-    name: "대전 사무실",
+    name: "대전 커뮤니티센터",
     address: "대전시 유성구 송림로 48번길 6-28, 103호",
     isActive: false,
     educationActive: true,
@@ -56,7 +58,7 @@ const OFFICE_SEEDS = [
   },
   {
     code: "GWANGJU",
-    name: "광주 사무실",
+    name: "광주 모빅회관",
     address: "광주시 동구 충장로 58번길 2, 2층",
     isActive: false,
     educationActive: true,
@@ -64,7 +66,7 @@ const OFFICE_SEEDS = [
   },
   {
     code: "DAEGU",
-    name: "대구 사무실",
+    name: "대구 모빅회관",
     address: "대구광역시 서구 팔달로 92, B1F",
     isActive: false,
     educationActive: true,
@@ -72,7 +74,7 @@ const OFFICE_SEEDS = [
   },
   {
     code: "BUSAN",
-    name: "부산 사무실",
+    name: "부산 모빅회관",
     address: "부산 수영구 광안해변로 95, 3층 304호",
     isActive: false,
     educationActive: true,

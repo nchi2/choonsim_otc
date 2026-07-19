@@ -14,6 +14,24 @@ export const PUBLIC_EVENT_WHERE = {
   isTest: false,
 } as const;
 
+/**
+ * URL slug 정규화 — /events/[slug]의 params.slug 처리.
+ * Next.js가 넘기는 param이 퍼센트 인코딩(%ED..)인 채 도착하므로 디코딩이 필요하다.
+ * (Step 17 진단: 한글 slug가 인코딩된 채 DB 조회 → 불일치 404. 원인은 정규화가 아닌 디코딩 누락.)
+ * - 우리 slug 문자셋은 [a-z0-9가-힣-]로 리터럴 %가 없어 decodeURIComponent가 안전(멱등).
+ * - 이미 디코딩된 param이 와도 %가 없어 no-op. 잘못된 시퀀스면 원문 유지(→ 조회 실패=404).
+ * - DB는 NFC 저장이므로 NFC로 정규화(일부 클라이언트가 NFD로 보내도 매칭되게 — 방어).
+ */
+export function normalizePublicSlug(raw: string): string {
+  let s = raw;
+  try {
+    s = decodeURIComponent(raw);
+  } catch {
+    // malformed percent-encoding — 원문 유지
+  }
+  return s.normalize("NFC");
+}
+
 const CARD_SELECT = {
   id: true,
   slug: true,
