@@ -473,6 +473,11 @@ function EducatorSection({
               <span className="n">신청 {h.applicationCount}명</span>
               {h.status !== "CANCELED" ? (
                 <>
+                  {h.status === "APPROVED" ? (
+                    <RowBtn as={Link} href={`/host/roster/${h.id}`}>
+                      명단·출석
+                    </RowBtn>
+                  ) : null}
                   <RowBtn as={Link} href={`/host/edit/${h.id}`}>
                     {h.status === "REJECTED" ? "수정·재제출" : "수정"}
                   </RowBtn>
