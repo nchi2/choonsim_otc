@@ -13,15 +13,32 @@ import {
   eduColors,
 } from "./tokens";
 
-/** 포스터 표준 종횡비 — 4:3. 업로드 규격·템플릿 export 공통 기준. */
+/** 포스터 표준 종횡비(폴백·목록/캐러셀 크롭 기준) — 4:3. 업로드 자체엔 비율 제한 없음(Step 25):
+ *  실제 이미지는 어떤 비율이든 올릴 수 있고, 이 상수는 (a) 이미지가 없을 때의 디자인 폴백,
+ *  (b) 목록·캐러셀처럼 레이아웃 일관성이 필요한 곳의 고정 크롭 박스에만 쓰인다.
+ *  상세 히어로처럼 원본 비율 그대로 보여줄 땐 fit="contain"으로 이 종횡비를 쓰지 않는다. */
 export const POSTER_ASPECT_W = 4;
 export const POSTER_ASPECT_H = 3;
 export const POSTER_ASPECT_CSS = `${POSTER_ASPECT_W} / ${POSTER_ASPECT_H}`;
 
-const Box = styled.div<{ $from: string; $to: string; $compact?: boolean }>`
+/** posterFocus → object-position. 목록·캐러셀의 고정 크롭에서만 의미가 있다. */
+const FOCUS_POSITION: Record<string, string> = {
+  top: "50% 0%",
+  center: "50% 50%",
+  bottom: "50% 100%",
+};
+
+const Box = styled.div<{
+  $from: string;
+  $to: string;
+  $compact?: boolean;
+  /** true = 원본 비율 그대로(크롭 없음) — 실제 이미지가 있을 때만 의미 있음(히어로). */
+  $natural?: boolean;
+  $focus: string;
+}>`
   position: relative;
   width: 100%;
-  aspect-ratio: ${POSTER_ASPECT_CSS};
+  ${(p) => (p.$natural ? "" : `aspect-ratio: ${POSTER_ASPECT_CSS};`)}
   overflow: hidden;
   /* 컨테이너 쿼리 기준 — 목록 카드(작음)·캐러셀(중간)·히어로(큼) 세 곳 어디서 렌더되든
    * Info의 cqw 기반 폰트 크기가 이 박스의 실제 렌더 너비에 비례해 스스로 스케일된다(Step 23). */
@@ -36,12 +53,18 @@ const Box = styled.div<{ $from: string; $to: string; $compact?: boolean }>`
   background-size: 18px 18px, cover;
 
   img {
+    display: block;
+    ${(p) =>
+      p.$natural
+        ? `position: static; width: 100%; height: auto;`
+        : `
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
+    object-position: ${FOCUS_POSITION[p.$focus] ?? FOCUS_POSITION.center};
+    `}
   }
 `;
 
@@ -134,6 +157,12 @@ export interface PosterCardProps {
    *  상세 페이지 히어로처럼 바로 옆에 같은 정보(H1 제목·MetaList)가 이미 있는
    *  화면에서 중복 노출을 피하기 위함(Step 22) — 카드/캐러셀 등 단독 노출 맥락에서는 쓰지 않는다. */
   hideOverlayText?: boolean;
+  /** "cover"(기본) = 고정 4:3 크롭(목록·캐러셀). "contain" = 원본 비율 그대로, 크롭 없음(상세
+   *  히어로 — Step 25, 세로형 포스터가 잘리지 않게). 폴백(이미지 없음)에는 항상 4:3이 적용된다. */
+  fit?: "cover" | "contain";
+  /** 고정 크롭(fit="cover")일 때 어느 부분을 보여줄지 — "top"|"center"|"bottom"(Step 25).
+   *  fit="contain"이거나 포스터가 없으면(폴백) 의미 없음. */
+  posterFocus?: string;
 }
 
 /** 포스터 or 디자인된 폴백. 부모가 border-radius/크기를 감싸는 컨테이너로 제어. */
@@ -145,10 +174,20 @@ export function PosterCard({
   posterUrl,
   compact,
   hideOverlayText,
+  fit = "cover",
+  posterFocus = "center",
 }: PosterCardProps) {
   const tone = CATEGORY_POSTER_TONE[category] ?? DEFAULT_POSTER_TONE;
+  // 폴백(이미지 없음)은 항상 4:3 고정 — natural은 실제 이미지가 있을 때만 의미가 있다.
+  const natural = Boolean(posterUrl) && fit === "contain";
   return (
-    <Box $from={tone.from} $to={tone.to} $compact={compact}>
+    <Box
+      $from={tone.from}
+      $to={tone.to}
+      $compact={compact}
+      $natural={natural}
+      $focus={posterFocus}
+    >
       {posterUrl ? (
         // 외부 이미지 도메인 미등록 정책에 따라 native img (next.config images 미설정)
         // eslint-disable-next-line @next/next/no-img-element

@@ -3,7 +3,7 @@
 // 행사 개설 신청 폼 — POST /api/education/host 로 제출(status=PENDING 생성, 승인은 어드민).
 // 로그인 + 교육자 승인 필수(게이트는 서버 페이지). 개설자 정보는 회원 정보 자동.
 // 섹션: 기본정보 / 일시·장소 / 모집·비용 / 안내사항 / 포스터. 필수/선택 명확 + 예시 안내.
-// ★ 포스터는 미리보기 UI만 — 실제 업로드(R2)는 다음 Step. 제출 시 무시.
+// 포스터는 실제 업로드(R2, Step 18) + 비율 자유(업로드 제한 없음) + 목록·캐러셀 크롭 위치 선택(Step 25).
 // Turnstile: 키 장착 시 제출 body의 turnstileToken 자리에 위젯 token을 실으면 서버 검증이 켜진다.
 
 import { useEffect, useRef, useState } from "react";
@@ -17,11 +17,8 @@ import {
   parse24,
   to24,
 } from "@/lib/time-input";
-import {
-  POSTER_ASPECT_CSS,
-  POSTER_ASPECT_H,
-  POSTER_ASPECT_W,
-} from "@/components/education/PosterCard";
+import { PosterCard, POSTER_ASPECT_CSS } from "@/components/education/PosterCard";
+import { toPosterFocus, type PosterFocus } from "@/components/education/types";
 import {
   CATEGORY_LABEL,
   MODE_LABEL,
@@ -29,6 +26,11 @@ import {
   eduLayout,
   media,
 } from "@/components/education/tokens";
+import {
+  DEFAULT_DEPOSIT_ACCOUNT_HOLDER,
+  DEFAULT_DEPOSIT_ACCOUNT_NO,
+  DEFAULT_DEPOSIT_BANK_NAME,
+} from "@/lib/education-defaults";
 
 const PageTitle = styled.h1`
   margin: 0 0 0.25rem;
@@ -118,6 +120,12 @@ const Input = styled.input`
 const Textarea = styled.textarea`
   ${baseInput}
   min-height: 84px;
+  resize: vertical;
+`;
+/* 참여조건·준비물·리워드·환불규정 등 여러 줄이 필요하지만 소개글만큼 길지는 않은 안내 필드용(Step 25). */
+const SmallTextarea = styled.textarea`
+  ${baseInput}
+  min-height: 56px;
   resize: vertical;
 `;
 const Select = styled.select`
@@ -288,6 +296,8 @@ const PosterDrop = styled.div`
   align-items: flex-start;
   flex-wrap: wrap;
 `;
+/* 목록·캐러셀에서 실제로 어떻게 잘려 보일지 미리 보는 박스(고정 4:3) — PosterCard를 그대로
+ * 넣어 렌더하므로 실제 카드와 100% 같은 크롭 결과(WYSIWYG). 이미지가 없을 때만 안내 문구. */
 const PosterPreview = styled.div`
   width: 160px;
   aspect-ratio: ${POSTER_ASPECT_CSS};
@@ -301,11 +311,28 @@ const PosterPreview = styled.div`
   color: ${eduColors.textFaint};
   font-size: 0.72rem;
   flex-shrink: 0;
+`;
 
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+const FocusRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const FocusBtn = styled.button<{ $active?: boolean }>`
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid ${(p) => (p.$active ? eduColors.primary : eduColors.borderInput)};
+  background: ${(p) => (p.$active ? eduColors.primarySoft : eduColors.surface)};
+  color: ${(p) => (p.$active ? eduColors.primaryText : eduColors.textSub)};
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${eduColors.primary};
   }
 `;
 const PosterCtl = styled.div`
@@ -454,6 +481,7 @@ export interface HostFormInitial {
   notice: string | null;
   applyDeadline: string | null; // "YYYY-MM-DD" or null
   posterUrl: string | null;
+  posterFocus: string;
   sessions: { date: string; startTime: string; endTime: string }[];
 }
 
@@ -507,11 +535,15 @@ export function HostFormClient({
     initial != null && initial.feeKrw > 0 ? String(initial.feeKrw) : "",
   );
 
-  // 입금·안내
-  const [depositBankName, setDepositBankName] = useState(initial?.depositBankName ?? "");
-  const [depositAccountNo, setDepositAccountNo] = useState(initial?.depositAccountNo ?? "");
+  // 입금·안내 — 춘심팀 기본 계좌로 미리 채움(수정 가능, Step 25). 기존 값(수정 모드)이 있으면 그게 우선.
+  const [depositBankName, setDepositBankName] = useState(
+    initial?.depositBankName ?? DEFAULT_DEPOSIT_BANK_NAME,
+  );
+  const [depositAccountNo, setDepositAccountNo] = useState(
+    initial?.depositAccountNo ?? DEFAULT_DEPOSIT_ACCOUNT_NO,
+  );
   const [depositAccountHolder, setDepositAccountHolder] = useState(
-    initial?.depositAccountHolder ?? "",
+    initial?.depositAccountHolder ?? DEFAULT_DEPOSIT_ACCOUNT_HOLDER,
   );
   const [eligibility, setEligibility] = useState(initial?.eligibility ?? "");
   const [preparation, setPreparation] = useState(initial?.preparation ?? "");
@@ -521,7 +553,11 @@ export function HostFormClient({
   const [applyDeadline, setApplyDeadline] = useState(initial?.applyDeadline ?? "");
 
   // 포스터 — R2 실제 업로드(Step 18). posterUrl=업로드된 공개 URL(제출·저장 대상).
+  // posterFocus=목록·캐러셀 고정 크롭에서 보여줄 위치(Step 25, 상세 히어로는 원본 비율 그대로라 무관).
   const [posterUrl, setPosterUrl] = useState<string | null>(initial?.posterUrl ?? null);
+  const [posterFocus, setPosterFocus] = useState<PosterFocus>(
+    toPosterFocus(initial?.posterFocus),
+  );
   const [posterWarn, setPosterWarn] = useState<string | null>(null);
   const [posterUploading, setPosterUploading] = useState(false);
   const [agree, setAgree] = useState(false);
@@ -602,6 +638,7 @@ export function HostFormClient({
               reward: reward.trim() || null,
               streamUrl: isOnlineMode ? streamUrl.trim() || null : null,
               posterUrl,
+              posterFocus,
             }
           : {
               title: title.trim(),
@@ -626,6 +663,7 @@ export function HostFormClient({
               notice: notice.trim() || null,
               applyDeadline: applyDeadline || null,
               posterUrl,
+              posterFocus,
               ...(isRejected ? { resubmit: true } : {}),
             };
         const res = await fetch(`/api/member/hosted-events/${editId}`, {
@@ -669,6 +707,7 @@ export function HostFormClient({
           applyDeadline: applyDeadline || null,
           // 포스터(선택) — R2 업로드된 공개 URL(없으면 null → 공개 화면 폴백).
           posterUrl,
+          posterFocus,
           // 개설자 정보(hostName/Contact/Email)는 서버가 로그인 회원 정보로 채움.
           // [TURNSTILE 위젯 자리] 사이트키 장착 시 위젯 token을 싣는다.
           turnstileToken: null,
@@ -987,7 +1026,7 @@ export function HostFormClient({
           <legend>안내사항 (선택)</legend>
           <Field>
             <FieldLabel>참여 대상·조건</FieldLabel>
-            <Input
+            <SmallTextarea
               value={eligibility}
               onChange={(e) => setEligibility(e.target.value)}
               placeholder="예: 모빅에 관심있는 누구나"
@@ -995,7 +1034,7 @@ export function HostFormClient({
           </Field>
           <Field>
             <FieldLabel>준비물</FieldLabel>
-            <Input
+            <SmallTextarea
               value={preparation}
               onChange={(e) => setPreparation(e.target.value)}
               placeholder="지트모빅 종이지갑"
@@ -1003,15 +1042,16 @@ export function HostFormClient({
           </Field>
           <Field>
             <FieldLabel>리워드</FieldLabel>
-            <Input
+            <FieldHint>여러 줄로 입력할 수 있어요.</FieldHint>
+            <SmallTextarea
               value={reward}
               onChange={(e) => setReward(e.target.value)}
-              placeholder="기념 종이지갑 1장"
+              placeholder={"예: 20,000 LTM 지급\n모비커스 종이지갑 + 춘심 EVM 종이지갑"}
             />
           </Field>
           <Field>
             <FieldLabel>환불·노쇼 규정</FieldLabel>
-            <Input
+            <SmallTextarea
               value={refundPolicy}
               onChange={(e) => setRefundPolicy(e.target.value)}
               placeholder="예: 신청 후 취소 불가, 불참 시 환불·리워드 없음"
@@ -1027,18 +1067,22 @@ export function HostFormClient({
           </Field>
         </Fieldset>
 
-        {/* ── 포스터 (선택, R2 실제 업로드 — Step 18) ── */}
+        {/* ── 포스터 (선택, R2 실제 업로드 — Step 18, 비율 자유 + 크롭 위치 선택 — Step 25) ── */}
         <Fieldset>
           <legend>포스터 (선택)</legend>
           <PosterDrop>
             <PosterPreview>
               {posterUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={posterUrl} alt="포스터 미리보기" />
+                <PosterCard
+                  title={title || "포스터"}
+                  category={category}
+                  posterUrl={posterUrl}
+                  posterFocus={posterFocus}
+                />
               ) : posterUploading ? (
                 "업로드 중…"
               ) : (
-                `${POSTER_ASPECT_W}:${POSTER_ASPECT_H} 미리보기`
+                "미리보기"
               )}
             </PosterPreview>
             <PosterCtl>
@@ -1051,18 +1095,39 @@ export function HostFormClient({
                   e.target.value = ""; // 같은 파일 재선택 허용
                 }}
               />
-              권장 규격: {POSTER_ASPECT_W}:{POSTER_ASPECT_H} 비율(예: 1200×900), 5MB 이하,
-              jpg·png·webp. 없으면 카테고리별 기본 디자인이 사용됩니다.
+              비율 제한 없음 — 세로형·정사각·가로형 어떤 포스터도 그대로 올릴 수 있어요(5MB
+              이하, jpg·png·webp). 없으면 카테고리별 기본 디자인이 사용됩니다.
               {posterUploading ? (
                 <div style={{ marginTop: "0.4rem", color: "#6b7280" }}>
                   업로드 중…
                 </div>
               ) : posterUrl ? (
-                <div style={{ marginTop: "0.4rem" }}>
-                  <SmallBtn type="button" onClick={removePoster}>
-                    포스터 제거
-                  </SmallBtn>
-                </div>
+                <>
+                  <FocusRow role="group" aria-label="목록·캐러셀 크롭 위치">
+                    <span style={{ fontSize: "0.72rem", color: eduColors.textFaint }}>
+                      목록·캐러셀에서 보일 위치
+                    </span>
+                    {(["top", "center", "bottom"] as const).map((f) => (
+                      <FocusBtn
+                        key={f}
+                        type="button"
+                        $active={posterFocus === f}
+                        onClick={() => setPosterFocus(f)}
+                      >
+                        {f === "top" ? "상단" : f === "center" ? "중앙" : "하단"}
+                      </FocusBtn>
+                    ))}
+                  </FocusRow>
+                  <FieldHint>
+                    왼쪽 미리보기가 목록·캐러셀에서 실제로 잘려 보이는 모습이에요. 상세
+                    페이지에서는 전체 이미지가 원본 비율 그대로 보입니다.
+                  </FieldHint>
+                  <div style={{ marginTop: "0.4rem" }}>
+                    <SmallBtn type="button" onClick={removePoster}>
+                      포스터 제거
+                    </SmallBtn>
+                  </div>
+                </>
               ) : null}
               {posterWarn ? <PosterWarn>{posterWarn}</PosterWarn> : null}
             </PosterCtl>

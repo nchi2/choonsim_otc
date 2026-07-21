@@ -13,6 +13,7 @@ import { PosterCard } from "./PosterCard";
 import {
   dDayFromKstYmd,
   formatSessionBrief,
+  toPosterFocus,
   type EventCardData,
 } from "./types";
 
@@ -143,6 +144,7 @@ export function EventCard({
       dateLabel={event.session ? formatSessionBrief(event.session) : null}
       category={event.category}
       posterUrl={event.posterUrl}
+      posterFocus={toPosterFocus(event.posterFocus)}
       compact={variant === "list"}
     />
   );

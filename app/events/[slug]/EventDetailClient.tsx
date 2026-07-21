@@ -391,6 +391,8 @@ export function EventDetailClient({
             posterUrl={event.posterUrl}
             // 바로 옆 HeroInfo에 제목(H1)·일시·장소가 이미 있어 폴백 텍스트는 중복(Step 22)
             hideOverlayText
+            // 실제 포스터는 원본 비율 그대로, 크롭 없이 — 세로형 포스터도 전체가 보이게(Step 25)
+            fit="contain"
           />
         </Poster>
         <HeroInfo>

@@ -45,6 +45,7 @@ export async function GET(
         isFeatured: true,
         isTest: true,
         posterUrl: true,
+        posterFocus: true,
         descriptionMd: true,
         instructorName: true,
         instructorBio: true,
@@ -264,6 +265,13 @@ export async function PATCH(
       } else {
         return bad("허용되지 않은 이미지 주소입니다.");
       }
+    }
+    // 목록·캐러셀 고정 크롭에서 보여줄 위치(Step 25)
+    if (body.posterFocus !== undefined) {
+      data.posterFocus =
+        body.posterFocus === "top" || body.posterFocus === "bottom"
+          ? body.posterFocus
+          : "center";
     }
 
     // ── Step 21: 운영자 전체 편집 — Step 15에서 "운영자에게 문의" 안내한 항목 전체를

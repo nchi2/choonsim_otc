@@ -374,6 +374,9 @@ model EducationEvent {
   category EducationCategory
 
   posterUrl      String?
+  // 목록·캐러셀(고정 4:3 크롭)에서 어느 부분을 보여줄지 — "top"|"center"|"bottom"(Step 25).
+  // 상세 히어로는 원본 비율 그대로(크롭 없음)라 이 값을 쓰지 않는다. 앱 레벨에서만 검증.
+  posterFocus    String  @default("center")
   descriptionMd  String? // 소개 (markdown)
   instructorName String?
   instructorBio  String?

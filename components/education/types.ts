@@ -2,6 +2,14 @@
 // 서버(RSC/API)에서 Prisma 결과를 이 형태로 매핑해 클라이언트 컴포넌트에 넘긴다.
 import { todayKst } from "@/lib/kst";
 
+/** 목록·캐러셀(고정 4:3 크롭)에서 포스터의 어느 부분을 보여줄지(Step 25). */
+export type PosterFocus = "top" | "center" | "bottom";
+
+/** DB는 검증 없는 plain string(앱 레벨에서만 제한) — 알 수 없는 값은 안전하게 center로. */
+export function toPosterFocus(v: string | null | undefined): PosterFocus {
+  return v === "top" || v === "bottom" ? v : "center";
+}
+
 /** EventCard·Carousel이 소비하는 행사 요약. */
 export interface EventCardData {
   id: number;
@@ -10,6 +18,7 @@ export interface EventCardData {
   category: string; // "LECTURE" | "WORKSHOP" | "EVENT"
   mode: string; // "OFFLINE" | "ONLINE" | "HYBRID"
   posterUrl: string | null;
+  posterFocus: string;
   /** 회관 id — 회관 필터용(null=회관 없이 customLocation). 2-B 추가(하위호환). */
   officeId: number | null;
   /** 장소 표시명 — office.name ?? customLocation ?? null */

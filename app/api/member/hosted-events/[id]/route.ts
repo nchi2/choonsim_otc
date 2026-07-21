@@ -30,6 +30,7 @@ const DETAIL_SELECT = {
   rejectReason: true,
   isPublished: true,
   posterUrl: true,
+  posterFocus: true,
   descriptionMd: true,
   instructorName: true,
   instructorBio: true,
@@ -149,6 +150,14 @@ function parsePosterUrl(
   return { value: body.posterUrl };
 }
 
+/** 목록·캐러셀 고정 크롭에서 보여줄 위치(Step 25) — posterUrl과 같은 자유도로 취급(안내성). */
+function parsePosterFocus(body: Record<string, unknown>): string | undefined {
+  if (body.posterFocus === undefined) return undefined;
+  return body.posterFocus === "top" || body.posterFocus === "bottom"
+    ? body.posterFocus
+    : "center";
+}
+
 export async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -192,6 +201,8 @@ export async function PATCH(
       const posterApproved = parsePosterUrl(body);
       if (posterApproved.error) return bad(posterApproved.error);
       if (posterApproved.value !== undefined) data.posterUrl = posterApproved.value;
+      const posterFocusApproved = parsePosterFocus(body);
+      if (posterFocusApproved !== undefined) data.posterFocus = posterFocusApproved;
       if (Object.keys(data).length === 0) return bad("변경할 항목이 없습니다.");
       await prisma.educationEvent.update({ where: { id }, data });
       return NextResponse.json({ ok: true, status: event.status });
@@ -205,6 +216,8 @@ export async function PATCH(
     const posterPending = parsePosterUrl(body);
     if (posterPending.error) return bad(posterPending.error);
     if (posterPending.value !== undefined) data.posterUrl = posterPending.value;
+    const posterFocusPending = parsePosterFocus(body);
+    if (posterFocusPending !== undefined) data.posterFocus = posterFocusPending;
     const title = optText(body.title, 100);
     if (title !== undefined) {
       if (!title) return bad("제목은 비울 수 없습니다.");

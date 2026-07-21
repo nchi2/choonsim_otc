@@ -101,6 +101,7 @@ export interface EduDetailEvent {
   isFeatured: boolean;
   isTest: boolean;
   posterUrl: string | null;
+  posterFocus: string;
   descriptionMd: string | null;
   instructorName: string | null;
   instructorBio: string | null;

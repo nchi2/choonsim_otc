@@ -44,6 +44,11 @@ import {
   parse24,
   to24,
 } from "@/lib/time-input";
+import {
+  DEFAULT_DEPOSIT_ACCOUNT_HOLDER,
+  DEFAULT_DEPOSIT_ACCOUNT_NO,
+  DEFAULT_DEPOSIT_BANK_NAME,
+} from "@/lib/education-defaults";
 
 const Wrap = styled.div`
   max-width: 860px;
@@ -485,10 +490,15 @@ function DetailBody({
   const [applyDeadline, setApplyDeadline] = useState(
     event.applyDeadline ? event.applyDeadline.slice(0, 10) : "",
   );
-  const [depositBankName, setDepositBankName] = useState(event.depositBankName ?? "");
-  const [depositAccountNo, setDepositAccountNo] = useState(event.depositAccountNo ?? "");
+  // 계좌 미등록이면 춘심팀 기본값으로 미리 채움(수정 가능, Step 25) — 기존 값이 있으면 그게 우선.
+  const [depositBankName, setDepositBankName] = useState(
+    event.depositBankName ?? DEFAULT_DEPOSIT_BANK_NAME,
+  );
+  const [depositAccountNo, setDepositAccountNo] = useState(
+    event.depositAccountNo ?? DEFAULT_DEPOSIT_ACCOUNT_NO,
+  );
   const [depositAccountHolder, setDepositAccountHolder] = useState(
-    event.depositAccountHolder ?? "",
+    event.depositAccountHolder ?? DEFAULT_DEPOSIT_ACCOUNT_HOLDER,
   );
   const [eligibility, setEligibility] = useState(event.eligibility ?? "");
   const [preparation, setPreparation] = useState(event.preparation ?? "");
@@ -942,22 +952,22 @@ function DetailBody({
           </>
         ) : null}
 
-        {/* 안내사항 */}
+        {/* 안내사항 — 여러 줄 입력 가능(Step 25) */}
         <Field>
           <FieldLabel>참여 대상·조건</FieldLabel>
-          <Input value={eligibility} onChange={(e) => setEligibility(e.target.value)} />
+          <Textarea value={eligibility} onChange={(e) => setEligibility(e.target.value)} />
         </Field>
         <Field>
           <FieldLabel>준비물</FieldLabel>
-          <Input value={preparation} onChange={(e) => setPreparation(e.target.value)} />
+          <Textarea value={preparation} onChange={(e) => setPreparation(e.target.value)} />
         </Field>
         <Field>
           <FieldLabel>리워드</FieldLabel>
-          <Input value={reward} onChange={(e) => setReward(e.target.value)} />
+          <Textarea value={reward} onChange={(e) => setReward(e.target.value)} />
         </Field>
         <Field>
           <FieldLabel>환불·노쇼 규정</FieldLabel>
-          <Input value={refundPolicy} onChange={(e) => setRefundPolicy(e.target.value)} />
+          <Textarea value={refundPolicy} onChange={(e) => setRefundPolicy(e.target.value)} />
         </Field>
         <Field>
           <FieldLabel>기타 유의사항</FieldLabel>

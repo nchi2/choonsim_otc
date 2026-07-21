@@ -198,6 +198,12 @@ export async function POST(request: Request) {
     const posterUrlRaw = asTrimmed(body.posterUrl, 500);
     const posterUrl =
       posterUrlRaw && isR2PublicUrl(posterUrlRaw) ? posterUrlRaw : null;
+    // 목록·캐러셀 고정 크롭에서 보여줄 위치(Step 25) — 알 수 없는 값은 조용히 기본값으로.
+    const posterFocusRaw = body.posterFocus;
+    const posterFocus =
+      posterFocusRaw === "top" || posterFocusRaw === "bottom"
+        ? posterFocusRaw
+        : "center";
 
     const slug = await uniqueSlug(title);
     const row = await prisma.educationEvent.create({
@@ -205,6 +211,7 @@ export async function POST(request: Request) {
         title,
         slug,
         posterUrl,
+        posterFocus,
         category: category as "LECTURE" | "WORKSHOP" | "EVENT",
         mode: mode as "OFFLINE" | "ONLINE" | "HYBRID",
         // 스트림 링크는 온라인·혼합일 때만 저장(오프라인은 무시)
