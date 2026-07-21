@@ -104,6 +104,10 @@ model AdminUser {
   manageOtc       Boolean @default(true)
   manageEducation Boolean @default(true)
 
+  // 계정 활성 여부(Step 27) — 삭제 대신 비활성화. 관계(근무슬롯·배정주문·원장·코멘트) 보존.
+  // false면 로그인 차단. default true = 기존 전원 활성 유지(백필).
+  isActive Boolean @default(true)
+
   workSlots      WorkSlot[]
   assignedOrders OtcOrder[] @relation("OrderAssignedAdmin")
   walletLedgers  PaperWalletLedger[] @relation("WalletLedgerAdmin")

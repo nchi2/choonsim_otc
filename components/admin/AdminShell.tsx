@@ -44,13 +44,15 @@ import {
   type UnreadNotification,
 } from "@/lib/admin-fetchers";
 
-/** 네비 항목 — scope: 해당 권한이 없으면 네비에서 감춤 (Step 16). null = 전 운영자. */
+/** 네비 항목 — scope: 해당 권한이 없으면 네비에서 감춤 (Step 16). null = 전 운영자.
+ *  superOnly: 총괄(두 권한 모두)만 노출 (Step 27). */
 interface NavItem {
   href: string;
   label: string;
   exact: boolean;
   badge: boolean;
   scope: "otc" | "education" | null;
+  superOnly?: boolean;
 }
 
 /** 데스크탑 사이드바 항목 */
@@ -67,7 +69,7 @@ const SIDE_ITEMS: NavItem[] = [
     badge: false,
     scope: "otc",
   },
-  { href: "/admin/operators", label: "운영자 권한", exact: false, badge: false, scope: null },
+  { href: "/admin/operators", label: "운영자 관리", exact: false, badge: false, scope: null, superOnly: true },
 ];
 
 /** 모바일 하단탭 — 기존 4탭 구조 유지(manageOtc 운영자 기준). */
@@ -88,6 +90,8 @@ function hasScope(
   item: NavItem,
   scopes: { manageOtc: boolean; manageEducation: boolean },
 ): boolean {
+  // 총괄 전용 항목(운영자 관리)은 두 권한 모두 있어야 노출 (Step 27)
+  if (item.superOnly && !(scopes.manageOtc && scopes.manageEducation)) return false;
   if (item.scope === "otc") return scopes.manageOtc;
   if (item.scope === "education") return scopes.manageEducation;
   return true;
@@ -545,7 +549,7 @@ function resolvePageTitle(pathname: string): string {
     return "신청 관리";
   }
   if (pathname.startsWith("/admin/profile")) return "내 프로필";
-  if (pathname.startsWith("/admin/operators")) return "운영자 권한";
+  if (pathname.startsWith("/admin/operators")) return "운영자 관리";
   if (/^\/admin\/education\/[^/]+\/applicants$/.test(pathname)) {
     return "신청자 명단";
   }

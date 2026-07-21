@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         username: true,
         passwordHash: true,
         displayName: true,
+        isActive: true,
       },
     });
 
@@ -63,6 +64,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "사용자명 또는 비밀번호가 올바르지 않습니다." },
         { status: 401 },
+      );
+    }
+
+    // 비활성화된 계정은 로그인 차단(Step 27) — 비밀번호 확인 후 검사(계정 존재 여부 노출 최소화).
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: "비활성화된 계정입니다. 총괄 운영자에게 문의해 주세요." },
+        { status: 403 },
       );
     }
 
