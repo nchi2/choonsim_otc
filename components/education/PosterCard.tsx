@@ -64,13 +64,25 @@ const CategoryTag = styled.span<{ $compact?: boolean }>`
   letter-spacing: 0.04em;
 `;
 
+/* 이음매 없는 자연스러운 폴백을 위해 그라데이션을 박스 높이의 절반 가까이 퍼뜨린다
+ * (기존엔 텍스트 콘텐츠 높이만큼만 어두워져 "잘린 듯한 가로 띠"로 보였음 — Step 22).
+ * 텍스트는 이 넓은 영역 안에서 하단 정렬로 자연스럽게 앉는다. */
 const Info = styled.div<{ $compact?: boolean }>`
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
+  top: ${(p) => (p.$compact ? "48%" : "40%")};
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   padding: ${(p) => (p.$compact ? "0.35rem 0.45rem" : "0.8rem 0.95rem")};
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.38));
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 0, 0, 0.32) 55%,
+    rgba(0, 0, 0, 0.5)
+  );
   color: ${eduColors.white};
 
   .t {
@@ -107,6 +119,10 @@ export interface PosterCardProps {
   posterUrl?: string | null;
   /** true = 리스트 썸네일(96px) 축약 렌더 */
   compact?: boolean;
+  /** true면 폴백에서 제목/일시/장소 텍스트를 숨기고 카테고리 톤·아이콘만 표시.
+   *  상세 페이지 히어로처럼 바로 옆에 같은 정보(H1 제목·MetaList)가 이미 있는
+   *  화면에서 중복 노출을 피하기 위함(Step 22) — 카드/캐러셀 등 단독 노출 맥락에서는 쓰지 않는다. */
+  hideOverlayText?: boolean;
 }
 
 /** 포스터 or 디자인된 폴백. 부모가 border-radius/크기를 감싸는 컨테이너로 제어. */
@@ -117,6 +133,7 @@ export function PosterCard({
   category,
   posterUrl,
   compact,
+  hideOverlayText,
 }: PosterCardProps) {
   const tone = CATEGORY_POSTER_TONE[category] ?? DEFAULT_POSTER_TONE;
   return (
@@ -133,14 +150,16 @@ export function PosterCard({
           <Icon $compact={compact} aria-hidden>
             {tone.icon}
           </Icon>
-          <Info $compact={compact}>
-            <div className="t">{title}</div>
-            {subtitle || dateLabel ? (
-              <div className="sub">
-                {[dateLabel, subtitle].filter(Boolean).join(" · ")}
-              </div>
-            ) : null}
-          </Info>
+          {hideOverlayText ? null : (
+            <Info $compact={compact}>
+              <div className="t">{title}</div>
+              {subtitle || dateLabel ? (
+                <div className="sub">
+                  {[dateLabel, subtitle].filter(Boolean).join(" · ")}
+                </div>
+              ) : null}
+            </Info>
+          )}
         </>
       )}
     </Box>

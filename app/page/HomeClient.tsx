@@ -1,7 +1,8 @@
 "use client";
 
 // 새 메인 조립 — PublicShell(헤더·시세 스트립·푸터·모바일 3탭) 안에
-// [행사 캐러셀] → [이번 주 행사] → [회관 OTC 카드] → [캘린더 링크] → [유튜브(기존 재사용)].
+// [행사 캐러셀] → [앞으로의 행사] → [회관 OTC 카드] → [(모빅 도구, 임시 숨김)] →
+// [캘린더 링크] → [유튜브] → [생태계 스트립].
 // 기존 OTCSection의 시세/CTA 역할은 PriceTicker(셸 내장)·OfficeOtcCard가 대체.
 
 import Link from "next/link";
@@ -124,6 +125,14 @@ const YoutubeWrap = styled.div`
   border-top: 1px solid ${eduColors.border};
 `;
 
+/** "앞으로의 행사" 표시 상한 — 너무 길어지지 않게(Step 22). 전체는 "전체 행사 →"로. */
+const UPCOMING_DISPLAY_LIMIT = 6;
+
+/** ★ 모빅 도구 섹션(Step 19/21) 메인 노출 스위치 — Step 22에서 코드는 보존한 채 임시로 끔.
+ *  되살리려면: 이 값을 true로 바꾸기만 하면 된다(아래 조건부 렌더 외 다른 변경 불필요).
+ *  ToolsSection.tsx 자체·☰메뉴/푸터의 스캐너·컨트랙트·SBMB 링크는 이 스위치와 무관하게 그대로 살아있다. */
+const SHOW_TOOLS_SECTION = false;
+
 export function HomeClient({
   events,
   carousel,
@@ -132,16 +141,13 @@ export function HomeClient({
   /** 서버(pickCarouselEvents)에서 선별 — 다가오는 featured 우선 + 개수 폴백 */
   carousel: EventCardData[];
 }) {
-  // 다가오는(오늘 이후) 행사 — 조회 레이어가 이미 임박순 정렬. 이번 주(7일) 우선, 없으면 다가오는 순.
+  // 앞으로의 행사 — 종료되지 않은(대표 세션이 오늘 이후) 행사만, 조회 레이어가 이미
+  // 가까운 순으로 정렬해서 준다(Step 22 — 7일 제한 없이 다가오는 순 전부, 표시만 상한).
   const upcoming = events.filter((e) => {
     const d = dDayFromKstYmd(e.session?.date ?? null);
     return d != null && d >= 0;
   });
-  const thisWeek = upcoming.filter((e) => {
-    const d = dDayFromKstYmd(e.session?.date ?? null);
-    return d != null && d <= 7;
-  });
-  const weekList = (thisWeek.length > 0 ? thisWeek : upcoming).slice(0, 6);
+  const upcomingList = upcoming.slice(0, UPCOMING_DISPLAY_LIMIT);
 
   return (
     <PublicShell>
@@ -157,10 +163,10 @@ export function HomeClient({
       ) : null}
 
       <SectionHead>
-        <SectionTitle>이번 주 행사</SectionTitle>
+        <SectionTitle>앞으로의 행사</SectionTitle>
         <MoreLink href="/events">전체 행사 →</MoreLink>
       </SectionHead>
-      {weekList.length === 0 ? (
+      {upcomingList.length === 0 ? (
         <EmptyNote>
           예정된 행사가 준비 중입니다. 곧 새 강연·실습이 열려요.
         </EmptyNote>
@@ -168,14 +174,14 @@ export function HomeClient({
         <>
           <DesktopOnly>
             <EventCardGrid>
-              {weekList.map((ev) => (
+              {upcomingList.map((ev) => (
                 <EventCard key={ev.id} event={ev} />
               ))}
             </EventCardGrid>
           </DesktopOnly>
           <MobileOnly>
             <EventCardList>
-              {weekList.map((ev) => (
+              {upcomingList.map((ev) => (
                 <EventCard key={ev.id} event={ev} variant="list" />
               ))}
             </EventCardList>
@@ -188,10 +194,14 @@ export function HomeClient({
       </SectionHead>
       <OfficeOtcCard />
 
-      <SectionHead>
-        <SectionTitle>모빅 도구</SectionTitle>
-      </SectionHead>
-      <ToolsSection />
+      {SHOW_TOOLS_SECTION ? (
+        <>
+          <SectionHead>
+            <SectionTitle>모빅 도구</SectionTitle>
+          </SectionHead>
+          <ToolsSection />
+        </>
+      ) : null}
 
       <SectionHead>
         <SectionTitle>행사 캘린더</SectionTitle>

@@ -363,6 +363,8 @@ export function EventDetailClient({
             dateLabel={primarySession ? formatSessionRange(primarySession) : null}
             category={event.category}
             posterUrl={event.posterUrl}
+            // 바로 옆 HeroInfo에 제목(H1)·일시·장소가 이미 있어 폴백 텍스트는 중복(Step 22)
+            hideOverlayText
           />
         </Poster>
         <HeroInfo>
