@@ -7,6 +7,7 @@ import {
   canTransitionEducationStatus,
   isEducationEventStatus,
 } from "@/lib/education-status";
+import { isR2PublicUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
@@ -222,6 +223,17 @@ export async function PATCH(
     if (descriptionMd !== undefined) data.descriptionMd = descriptionMd;
     const notice = optTrimmed(body.notice, 2000);
     if (notice !== undefined) data.notice = notice;
+
+    // 포스터 교체·삭제(Step 18) — 우리 R2 공개 URL만 허용, null/""=삭제
+    if (body.posterUrl !== undefined) {
+      if (body.posterUrl === null || body.posterUrl === "") {
+        data.posterUrl = null;
+      } else if (typeof body.posterUrl === "string" && isR2PublicUrl(body.posterUrl)) {
+        data.posterUrl = body.posterUrl;
+      } else {
+        return bad("허용되지 않은 이미지 주소입니다.");
+      }
+    }
 
     if (body.capacity !== undefined) {
       let capacity: number | null;

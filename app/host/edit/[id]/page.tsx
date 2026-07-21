@@ -40,6 +40,7 @@ export default async function HostEditPage({
       hostMemberId: true,
       status: true,
       rejectReason: true,
+      posterUrl: true,
       title: true,
       category: true,
       mode: true,
@@ -74,6 +75,7 @@ export default async function HostEditPage({
   const initial: HostFormInitial = {
     status: event.status,
     rejectReason: event.rejectReason,
+    posterUrl: event.posterUrl,
     title: event.title,
     category: event.category,
     mode: event.mode,

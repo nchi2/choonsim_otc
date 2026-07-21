@@ -4,6 +4,7 @@ import { isKstYmd, todayKst } from "@/lib/kst";
 import { sendEducationHostApplyAlert } from "@/lib/education-alerts";
 import { getMemberUser } from "@/lib/member-guard";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { isR2PublicUrl } from "@/lib/r2";
 import {
   allowEducationHost,
   clientIpOf,
@@ -193,11 +194,17 @@ export async function POST(request: Request) {
       officeName = office.name;
     }
 
+    // 포스터(선택) — 우리 R2 공개 URL만 허용(주입 방지). 없으면 null(공개 화면 폴백).
+    const posterUrlRaw = asTrimmed(body.posterUrl, 500);
+    const posterUrl =
+      posterUrlRaw && isR2PublicUrl(posterUrlRaw) ? posterUrlRaw : null;
+
     const slug = await uniqueSlug(title);
     const row = await prisma.educationEvent.create({
       data: {
         title,
         slug,
+        posterUrl,
         category: category as "LECTURE" | "WORKSHOP" | "EVENT",
         mode: mode as "OFFLINE" | "ONLINE" | "HYBRID",
         // 스트림 링크는 온라인·혼합일 때만 저장(오프라인은 무시)

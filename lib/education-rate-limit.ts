@@ -34,6 +34,11 @@ export function allowEducationHost(ip: string): boolean {
   return allow(`edu-host:${ip}`, envInt("EDU_RATE_HOST_MAX", 3));
 }
 
+/** 포스터 업로드 — 기본 분당 10회/IP (여러 장 교체·재시도 여유. 게이트가 승인 교육자·운영자로 이미 제한). */
+export function allowPosterUpload(ip: string): boolean {
+  return allow(`edu-poster:${ip}`, envInt("EDU_RATE_POSTER_MAX", 10));
+}
+
 /** 클라이언트 IP — 프록시 헤더 우선(sbmb clientIp와 동일 규칙). */
 export function clientIpOf(request: Request): string {
   const fwd = request.headers.get("x-forwarded-for");

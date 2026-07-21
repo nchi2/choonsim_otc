@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isKstYmd } from "@/lib/kst";
 import { getMemberUser } from "@/lib/member-guard";
 import { EDUCATOR_LOCKED_AFTER_APPROVAL } from "@/lib/education-status";
+import { isR2PublicUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
@@ -134,6 +135,20 @@ function pickEditableAfterApproval(body: Record<string, unknown>) {
   };
 }
 
+/**
+ * 포스터 URL 파싱 — 미지정(undefined)=변경 없음 / null·""=삭제 / 문자열=우리 R2 공개 URL만 허용(주입 방지).
+ * 포스터는 안내성 항목이라 승인 후에도 교체·삭제 자유(Step 18, EDUCATOR_EDITABLE_AFTER_APPROVAL).
+ */
+function parsePosterUrl(
+  body: Record<string, unknown>,
+): { value?: string | null; error?: string } {
+  if (body.posterUrl === undefined) return {};
+  if (body.posterUrl === null || body.posterUrl === "") return { value: null };
+  if (typeof body.posterUrl !== "string") return { error: "포스터 값이 올바르지 않습니다." };
+  if (!isR2PublicUrl(body.posterUrl)) return { error: "허용되지 않은 이미지 주소입니다." };
+  return { value: body.posterUrl };
+}
+
 export async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -174,6 +189,9 @@ export async function PATCH(
       for (const [k, v] of Object.entries(pickEditableAfterApproval(body))) {
         if (v !== undefined) data[k] = v;
       }
+      const posterApproved = parsePosterUrl(body);
+      if (posterApproved.error) return bad(posterApproved.error);
+      if (posterApproved.value !== undefined) data.posterUrl = posterApproved.value;
       if (Object.keys(data).length === 0) return bad("변경할 항목이 없습니다.");
       await prisma.educationEvent.update({ where: { id }, data });
       return NextResponse.json({ ok: true, status: event.status });
@@ -184,6 +202,9 @@ export async function PATCH(
     for (const [k, v] of Object.entries(pickEditableAfterApproval(body))) {
       if (v !== undefined) data[k] = v;
     }
+    const posterPending = parsePosterUrl(body);
+    if (posterPending.error) return bad(posterPending.error);
+    if (posterPending.value !== undefined) data.posterUrl = posterPending.value;
     const title = optText(body.title, 100);
     if (title !== undefined) {
       if (!title) return bad("제목은 비울 수 없습니다.");

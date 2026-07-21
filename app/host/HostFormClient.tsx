@@ -6,7 +6,7 @@
 // ★ 포스터는 미리보기 UI만 — 실제 업로드(R2)는 다음 Step. 제출 시 무시.
 // Turnstile: 키 장착 시 제출 body의 turnstileToken 자리에 위젯 token을 실으면 서버 검증이 켜진다.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import styled from "styled-components";
 import { PublicShell } from "@/components/education/PublicShell";
 import {
@@ -318,6 +318,7 @@ export interface HostFormInitial {
   refundPolicy: string | null;
   notice: string | null;
   applyDeadline: string | null; // "YYYY-MM-DD" or null
+  posterUrl: string | null;
   sessions: { date: string; startTime: string; endTime: string }[];
 }
 
@@ -384,44 +385,52 @@ export function HostFormClient({
   const [notice, setNotice] = useState(initial?.notice ?? "");
   const [applyDeadline, setApplyDeadline] = useState(initial?.applyDeadline ?? "");
 
-  // 포스터(미리보기 전용) + 동의
-  const [posterPreview, setPosterPreview] = useState<string | null>(null);
+  // 포스터 — R2 실제 업로드(Step 18). posterUrl=업로드된 공개 URL(제출·저장 대상).
+  const [posterUrl, setPosterUrl] = useState<string | null>(initial?.posterUrl ?? null);
   const [posterWarn, setPosterWarn] = useState<string | null>(null);
-  const posterUrlRef = useRef<string | null>(null);
+  const [posterUploading, setPosterUploading] = useState(false);
   const [agree, setAgree] = useState(false);
 
   const paid = Number(feeKrw) > 0;
   const isOnlineMode = mode === "ONLINE" || mode === "HYBRID";
 
-  useEffect(() => {
-    return () => {
-      if (posterUrlRef.current) URL.revokeObjectURL(posterUrlRef.current);
-    };
-  }, []);
-
-  const onPosterChange = (file: File | null) => {
-    if (posterUrlRef.current) {
-      URL.revokeObjectURL(posterUrlRef.current);
-      posterUrlRef.current = null;
-    }
+  const onPosterChange = async (file: File | null) => {
     setPosterWarn(null);
     if (!file) {
-      setPosterPreview(null);
+      // 파일 선택 취소 — 기존 업로드는 유지(제거는 별도 버튼)
       return;
     }
+    // 클라 1차 검증(서버가 시그니처로 재검증 — 위조는 서버에서 최종 차단)
     if (!POSTER_TYPES.includes(file.type)) {
       setPosterWarn("jpg·png·webp 이미지만 첨부할 수 있어요.");
-      setPosterPreview(null);
       return;
     }
     if (file.size > MAX_POSTER_BYTES) {
       setPosterWarn("파일이 5MB를 초과합니다. 더 작은 이미지를 사용해 주세요.");
-      setPosterPreview(null);
       return;
     }
-    const url = URL.createObjectURL(file);
-    posterUrlRef.current = url;
-    setPosterPreview(url);
+    setPosterUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/education/poster", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "포스터 업로드에 실패했습니다.");
+      }
+      setPosterUrl(json.url);
+    } catch (err) {
+      setPosterWarn(
+        err instanceof Error ? err.message : "포스터 업로드에 실패했습니다.",
+      );
+    } finally {
+      setPosterUploading(false);
+    }
+  };
+
+  const removePoster = () => {
+    setPosterWarn(null);
+    setPosterUrl(null);
   };
 
   const updateSession = (i: number, patch: Partial<SessionInput>) =>
@@ -448,7 +457,8 @@ export function HostFormClient({
       if (isEdit) {
         const body: Record<string, unknown> = locked
           ? {
-              // 승인·공개 후에는 안내성 필드만 — 잠긴 필드는 서버가 403으로 거부하므로 보내지 않음
+              // 승인·공개 후에는 안내성 필드만 — 잠긴 필드는 서버가 403으로 거부하므로 보내지 않음.
+              // 포스터는 안내성 항목이라 승인 후에도 교체·삭제 가능(Step 18).
               descriptionMd: descriptionMd.trim() || null,
               instructorBio: instructorBio.trim() || null,
               preparation: preparation.trim() || null,
@@ -456,6 +466,7 @@ export function HostFormClient({
               eligibility: eligibility.trim() || null,
               reward: reward.trim() || null,
               streamUrl: isOnlineMode ? streamUrl.trim() || null : null,
+              posterUrl,
             }
           : {
               title: title.trim(),
@@ -479,6 +490,7 @@ export function HostFormClient({
               refundPolicy: refundPolicy.trim() || null,
               notice: notice.trim() || null,
               applyDeadline: applyDeadline || null,
+              posterUrl,
               ...(isRejected ? { resubmit: true } : {}),
             };
         const res = await fetch(`/api/member/hosted-events/${editId}`, {
@@ -520,7 +532,8 @@ export function HostFormClient({
           refundPolicy: refundPolicy.trim() || null,
           notice: notice.trim() || null,
           applyDeadline: applyDeadline || null,
-          // 포스터는 R2 연동 예정 — 지금은 미리보기만이라 제출에 포함하지 않음.
+          // 포스터(선택) — R2 업로드된 공개 URL(없으면 null → 공개 화면 폴백).
+          posterUrl,
           // 개설자 정보(hostName/Contact/Email)는 서버가 로그인 회원 정보로 채움.
           // [TURNSTILE 위젯 자리] 사이트키 장착 시 위젯 token을 싣는다.
           turnstileToken: null,
@@ -880,14 +893,16 @@ export function HostFormClient({
           </Field>
         </Fieldset>
 
-        {/* ── 포스터 (미리보기 UI만) ── */}
+        {/* ── 포스터 (선택, R2 실제 업로드 — Step 18) ── */}
         <Fieldset>
           <legend>포스터 (선택)</legend>
           <PosterDrop>
             <PosterPreview>
-              {posterPreview ? (
+              {posterUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={posterPreview} alt="포스터 미리보기" />
+                <img src={posterUrl} alt="포스터 미리보기" />
+              ) : posterUploading ? (
+                "업로드 중…"
               ) : (
                 `${POSTER_ASPECT_W}:${POSTER_ASPECT_H} 미리보기`
               )}
@@ -896,19 +911,26 @@ export function HostFormClient({
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => onPosterChange(e.target.files?.[0] ?? null)}
+                disabled={posterUploading}
+                onChange={(e) => {
+                  void onPosterChange(e.target.files?.[0] ?? null);
+                  e.target.value = ""; // 같은 파일 재선택 허용
+                }}
               />
               권장 규격: {POSTER_ASPECT_W}:{POSTER_ASPECT_H} 비율(예: 1200×900), 5MB 이하,
               jpg·png·webp. 없으면 카테고리별 기본 디자인이 사용됩니다.
-              {posterPreview ? (
+              {posterUploading ? (
+                <div style={{ marginTop: "0.4rem", color: "#6b7280" }}>
+                  업로드 중…
+                </div>
+              ) : posterUrl ? (
                 <div style={{ marginTop: "0.4rem" }}>
-                  <SmallBtn type="button" onClick={() => onPosterChange(null)}>
+                  <SmallBtn type="button" onClick={removePoster}>
                     포스터 제거
                   </SmallBtn>
                 </div>
               ) : null}
               {posterWarn ? <PosterWarn>{posterWarn}</PosterWarn> : null}
-              {/* R2 연동 예정 — 현재는 미리보기만, 제출 시 업로드하지 않음 */}
             </PosterCtl>
           </PosterDrop>
         </Fieldset>

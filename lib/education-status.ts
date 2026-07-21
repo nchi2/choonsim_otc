@@ -41,7 +41,8 @@ export function canTransitionEducationStatus(
   return true; // → APPROVED/REJECTED/CANCELED
 }
 
-/** 승인·공개 후 교육자가 자유 수정 가능한 안내성 필드(신청자 실질 영향 없음) — Step 15. */
+/** 승인·공개 후 교육자가 자유 수정 가능한 안내성 필드(신청자 실질 영향 없음) — Step 15/18.
+ * posterUrl(포스터): 날짜·정원처럼 실질 영향을 주는 항목이 아니라 홍보 이미지이므로 승인 후에도 자유 교체·삭제 허용(Step 18). */
 export const EDUCATOR_EDITABLE_AFTER_APPROVAL = [
   "descriptionMd",
   "instructorBio",
@@ -50,6 +51,7 @@ export const EDUCATOR_EDITABLE_AFTER_APPROVAL = [
   "eligibility",
   "reward",
   "streamUrl",
+  "posterUrl",
 ] as const;
 
 /** 승인 후 운영자만 변경 가능한 잠금 필드(신청자 영향) — API 거부·화면 읽기전용 안내에 공용. */
