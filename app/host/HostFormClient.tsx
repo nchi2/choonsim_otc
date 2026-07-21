@@ -10,6 +10,14 @@ import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { PublicShell } from "@/components/education/PublicShell";
 import {
+  AMPM_OPTS,
+  HOUR12_OPTS,
+  MINUTE_OPTS,
+  openDatePicker,
+  parse24,
+  to24,
+} from "@/lib/time-input";
+import {
   POSTER_ASPECT_CSS,
   POSTER_ASPECT_H,
   POSTER_ASPECT_W,
@@ -329,28 +337,8 @@ const MAX_POSTER_BYTES = 5 * 1024 * 1024;
 const POSTER_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /* ── 시간 입력(오전/오후 + 시 + 분) ⇄ 24시간 "HH:MM" 저장 형식 변환 (Step 20) ──
- * 저장·조회·캘린더는 전부 "HH:MM"(24h)에 의존 — UI만 바꾸고 형식은 절대 유지. */
-const AMPM_OPTS = ["오전", "오후"] as const;
-const HOUR12_OPTS = Array.from({ length: 12 }, (_, i) => i + 1); // 1..12
-const MINUTE_OPTS = ["00", "30"] as const;
-
-/** "HH:MM"(24h) → {오전/오후, 12시제 시, 분}. 형식 아니면 null. */
-function parse24(v: string): { ampm: string; hour: number; minute: string } | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
-  if (!m) return null;
-  const h = Number(m[1]);
-  if (h < 0 || h > 23) return null;
-  const ampm = h < 12 ? "오전" : "오후";
-  const hour = h % 12 === 0 ? 12 : h % 12; // 0시·12시 → 12
-  return { ampm, hour, minute: m[2] };
-}
-
-/** {오전/오후, 12시제 시, 분} → "HH:MM"(24h). */
-function to24(ampm: string, hour12: number, minute: string): string {
-  let h = hour12 % 12; // 12 → 0
-  if (ampm === "오후") h += 12;
-  return `${String(h).padStart(2, "0")}:${minute}`;
-}
+ * 저장·조회·캘린더는 전부 "HH:MM"(24h)에 의존 — UI만 바꾸고 형식은 절대 유지.
+ * 변환 로직은 lib/time-input.ts로 공유(Step 21 — 어드민 편집 폼도 동일 로직 재사용). */
 
 /** 시간 피커 — 부모는 "HH:MM"(또는 "") 하나만 관리. 미완성(오전/오후·시 미선택)은 ""로 emit. */
 function TimePicker({
@@ -441,14 +429,6 @@ function TimePicker({
   );
 }
 
-/** 날짜 인풋 클릭 시 네이티브 달력 피커 열기(지원 브라우저) — 필드 어디를 눌러도 달력이 뜨게. */
-function openDatePicker(e: React.MouseEvent<HTMLInputElement>) {
-  try {
-    e.currentTarget.showPicker?.();
-  } catch {
-    // 일부 브라우저/상황에서 showPicker 미지원 — 기본 동작(입력)으로 폴백
-  }
-}
 
 export interface HostFormInitial {
   status: string; // PENDING | APPROVED | REJECTED (수정 모드)

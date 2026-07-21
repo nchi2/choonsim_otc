@@ -3,7 +3,7 @@
 // /admin/education/[id] — 행사 상세·관리. 승인/반려 상태머신·공개/추천 토글·내용 편집 저장
 // (PATCH /api/admin/education/[id]) + 코멘트(targetType=EDUCATION_EVENT) 통합. (4-B 배선 완료)
 
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import styled from "styled-components";
 import {
@@ -20,6 +20,12 @@ import { useAdminSession } from "@/components/admin/AdminSessionContext";
 import { CommentsSection } from "@/components/admin/CommentsSection";
 import { invalidate, useAdminData } from "@/lib/admin-data";
 import {
+  OFFICES_KEY,
+  OFFICES_TTL,
+  officesFetcher,
+  type DashboardData,
+} from "@/lib/admin-fetchers";
+import {
   EDU_CATEGORY_LABEL,
   EDU_DETAIL_TTL,
   EDU_MODE_LABEL,
@@ -30,6 +36,14 @@ import {
   fmtFeeKrw,
   type EduDetailEvent,
 } from "@/lib/education-admin-fetchers";
+import {
+  AMPM_OPTS,
+  HOUR12_OPTS,
+  MINUTE_OPTS,
+  openDatePicker,
+  parse24,
+  to24,
+} from "@/lib/time-input";
 
 const Wrap = styled.div`
   max-width: 860px;
@@ -169,6 +183,7 @@ const inputCss = `
   background: ${adminColors.white};
   color: ${adminColors.text};
   &:focus { outline: none; border-color: ${adminColors.primary}; }
+  &:disabled { background: ${adminColors.bgSubtle}; color: ${adminColors.textFaint}; }
 `;
 const Input = styled.input`
   ${inputCss}
@@ -177,6 +192,90 @@ const Textarea = styled.textarea`
   ${inputCss}
   min-height: 90px;
   resize: vertical;
+`;
+const Select = styled.select`
+  ${inputCss}
+`;
+
+const Grid2 = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+/* 세션(회차) 카드 — /host와 동일 UX(Step 20), adminColors로만 재배색 */
+const SessionCard = styled.div`
+  border: 1px solid ${adminColors.border};
+  border-radius: 9px;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+`;
+
+const SessionTop = styled.div`
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+
+  label {
+    flex: 1;
+    min-width: 0;
+  }
+`;
+
+const SessionTimes = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TimeGroup = styled.div`
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 0.35rem;
+`;
+
+const MiniSelect = styled.select`
+  ${inputCss}
+  padding: 0.45rem 0.35rem;
+  font-size: 0.8rem;
+`;
+
+const MiniLabel = styled.span`
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: ${adminColors.textMuted};
+  margin-bottom: 0.2rem;
+`;
+
+const SmallBtn = styled.button`
+  padding: 0.45rem 0.65rem;
+  border-radius: 7px;
+  border: 1px solid ${adminColors.borderInput};
+  background: ${adminColors.white};
+  color: ${adminColors.textSub};
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover {
+    border-color: ${adminColors.primary};
+    color: ${adminColors.primary};
+  }
+`;
+
+const AddBtn = styled(SmallBtn)`
+  align-self: flex-start;
 `;
 
 const ToggleRow = styled.label`
@@ -217,6 +316,91 @@ const CommentPlaceholder = styled.div`
   color: ${adminColors.textFaint};
   font-size: 0.82rem;
 `;
+
+/** 시간 피커 — /host(Step 20)와 동일 UX·변환 로직(lib/time-input.ts), adminColors로 재배색만.
+ * 부모는 "HH:MM"(또는 "") 하나만 관리. 미완성(오전/오후·시 미선택)은 ""로 emit. */
+function AdminTimePicker({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const p0 = parse24(value);
+  const [ampm, setAmpm] = useState(p0?.ampm ?? "");
+  const [hour, setHour] = useState(p0 ? String(p0.hour) : "");
+  const [minute, setMinute] = useState(p0?.minute ?? "00");
+  // 우리가 방금 emit한 값 기록 — 외부(행사 전환·회차 삭제로 인덱스 이동) 변경만 재동기화
+  const syncedRef = useRef(value);
+
+  useEffect(() => {
+    if (value !== syncedRef.current) {
+      syncedRef.current = value;
+      const p = parse24(value);
+      setAmpm(p?.ampm ?? "");
+      setHour(p ? String(p.hour) : "");
+      setMinute(p?.minute ?? "00");
+    }
+  }, [value]);
+
+  const update = (a: string, h: string, m: string) => {
+    setAmpm(a);
+    setHour(h);
+    setMinute(m);
+    const next = a && h ? to24(a, Number(h), m) : "";
+    syncedRef.current = next;
+    onChange(next);
+  };
+
+  // 기존 데이터가 00/30이 아닌 분(예외)이면 옵션에 포함해 값 유실 방지
+  const minuteOptions: readonly string[] = (
+    MINUTE_OPTS as readonly string[]
+  ).includes(minute)
+    ? MINUTE_OPTS
+    : [minute, ...MINUTE_OPTS];
+
+  return (
+    <TimeGroup role="group" aria-label={label}>
+      <MiniSelect
+        value={ampm}
+        onChange={(e) => update(e.target.value, hour, minute)}
+        aria-label={`${label} 오전/오후`}
+      >
+        <option value="">오전/오후</option>
+        {AMPM_OPTS.map((a) => (
+          <option key={a} value={a}>
+            {a}
+          </option>
+        ))}
+      </MiniSelect>
+      <MiniSelect
+        value={hour}
+        onChange={(e) => update(ampm, e.target.value, minute)}
+        aria-label={`${label} 시`}
+      >
+        <option value="">시</option>
+        {HOUR12_OPTS.map((h) => (
+          <option key={h} value={h}>
+            {h}시
+          </option>
+        ))}
+      </MiniSelect>
+      <MiniSelect
+        value={minute}
+        onChange={(e) => update(ampm, hour, e.target.value)}
+        aria-label={`${label} 분`}
+      >
+        {minuteOptions.map((m) => (
+          <option key={m} value={m}>
+            {m}분
+          </option>
+        ))}
+      </MiniSelect>
+    </TimeGroup>
+  );
+}
 
 function fmtSessionFull(s: { date: string; startTime: string; endTime: string }) {
   const wd = ["일", "월", "화", "수", "목", "금", "토"][
@@ -277,12 +461,57 @@ function DetailBody({
   refresh: () => void;
 }) {
   // 편집 폼 — 초기값=현재 값. 저장 시 PATCH.
+  // Step 21: Step 15에서 "운영자에게 문의" 안내한 항목 전체를 여기서 실제로 수정 가능하게 확장.
   const [title, setTitle] = useState(event.title);
+  const [category, setCategory] = useState(event.category);
+  const [mode, setMode] = useState(event.mode);
+  const [streamUrl, setStreamUrl] = useState(event.streamUrl ?? "");
   const [descriptionMd, setDescriptionMd] = useState(event.descriptionMd ?? "");
+  const [instructorName, setInstructorName] = useState(event.instructorName ?? "");
+  const [instructorBio, setInstructorBio] = useState(event.instructorBio ?? "");
+  const [officeId, setOfficeId] = useState(
+    event.officeId == null ? "" : String(event.officeId),
+  );
+  const [customLocation, setCustomLocation] = useState(event.customLocation ?? "");
+  const [sessions, setSessions] = useState(
+    event.sessions.length > 0
+      ? event.sessions.map((s) => ({ date: s.date, startTime: s.startTime, endTime: s.endTime }))
+      : [{ date: "", startTime: "", endTime: "" }],
+  );
   const [capacity, setCapacity] = useState(
     event.capacity == null ? "" : String(event.capacity),
   );
+  const [feeKrw, setFeeKrw] = useState(String(event.feeKrw));
+  const [applyDeadline, setApplyDeadline] = useState(
+    event.applyDeadline ? event.applyDeadline.slice(0, 10) : "",
+  );
+  const [depositBankName, setDepositBankName] = useState(event.depositBankName ?? "");
+  const [depositAccountNo, setDepositAccountNo] = useState(event.depositAccountNo ?? "");
+  const [depositAccountHolder, setDepositAccountHolder] = useState(
+    event.depositAccountHolder ?? "",
+  );
+  const [eligibility, setEligibility] = useState(event.eligibility ?? "");
+  const [preparation, setPreparation] = useState(event.preparation ?? "");
+  const [reward, setReward] = useState(event.reward ?? "");
+  const [refundPolicy, setRefundPolicy] = useState(event.refundPolicy ?? "");
   const [notice, setNotice] = useState(event.notice ?? "");
+
+  const { data: officesData } = useAdminData<DashboardData["offices"]>(
+    OFFICES_KEY,
+    officesFetcher,
+    { ttl: OFFICES_TTL },
+  );
+  // Step 16: 교육 회관 선택지는 educationActive 기준(OTC isActive와 독립)
+  const eduOffices = (officesData ?? []).filter((o) => o.educationActive);
+
+  const updateSession = (i: number, patch: Partial<(typeof sessions)[number]>) =>
+    setSessions((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  const addSession = () =>
+    setSessions((prev) => [...prev, { date: "", startTime: "", endTime: "" }]);
+  const removeSession = (i: number) =>
+    setSessions((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
+
+  const isPaid = Number(feeKrw) > 0;
 
   // 승인/반려/노출/추천
   const [rejectReason, setRejectReason] = useState(event.rejectReason ?? "");
@@ -343,8 +572,25 @@ function DetailBody({
     patch(
       {
         title: title.trim(),
-        capacity: capacity.trim() === "" ? null : Number(capacity),
+        category,
+        mode,
+        streamUrl: streamUrl.trim() || null,
         descriptionMd: descriptionMd.trim() || null,
+        instructorName: instructorName.trim() || null,
+        instructorBio: instructorBio.trim() || null,
+        officeId: officeId === "" ? null : Number(officeId),
+        customLocation: officeId === "" ? customLocation.trim() || null : null,
+        sessions: sessions.filter((s) => s.date && s.startTime),
+        capacity: capacity.trim() === "" ? null : Number(capacity),
+        feeKrw: Number(feeKrw) || 0,
+        applyDeadline: applyDeadline || null,
+        depositBankName: depositBankName.trim() || null,
+        depositAccountNo: depositAccountNo.trim() || null,
+        depositAccountHolder: depositAccountHolder.trim() || null,
+        eligibility: eligibility.trim() || null,
+        preparation: preparation.trim() || null,
+        reward: reward.trim() || null,
+        refundPolicy: refundPolicy.trim() || null,
         notice: notice.trim() || null,
       },
       "내용 저장",
@@ -509,7 +755,7 @@ function DetailBody({
         )}
       </Card>
 
-      {/* 편집 폼 */}
+      {/* 편집 폼 — Step 21: Step 15에서 "운영자에게 문의" 안내한 항목 전체를 여기서 실제 수정 */}
       <Card>
         <CardHead>
           <CardTitle>내용 편집</CardTitle>
@@ -518,15 +764,49 @@ function DetailBody({
           <FieldLabel>제목</FieldLabel>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} />
         </Field>
-        <Field>
-          <FieldLabel>정원 (비우면 무제한)</FieldLabel>
-          <Input
-            type="number"
-            min="1"
-            value={capacity}
-            onChange={(e) => setCapacity(e.target.value)}
-          />
-        </Field>
+        <Grid2>
+          <Field>
+            <FieldLabel>분류</FieldLabel>
+            <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {Object.entries(EDU_CATEGORY_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel>진행 방식</FieldLabel>
+            <Select value={mode} onChange={(e) => setMode(e.target.value)}>
+              {Object.entries(EDU_MODE_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </Grid2>
+        {mode === "ONLINE" || mode === "HYBRID" ? (
+          <Field>
+            <FieldLabel>스트림 링크</FieldLabel>
+            <Input
+              type="url"
+              value={streamUrl}
+              onChange={(e) => setStreamUrl(e.target.value)}
+              placeholder="https://"
+            />
+          </Field>
+        ) : null}
+        <Grid2>
+          <Field>
+            <FieldLabel>강사명</FieldLabel>
+            <Input value={instructorName} onChange={(e) => setInstructorName(e.target.value)} />
+          </Field>
+          <Field>
+            <FieldLabel>강사 소개</FieldLabel>
+            <Input value={instructorBio} onChange={(e) => setInstructorBio(e.target.value)} />
+          </Field>
+        </Grid2>
         <Field>
           <FieldLabel>소개 (마크다운)</FieldLabel>
           <Textarea
@@ -534,10 +814,156 @@ function DetailBody({
             onChange={(e) => setDescriptionMd(e.target.value)}
           />
         </Field>
+
+        {/* 일시 — 회차. 날짜=달력 피커, 시간=오전/오후+시+분(Step 20 UX 재사용) */}
+        <FieldLabel>회차</FieldLabel>
+        {sessions.map((s, i) => (
+          <SessionCard key={i}>
+            <SessionTop>
+              <label>
+                <MiniLabel>날짜</MiniLabel>
+                <Input
+                  type="date"
+                  value={s.date}
+                  onClick={openDatePicker}
+                  onChange={(e) => updateSession(i, { date: e.target.value })}
+                  aria-label={`${i + 1}회차 날짜`}
+                />
+              </label>
+              {sessions.length > 1 ? (
+                <SmallBtn type="button" onClick={() => removeSession(i)}>
+                  삭제
+                </SmallBtn>
+              ) : null}
+            </SessionTop>
+            <SessionTimes>
+              <div>
+                <MiniLabel>시작</MiniLabel>
+                <AdminTimePicker
+                  value={s.startTime}
+                  onChange={(v) => updateSession(i, { startTime: v })}
+                  label={`${i + 1}회차 시작`}
+                />
+              </div>
+              <div>
+                <MiniLabel>종료</MiniLabel>
+                <AdminTimePicker
+                  value={s.endTime}
+                  onChange={(v) => updateSession(i, { endTime: v })}
+                  label={`${i + 1}회차 종료`}
+                />
+              </div>
+            </SessionTimes>
+          </SessionCard>
+        ))}
+        <AddBtn type="button" onClick={addSession} style={{ marginBottom: "0.85rem" }}>
+          + 회차 추가
+        </AddBtn>
+
+        {/* 장소 */}
+        <Grid2>
+          <Field>
+            <FieldLabel>회관 선택</FieldLabel>
+            <Select value={officeId} onChange={(e) => setOfficeId(e.target.value)}>
+              <option value="">직접 입력</option>
+              {eduOffices.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel>직접 입력 장소</FieldLabel>
+            <Input
+              value={customLocation}
+              onChange={(e) => setCustomLocation(e.target.value)}
+              disabled={officeId !== ""}
+            />
+          </Field>
+        </Grid2>
+
+        {/* 모집·비용 */}
+        <Grid2>
+          <Field>
+            <FieldLabel>정원 (비우면 무제한)</FieldLabel>
+            <Input
+              type="number"
+              min="1"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel>참가비 (원, 0=무료)</FieldLabel>
+            <Input
+              type="number"
+              min="0"
+              value={feeKrw}
+              onChange={(e) => setFeeKrw(e.target.value)}
+            />
+          </Field>
+        </Grid2>
         <Field>
-          <FieldLabel>유의사항</FieldLabel>
+          <FieldLabel>신청 마감일 (비우면 시작 전까지)</FieldLabel>
+          <Input
+            type="date"
+            value={applyDeadline}
+            onClick={openDatePicker}
+            onChange={(e) => setApplyDeadline(e.target.value)}
+          />
+        </Field>
+        {isPaid ? (
+          <>
+            <FieldLabel style={{ marginTop: "0.3rem" }}>입금 계좌 안내</FieldLabel>
+            <Grid2>
+              <Field>
+                <FieldLabel>입금 은행</FieldLabel>
+                <Input
+                  value={depositBankName}
+                  onChange={(e) => setDepositBankName(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>계좌번호</FieldLabel>
+                <Input
+                  value={depositAccountNo}
+                  onChange={(e) => setDepositAccountNo(e.target.value)}
+                />
+              </Field>
+            </Grid2>
+            <Field>
+              <FieldLabel>예금주</FieldLabel>
+              <Input
+                value={depositAccountHolder}
+                onChange={(e) => setDepositAccountHolder(e.target.value)}
+              />
+            </Field>
+          </>
+        ) : null}
+
+        {/* 안내사항 */}
+        <Field>
+          <FieldLabel>참여 대상·조건</FieldLabel>
+          <Input value={eligibility} onChange={(e) => setEligibility(e.target.value)} />
+        </Field>
+        <Field>
+          <FieldLabel>준비물</FieldLabel>
+          <Input value={preparation} onChange={(e) => setPreparation(e.target.value)} />
+        </Field>
+        <Field>
+          <FieldLabel>리워드</FieldLabel>
+          <Input value={reward} onChange={(e) => setReward(e.target.value)} />
+        </Field>
+        <Field>
+          <FieldLabel>환불·노쇼 규정</FieldLabel>
+          <Input value={refundPolicy} onChange={(e) => setRefundPolicy(e.target.value)} />
+        </Field>
+        <Field>
+          <FieldLabel>기타 유의사항</FieldLabel>
           <Textarea value={notice} onChange={(e) => setNotice(e.target.value)} />
         </Field>
+
         <ActionRow>
           <PrimaryButton type="button" disabled={busy} onClick={() => void saveEdit()}>
             {busy ? "저장 중…" : "저장"}
