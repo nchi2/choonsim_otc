@@ -23,6 +23,9 @@ const Box = styled.div<{ $from: string; $to: string; $compact?: boolean }>`
   width: 100%;
   aspect-ratio: ${POSTER_ASPECT_CSS};
   overflow: hidden;
+  /* 컨테이너 쿼리 기준 — 목록 카드(작음)·캐러셀(중간)·히어로(큼) 세 곳 어디서 렌더되든
+   * Info의 cqw 기반 폰트 크기가 이 박스의 실제 렌더 너비에 비례해 스스로 스케일된다(Step 23). */
+  container-type: inline-size;
   background:
     /* 은은한 도트 패턴 — 카테고리 색 위에 백색 점 */
     radial-gradient(
@@ -64,40 +67,48 @@ const CategoryTag = styled.span<{ $compact?: boolean }>`
   letter-spacing: 0.04em;
 `;
 
-/* 이음매 없는 자연스러운 폴백을 위해 그라데이션을 박스 높이의 절반 가까이 퍼뜨린다
+/* 이음매 없는 자연스러운 폴백을 위해 그라데이션을 박스 높이의 상당 부분에 퍼뜨린다
  * (기존엔 텍스트 콘텐츠 높이만큼만 어두워져 "잘린 듯한 가로 띠"로 보였음 — Step 22).
- * 텍스트는 이 넓은 영역 안에서 하단 정렬로 자연스럽게 앉는다. */
+ * Step 23: 제목을 "포스터의 주인공"으로 키우려면 텍스트 영역 자체가 더 넓어야 해서
+ * top을 더 위로 올렸다(비compact 25% — 박스 높이의 3/4을 텍스트 영역으로).
+ * 폰트는 cqw(컨테이너 너비 기준) 단위로 목록 카드·캐러셀·히어로 어디서든 카드 크기에
+ * 비례해 자동 스케일 — clamp()의 rem 상하한이 너무 작거나(좁은 리스트) 과하게
+ * 크지(넓은 히어로) 않도록 안전선을 잡아준다. */
 const Info = styled.div<{ $compact?: boolean }>`
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  top: ${(p) => (p.$compact ? "48%" : "40%")};
+  top: ${(p) => (p.$compact ? "44%" : "25%")};
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: ${(p) => (p.$compact ? "0.35rem 0.45rem" : "0.8rem 0.95rem")};
+  padding: ${(p) => (p.$compact ? "0.35rem 0.45rem" : "1rem 1.1rem")};
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(0, 0, 0, 0.32) 55%,
-    rgba(0, 0, 0, 0.5)
+    rgba(0, 0, 0, 0.34) 45%,
+    rgba(0, 0, 0, 0.58)
   );
   color: ${eduColors.white};
 
   .t {
-    font-size: ${(p) => (p.$compact ? "0.62rem" : "0.98rem")};
+    /* font-size 단독 지정(폴백) 뒤에 clamp()를 두어, cqw 미지원 브라우저에서
+     * clamp() 선언 전체가 무효화되더라도 이 값으로 자연 폴백되게 한다. */
+    font-size: ${(p) => (p.$compact ? "0.68rem" : "1.35rem")};
+    font-size: ${(p) => (p.$compact ? "clamp(0.6rem, 9.5cqw, 0.85rem)" : "clamp(1.15rem, 8.6cqw, 2.6rem)")};
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.22;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: ${(p) => (p.$compact ? 2 : 3)};
     -webkit-box-orient: vertical;
     overflow: hidden;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
   .sub {
-    margin-top: 0.2rem;
-    font-size: ${(p) => (p.$compact ? "0.55rem" : "0.74rem")};
+    margin-top: ${(p) => (p.$compact ? "0.2rem" : "0.4rem")};
+    font-size: 0.74rem;
+    font-size: clamp(0.72rem, 3.4cqw, 1.05rem);
     font-weight: 600;
     opacity: 0.92;
     white-space: nowrap;
