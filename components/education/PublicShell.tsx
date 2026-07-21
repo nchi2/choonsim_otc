@@ -11,10 +11,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import styled from "styled-components";
-import {
-  COMMUNITY_ECOSYSTEM_LINKTREE,
-  COMMUNITY_LINKTREE,
-} from "@/lib/community-linktree";
+import { COMMUNITY_LINKTREE } from "@/lib/community-linktree";
 import { memberLogout, useMemberSession } from "@/lib/member-client";
 import { eduColors, eduLayout, media } from "./tokens";
 import { PriceTicker } from "./PriceTicker";
@@ -433,13 +430,8 @@ export function PublicShell({
             <MobileMenuLink href="/sbmb" onClick={() => setMenuOpen(false)}>
               SBMB
             </MobileMenuLink>
-            <MobileMenuLink
-              href={COMMUNITY_ECOSYSTEM_LINKTREE.href}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setMenuOpen(false)}
-            >
-              {COMMUNITY_ECOSYSTEM_LINKTREE.label}
+            <MobileMenuLink href="/ecosystem" onClick={() => setMenuOpen(false)}>
+              생태계 링크
             </MobileMenuLink>
             {member ? (
               <>
@@ -484,19 +476,13 @@ export function PublicShell({
           <FooterCol>
             <h4>생태계</h4>
             <Link href="/sbmb">SBMB</Link>
+            <Link href="/ecosystem">생태계 링크</Link>
             <a
               href={COMMUNITY_LINKTREE.choonsim.href}
               target="_blank"
               rel="noreferrer"
             >
               {COMMUNITY_LINKTREE.choonsim.label}
-            </a>
-            <a
-              href={COMMUNITY_ECOSYSTEM_LINKTREE.href}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {COMMUNITY_ECOSYSTEM_LINKTREE.label}
             </a>
           </FooterCol>
         </FooterInner>

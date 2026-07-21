@@ -103,14 +103,14 @@ export function OfficeOtcCard({
   return (
     <Base $banner={variant === "banner"}>
       <TextBox>
-        <CardTitle>모빅회관 안전 OTC 거래</CardTitle>
+        <CardTitle>회관 면대면 모빅 구매 / 판매</CardTitle>
         <Desc>
-          전국 모빅회관에서 운영자와 면대면으로 BMB를 안전하게 사고팔 수
-          있습니다. 강의 들으러 온 김에, 궁금한 것만 물어봐도 됩니다.
+          모빅회관에 상주하고 있는 춘심팀과 면대면으로 BMB 구매/판매 신청을
+          진행할 수 있습니다.
         </Desc>
       </TextBox>
       <Actions>
-        <PrimaryCta href="/otc">OTC 거래 안내</PrimaryCta>
+        <PrimaryCta href="/otc">OTC 바로가기</PrimaryCta>
         <GhostCta href="/otc?apply=1">10모의 기적</GhostCta>
       </Actions>
     </Base>

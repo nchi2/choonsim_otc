@@ -14,6 +14,8 @@ import {
   EventCardList,
 } from "@/components/education/EventCard";
 import { OfficeOtcCard } from "@/components/education/OfficeOtcCard";
+import { ToolsSection } from "@/components/education/ToolsSection";
+import { EcosystemStrip } from "@/components/education/EcosystemStrip";
 import { AuthNoticeBanner } from "@/components/education/AuthNoticeBanner";
 import { eduColors, eduLayout, media } from "@/components/education/tokens";
 import { dDayFromKstYmd, type EventCardData } from "@/components/education/types";
@@ -182,9 +184,14 @@ export function HomeClient({
       )}
 
       <SectionHead>
-        <SectionTitle>모빅회관 OTC</SectionTitle>
+        <SectionTitle>춘심 회관 OTC</SectionTitle>
       </SectionHead>
       <OfficeOtcCard />
+
+      <SectionHead>
+        <SectionTitle>모빅 도구</SectionTitle>
+      </SectionHead>
+      <ToolsSection />
 
       <SectionHead>
         <SectionTitle>행사 캘린더</SectionTitle>
@@ -200,6 +207,12 @@ export function HomeClient({
       <YoutubeWrap>
         <YoutubeLite />
       </YoutubeWrap>
+
+      <SectionHead>
+        <SectionTitle>BTCMobick 생태계</SectionTitle>
+        <MoreLink href="/ecosystem">생태계 전체 보기 →</MoreLink>
+      </SectionHead>
+      <EcosystemStrip />
     </PublicShell>
   );
 }
