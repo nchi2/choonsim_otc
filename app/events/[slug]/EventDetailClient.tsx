@@ -503,6 +503,15 @@ export function EventDetailClient({
               requiresDeposit={requiresDeposit}
               sessions={event.sessions}
               closedReason={closedReason}
+              eventSummary={{
+                title: event.title,
+                locationName: event.locationName,
+                feeKrw: event.feeKrw,
+                depositBankName: event.depositBankName,
+                depositAccountNo: event.depositAccountNo,
+                depositAccountHolder: event.depositAccountHolder,
+                refundPolicy: event.refundPolicy,
+              }}
             />
           </Section>
         </Main>

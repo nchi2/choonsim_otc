@@ -4,6 +4,8 @@
 // 마감/정원초과면 비활성 + 사유. 서버 거절(정원 마감 등)은 에러 메시지로 표시.
 // 로그인 시 이름·연락처·입금자명 자동입력(수정 가능). 비로그인도 그대로 신청 가능.
 // 전화 자동 포맷(formatPhone). 개인정보 동의는 제출 시 강조 안내.
+// 신청 완료 후에는 ApplyDoneCard(신청 정보 요약 + 유료 시 입금 안내)를 보여준다(Step 21).
+// API는 무접촉 — 확인 화면에 필요한 데이터는 전부 이미 로드된 event 정보 + 제출값으로 구성.
 // Turnstile: 키 장착 시 아래 [TURNSTILE 위젯 자리]에 위젯을 렌더하고 token을 body에 실으면 됨.
 
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +14,7 @@ import { formatPhone } from "@/lib/format-phone";
 import { useMemberSession } from "@/lib/member-client";
 import { eduColors } from "./tokens";
 import { formatSessionRange } from "./types";
+import { ApplyDoneCard, type ApplyEventSummary } from "./ApplyDoneCard";
 
 const Form = styled.form`
   display: flex;
@@ -123,17 +126,6 @@ const ClosedNote = styled.div`
   text-align: center;
 `;
 
-const DoneNote = styled.div`
-  padding: 0.7rem 0.85rem;
-  border-radius: 9px;
-  background: ${eduColors.successSoft};
-  border: 1px solid ${eduColors.success}33;
-  color: ${eduColors.success};
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-align: center;
-`;
-
 export interface ApplyFormSession {
   id: number;
   date: string;
@@ -146,12 +138,15 @@ export function ApplyForm({
   requiresDeposit,
   sessions,
   closedReason,
+  eventSummary,
 }: {
   eventId: number;
   requiresDeposit: boolean;
   sessions: ApplyFormSession[];
   /** 마감/정원초과/종료 사유 — 있으면 폼 비활성 */
   closedReason?: string | null;
+  /** 완료 화면(ApplyDoneCard)에 필요한 행사 요약 — 상세 페이지가 이미 가진 값 그대로 전달 */
+  eventSummary: ApplyEventSummary;
 }) {
   const { member } = useMemberSession();
 
@@ -185,10 +180,15 @@ export function ApplyForm({
     return <ClosedNote>{closedReason}</ClosedNote>;
   }
   if (done) {
+    const selectedSession = sessions.find((s) => s.id === sessionId) ?? sessions[0] ?? null;
     return (
-      <DoneNote>
-        신청이 접수되었습니다. 안내된 연락처로 확인 연락을 드립니다.
-      </DoneNote>
+      <ApplyDoneCard
+        event={eventSummary}
+        session={selectedSession}
+        name={name}
+        contact={contact}
+        depositorName={requiresDeposit ? depositorName : null}
+      />
     );
   }
 

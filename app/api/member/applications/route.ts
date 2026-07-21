@@ -19,6 +19,9 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        name: true,
+        contact: true,
+        depositorName: true,
         status: true,
         createdAt: true,
         paidConfirmedAt: true,
@@ -31,6 +34,10 @@ export async function GET() {
             feeKrw: true,
             customLocation: true,
             office: { select: { name: true } },
+            depositBankName: true,
+            depositAccountNo: true,
+            depositAccountHolder: true,
+            refundPolicy: true,
           },
         },
       },
@@ -47,6 +54,14 @@ export async function GET() {
       eventSlug: r.event.slug,
       feeKrw: r.event.feeKrw,
       locationName: r.event.office?.name ?? r.event.customLocation ?? null,
+      // Step 21: 마이페이지 재확인용(입금 안내 다시 보기) — 신청 시 제출한 값 + 행사 계좌 정보
+      name: r.name,
+      contact: r.contact,
+      depositorName: r.depositorName,
+      depositBankName: r.event.depositBankName,
+      depositAccountNo: r.event.depositAccountNo,
+      depositAccountHolder: r.event.depositAccountHolder,
+      refundPolicy: r.event.refundPolicy,
     }));
 
     return NextResponse.json({ ok: true, items });

@@ -8,7 +8,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { PublicShell } from "@/components/education/PublicShell";
+import { CopyButton } from "@/components/education/CopyButton";
 import { eduColors, eduLayout, media } from "@/components/education/tokens";
+import { formatFee } from "@/components/education/types";
 import { formatPhone } from "@/lib/format-phone";
 import { useMemberSession } from "@/lib/member-client";
 
@@ -143,20 +145,17 @@ const AppList = styled.div`
   gap: 0.6rem;
 `;
 
-const AppRow = styled(Link)`
+const AppRowWrap = styled.div`
+  border: 1px solid ${eduColors.border};
+  border-radius: 10px;
+  overflow: hidden;
+`;
+
+const AppRow = styled.div`
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
-  border: 1px solid ${eduColors.border};
-  border-radius: 10px;
-  text-decoration: none;
-  color: inherit;
-
-  &:hover {
-    border-color: ${eduColors.primaryBorder};
-    background: ${eduColors.primarySofter};
-  }
 
   .body {
     min-width: 0;
@@ -164,9 +163,14 @@ const AppRow = styled(Link)`
     .t {
       font-weight: 700;
       color: ${eduColors.text};
+      text-decoration: none;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      display: block;
+      &:hover {
+        color: ${eduColors.primary};
+      }
     }
     .sub {
       margin-top: 0.15rem;
@@ -174,6 +178,64 @@ const AppRow = styled(Link)`
       color: ${eduColors.textMuted};
     }
   }
+`;
+
+const DepositToggle = styled.button`
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 7px;
+  border: 1px solid ${eduColors.primaryBorder};
+  background: ${eduColors.surface};
+  color: ${eduColors.primaryText};
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: ${eduColors.primary};
+  }
+`;
+
+const DepositPanel = styled.div`
+  padding: 0.8rem 0.85rem;
+  border-top: 1px solid ${eduColors.border};
+  background: ${eduColors.bg};
+`;
+
+const DepositGrid = styled.dl`
+  margin: 0;
+  display: grid;
+  grid-template-columns: 4.6rem 1fr;
+  gap: 0.35rem 0.6rem;
+  font-size: 0.82rem;
+
+  dt {
+    color: ${eduColors.textMuted};
+    font-weight: 600;
+  }
+  dd {
+    margin: 0;
+    color: ${eduColors.text};
+    font-weight: 700;
+    word-break: break-word;
+  }
+`;
+
+const DepositAccountRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const DepositRefund = styled.p`
+  margin: 0.55rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px dashed ${eduColors.border};
+  font-size: 0.78rem;
+  color: ${eduColors.textMuted};
+  line-height: 1.5;
 `;
 
 const Chip = styled.span<{ $tone: "green" | "gray" | "amber" }>`
@@ -314,6 +376,14 @@ interface AppItem {
   eventSlug: string;
   feeKrw: number;
   locationName: string | null;
+  // Step 21: 입금 안내 재확인
+  name: string;
+  contact: string;
+  depositorName: string | null;
+  depositBankName: string | null;
+  depositAccountNo: string | null;
+  depositAccountHolder: string | null;
+  refundPolicy: string | null;
 }
 
 interface HostedItem {
@@ -568,6 +638,7 @@ export default function MyPage() {
   const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   const [apps, setApps] = useState<AppItem[] | null>(null);
+  const [expandedAppId, setExpandedAppId] = useState<number | null>(null);
 
   // 미로그인이면 로그인으로(미들웨어와 이중 안전)
   useEffect(() => {
@@ -721,27 +792,88 @@ export default function MyPage() {
             <Empty>아직 신청한 행사가 없습니다.</Empty>
           ) : (
             <AppList>
-              {apps.map((a) => (
-                <AppRow key={a.id} href={`/events/${a.eventSlug}`}>
-                  <div className="body">
-                    <div className="t">{a.eventTitle}</div>
-                    <div className="sub">
-                      {fmtSession(a.session)}
-                      {a.locationName ? ` · ${a.locationName}` : ""}
-                    </div>
-                  </div>
-                  {a.status === "CANCELED" ? (
-                    <Chip $tone="gray">취소</Chip>
-                  ) : (
-                    <Chip $tone="green">신청완료</Chip>
-                  )}
-                  {a.feeKrw > 0 ? (
-                    <Chip $tone={a.paid ? "green" : "amber"}>
-                      {a.paid ? "입금확인" : "입금대기"}
-                    </Chip>
-                  ) : null}
-                </AppRow>
-              ))}
+              {apps.map((a) => {
+                const expanded = expandedAppId === a.id;
+                const hasAccount = Boolean(a.depositBankName || a.depositAccountNo);
+                return (
+                  <AppRowWrap key={a.id}>
+                    <AppRow>
+                      <div className="body">
+                        <Link className="t" href={`/events/${a.eventSlug}`}>
+                          {a.eventTitle}
+                        </Link>
+                        <div className="sub">
+                          {fmtSession(a.session)}
+                          {a.locationName ? ` · ${a.locationName}` : ""}
+                        </div>
+                      </div>
+                      {a.status === "CANCELED" ? (
+                        <Chip $tone="gray">취소</Chip>
+                      ) : (
+                        <Chip $tone="green">신청완료</Chip>
+                      )}
+                      {a.feeKrw > 0 ? (
+                        <Chip $tone={a.paid ? "green" : "amber"}>
+                          {a.paid ? "입금확인" : "입금대기"}
+                        </Chip>
+                      ) : null}
+                      {a.feeKrw > 0 && a.status !== "CANCELED" ? (
+                        <DepositToggle
+                          type="button"
+                          onClick={() => setExpandedAppId(expanded ? null : a.id)}
+                        >
+                          {expanded ? "닫기" : "입금 정보"}
+                        </DepositToggle>
+                      ) : null}
+                    </AppRow>
+                    {expanded ? (
+                      <DepositPanel>
+                        <DepositGrid>
+                          <dt>참가비</dt>
+                          <dd>{formatFee(a.feeKrw)}</dd>
+                          {a.depositorName ? (
+                            <>
+                              <dt>입금자명</dt>
+                              <dd>{a.depositorName}</dd>
+                            </>
+                          ) : null}
+                          {hasAccount ? (
+                            <>
+                              {a.depositBankName ? (
+                                <>
+                                  <dt>입금 계좌</dt>
+                                  <dd>
+                                    <DepositAccountRow>
+                                      <span>
+                                        {a.depositBankName} {a.depositAccountNo ?? ""}
+                                      </span>
+                                      {a.depositAccountNo ? (
+                                        <CopyButton text={a.depositAccountNo} />
+                                      ) : null}
+                                    </DepositAccountRow>
+                                  </dd>
+                                </>
+                              ) : null}
+                              {a.depositAccountHolder ? (
+                                <>
+                                  <dt>예금주</dt>
+                                  <dd>{a.depositAccountHolder}</dd>
+                                </>
+                              ) : null}
+                            </>
+                          ) : null}
+                        </DepositGrid>
+                        {!hasAccount ? (
+                          <DepositRefund>입금 계좌는 별도로 안내됩니다.</DepositRefund>
+                        ) : null}
+                        {a.refundPolicy ? (
+                          <DepositRefund>환불·노쇼 규정: {a.refundPolicy}</DepositRefund>
+                        ) : null}
+                      </DepositPanel>
+                    ) : null}
+                  </AppRowWrap>
+                );
+              })}
             </AppList>
           )}
         </Card>
