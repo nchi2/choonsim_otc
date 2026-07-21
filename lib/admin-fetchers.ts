@@ -52,6 +52,7 @@ export interface DashboardData {
     name: string;
     address: string | null;
     isActive: boolean;
+    educationActive: boolean;
     sortOrder: number;
   }[];
   todayMySchedule: {

@@ -14,7 +14,15 @@ export async function GET(request: Request) {
   }
   try {
     const items = await fetchNoticeListItems();
-    return NextResponse.json({ items });
+    // 공지 목록 — CDN 5분 + SWR 30분 (Step 11: Google Sheets 호출 비용 절감)
+    return NextResponse.json(
+      { items },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+        },
+      },
+    );
   } catch (error) {
     console.error("[sbmb/notices]", error);
     const raw =

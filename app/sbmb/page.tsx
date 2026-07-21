@@ -1,8 +1,7 @@
 "use client";
 
 import styled from "styled-components";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import { PublicShell } from "@/components/education/PublicShell";
 import HeroLookupSection from "@/components/sbmb/hero/HeroLookupSection";
 import ApplySection from "@/components/sbmb/sections/ApplySection";
 import FaqLinkSection from "@/components/sbmb/sections/FaqLinkSection";
@@ -37,9 +36,9 @@ const Lower = styled.div`
 
 export default function SbmbPage() {
   return (
+    <PublicShell fullWidth showTicker={false}>
     <Shell>
       <SbmbNoticeModal />
-      <Header />
       <HeroLookupSection />
       <Stretch />
       <Lower>
@@ -50,7 +49,7 @@ export default function SbmbPage() {
         <LinksSection />
         <WalletGuideSection />
       </Lower>
-      <Footer />
     </Shell>
+    </PublicShell>
   );
 }

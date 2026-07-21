@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import styled from "styled-components";
-import Header from "@/components/Header";
+import { PublicShell } from "@/components/education/PublicShell";
 import OTCSection from "../page/components/OTCSection";
 import * as HubS from "../page/styles";
 import MajorPriceBoard from "../page/components/MajorPriceBoard";
@@ -12,7 +12,6 @@ import { MIRACLE10_APPLY_SUSPENDED } from "./components/apply10mo.constants";
 import OtcRequestModal, {
   type OtcRequestSide,
 } from "./components/OtcRequestModal";
-import Footer from "@/components/Footer";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   LineChart,
@@ -588,8 +587,8 @@ function OTCContent() {
   };
 
   return (
+    <PublicShell fullWidth showTicker={false}>
     <PageContainer>
-      <Header />
       <OTCSection
         showTradeButton={false}
         showPriceCards={false}
@@ -769,14 +768,14 @@ function OTCContent() {
           </ChartCard>
         </ContentWrapper>
       </MainContent>
-      <Footer />
-    </PageContainer>
+      </PageContainer>
+    </PublicShell>
   );
 }
 
 const LoadingFallback = () => (
+  <PublicShell fullWidth showTicker={false}>
   <PageContainer>
-    <Header />
     <MainContent>
       <ContentWrapper>
         <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
@@ -784,8 +783,8 @@ const LoadingFallback = () => (
         </div>
       </ContentWrapper>
     </MainContent>
-    <Footer />
-  </PageContainer>
+    </PageContainer>
+  </PublicShell>
 );
 
 export default function OTCPage() {

@@ -1,7 +1,11 @@
 // 신청 건 운영자 코멘트 — targetType 검증 + 목록 배지(코멘트 수·안읽음 수) 집계.
 import { prisma } from "@/lib/prisma";
 
-export const COMMENT_TARGET_TYPES = ["MIRACLE10", "OTC_REQUEST"] as const;
+export const COMMENT_TARGET_TYPES = [
+  "MIRACLE10",
+  "OTC_REQUEST",
+  "EDUCATION_EVENT",
+] as const;
 export type CommentTargetType = (typeof COMMENT_TARGET_TYPES)[number];
 
 export function isCommentTargetType(v: unknown): v is CommentTargetType {

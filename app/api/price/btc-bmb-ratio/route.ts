@@ -325,6 +325,7 @@ export async function GET(request: Request) {
       `Successfully processed ${allRatioData.length} data points (춘심: ${chunsimRatioData.length}, LBANK: ${ratioData.length})`
     );
 
+    // 일봉 차트 — CDN 30분 + SWR 1시간 (Step 11)
     return NextResponse.json({
       data: allRatioData,
       interval,
@@ -341,6 +342,10 @@ export async function GET(request: Request) {
         allRatioData.length > 0
           ? allRatioData[allRatioData.length - 1].bmbUsdtPrice
           : null,
+    }, {
+      headers: {
+        "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600",
+      },
     });
   } catch (error) {
     console.error("Error fetching BTC/BMB ratio data:", error);

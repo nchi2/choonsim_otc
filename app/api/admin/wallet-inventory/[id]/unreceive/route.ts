@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAdminUser } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 import { computeWalletTotals } from "@/lib/wallet-inventory";
 
 export const runtime = "nodejs";
@@ -12,13 +12,11 @@ export async function POST(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   const { id: raw } = await ctx.params;
   const id = Number(raw);

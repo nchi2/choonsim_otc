@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PageLayout from "@/components/layouts/PageLayout";
+import { PublicShell } from "@/components/education/PublicShell";
 import SbmbHeroBanner from "@/components/sbmb/hero/SbmbHeroBanner";
 import { isWalletBrowser } from "@/app/contracts/lib/wallet";
 import { getContractPageTokens } from "@/app/contracts/lib/group-tokens";
@@ -20,7 +20,7 @@ export default function ContractsPage() {
   }, []);
 
   return (
-    <PageLayout>
+    <PublicShell fullWidth showTicker={false}>
       <SbmbHeroBanner />
       <S.PageWrap>
         <S.ContractsTopBar>
@@ -56,6 +56,6 @@ export default function ContractsPage() {
           </S.CardGrid>
         </S.Section>
       </S.PageWrap>
-    </PageLayout>
+    </PublicShell>
   );
 }

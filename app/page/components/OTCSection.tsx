@@ -94,7 +94,7 @@ export default function OTCSection({
 
     fetchPrices();
     // 30초마다 업데이트
-    const interval = setInterval(fetchPrices, 30000);
+    const interval = setInterval(fetchPrices, 60000); // CPU 절감: 30s→60s (Step 11)
     return () => clearInterval(interval);
   }, [showPriceCards]);
 

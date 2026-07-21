@@ -22,10 +22,17 @@ function getFallbackAlertEmails(): string[] {
   return [...DEFAULT_ALERT_EMAILS];
 }
 
-export type AlertKind = "miracle10" | "otc";
+export type AlertKind = "miracle10" | "otc" | "education";
+
+/** kind → 수신 플래그 조건 — 새 종류 추가 시 여기만 확장(기존 kind 무영향). */
+const KIND_WHERE: Record<AlertKind, Record<string, boolean>> = {
+  miracle10: { alertMiracle10: true },
+  otc: { alertOtc: true },
+  education: { alertEducation: true },
+};
 
 /**
- * 알림 수신자 — email 채워졌고 해당 종류 수신을 켠(alertMiracle10/alertOtc) 운영자.
+ * 알림 수신자 — email 채워졌고 해당 종류 수신을 켠(alertMiracle10/alertOtc/alertEducation) 운영자.
  * kind는 필수 — 호출부가 항상 종류를 명시해 "실수로 전원 발송"을 원천 차단.
  * DB에 해당 종류 수신자가 하나도 없거나 조회 실패 시 env(ALERT_EMAILS)/기본값으로 폴백.
  */
@@ -34,7 +41,7 @@ export async function getAlertRecipients(kind: AlertKind): Promise<string[]> {
     const admins = await prisma.adminUser.findMany({
       where: {
         email: { not: null },
-        ...(kind === "otc" ? { alertOtc: true } : { alertMiracle10: true }),
+        ...KIND_WHERE[kind],
       },
       select: { email: true },
     });

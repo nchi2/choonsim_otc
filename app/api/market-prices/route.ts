@@ -135,6 +135,7 @@ export async function GET() {
     }
 
     // 5. 응답 반환 (에러가 있어도 가능한 데이터는 반환)
+    // CDN 캐시 30초 + SWR 30초 — 폴링이 CDN에서 걸러져 함수 호출(CPU) 절감. BMB 신선도는 최대 30s 지연.
     return NextResponse.json({
       usdtKrwPrice,
       bmbUsdtPrice,
@@ -146,6 +147,10 @@ export async function GET() {
       },
       // USDT/KRW 가격을 가져올 수 없었는지 여부
       hasUsdtKrwPrice: usdtKrwPrice !== null,
+    }, {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=30",
+      },
     });
   } catch (error) {
     console.error("Error fetching market prices:", error);

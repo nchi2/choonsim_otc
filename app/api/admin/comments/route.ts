@@ -38,6 +38,14 @@ async function targetExists(
       })) != null
     );
   }
+  if (targetType === "EDUCATION_EVENT") {
+    return (
+      (await prisma.educationEvent.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      })) != null
+    );
+  }
   return (
     (await prisma.otcRequest.findUnique({
       where: { id: targetId },

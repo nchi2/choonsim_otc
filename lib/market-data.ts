@@ -8,7 +8,7 @@ export interface MajorItem {
 }
 
 export type MajorsSource = "binance" | "okx" | "ccapi" | "stale" | "none";
-export type BmbSource = "ccapi" | "stale" | "none";
+export type BmbSource = "lbank" | "ccapi" | "stale" | "none";
 
 export interface FetchAllResult {
   majors: MajorItem[];
@@ -107,6 +107,42 @@ interface BatchResult {
   ok: boolean;
   items: MajorItem[];
   reason?: string;
+}
+
+/** BMB 주 소스 = LBANK 24h ticker (latest + 24h 변화율 1콜).
+ *  /api/market-prices와 같은 거래소(LBANK) 호가라 메인·/otc BMB 값이 소스 일치(12A).
+ *  ccapi는 폴백 전용. 외부 호출: 기존 ccapi 1콜 → LBANK 1콜(동수, 실패 시에만 ccapi 추가). */
+async function fetchBmbFromLbank(): Promise<MajorItem | null> {
+  const res = await timedFetch(
+    "https://api.lbkex.com/v2/ticker/24hr.do?symbol=bmb_usdt",
+    { next: { revalidate: 30 } }, // market-prices의 LBANK 캐시 주기와 동일
+  );
+  if (!res || !res.ok) return null;
+  const json = (await safeReadJson(res)) as {
+    result?: unknown;
+    error_code?: unknown;
+    data?: Array<{
+      ticker?: { latest?: unknown; change?: unknown };
+    }>;
+  } | null;
+  if (
+    !json ||
+    json.result === "false" ||
+    json.result === false ||
+    (json.error_code != null && json.error_code !== 0)
+  ) {
+    return null;
+  }
+  const ticker = json.data?.[0]?.ticker;
+  const price = parseFloat(String(ticker?.latest ?? ""));
+  const change = parseFloat(String(ticker?.change ?? ""));
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return {
+    symbol: BMB_META.symbol,
+    name: BMB_META.name,
+    price,
+    changePercent24h: Number.isFinite(change) ? change : 0,
+  };
 }
 
 async function fetchFromBinance(): Promise<BatchResult> {
@@ -255,11 +291,15 @@ export async function fetchBoardMarketData(): Promise<FetchAllResult> {
     if (!got.has(m.symbol)) errors[m.symbol] = "unavailable";
   }
 
-  const bmbBatch = await fetchFromCcapi([BMB_META]);
-  let bmb: MajorItem | null =
-    bmbBatch.ok && bmbBatch.items.length > 0 ? bmbBatch.items[0] : null;
-  let bmbSource: BmbSource = bmb ? "ccapi" : "none";
-  if (!bmb) errors.BMB = bmbBatch.reason ?? "unavailable";
+  // BMB: LBANK 주 소스(12A — market-prices와 소스 통일) → 실패 시에만 ccapi 폴백
+  let bmb: MajorItem | null = await fetchBmbFromLbank();
+  let bmbSource: BmbSource = bmb ? "lbank" : "none";
+  if (!bmb) {
+    const bmbBatch = await fetchFromCcapi([BMB_META]);
+    bmb = bmbBatch.ok && bmbBatch.items.length > 0 ? bmbBatch.items[0] : null;
+    if (bmb) bmbSource = "ccapi";
+    else errors.BMB = bmbBatch.reason ?? "unavailable";
+  }
 
   let stale = false;
   if (

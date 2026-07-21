@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAdminUser } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 
 export const runtime = "nodejs";
 
@@ -17,11 +17,9 @@ export async function DELETE(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  if (!(await getAdminUser())) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   const id = await parseId(ctx.params);
@@ -63,11 +61,9 @@ export async function PATCH(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  if (!(await getAdminUser())) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   const id = await parseId(ctx.params);

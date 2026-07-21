@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderKind, OrderStatus, Prisma } from "@/app/generated/prisma/client";
-import { getAdminUser, maskContact, maskName } from "@/lib/admin-guard";
+import { maskContact, maskName } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 import { getCommentBadges } from "@/lib/order-comments";
 
 export const runtime = "nodejs";
@@ -9,10 +10,11 @@ export const runtime = "nodejs";
 const VALID_STATUS = new Set(Object.values(OrderStatus));
 
 export async function GET(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+  const admin = gate.admin;
 
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get("status");

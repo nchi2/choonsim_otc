@@ -25,8 +25,11 @@ export async function GET() {
     const otcIds = targets
       .filter((t) => t.targetType === "OTC_REQUEST")
       .map((t) => t.targetId);
+    const eduIds = targets
+      .filter((t) => t.targetType === "EDUCATION_EVENT")
+      .map((t) => t.targetId);
 
-    const [orders, requests] = await Promise.all([
+    const [orders, requests, events] = await Promise.all([
       m10Ids.length
         ? prisma.otcOrder.findMany({
             where: { id: { in: m10Ids } },
@@ -39,12 +42,32 @@ export async function GET() {
             select: { id: true, name: true, side: true },
           })
         : Promise.resolve([]),
+      eduIds.length
+        ? prisma.educationEvent.findMany({
+            where: { id: { in: eduIds } },
+            select: { id: true, title: true },
+          })
+        : Promise.resolve([]),
     ]);
 
     const m10Name = new Map(orders.map((o) => [o.id, o.customer.name]));
     const otcName = new Map(requests.map((r) => [r.id, r.name]));
+    const eduTitle = new Map(events.map((e) => [e.id, e.title]));
 
     const items = targets.map((t) => {
+      // 교육 행사는 개인정보가 아니라 제목 그대로 노출(마스킹 없음)
+      if (t.targetType === "EDUCATION_EVENT") {
+        return {
+          targetType: t.targetType,
+          targetId: t.targetId,
+          name: eduTitle.get(t.targetId) ?? "(삭제됨)",
+          unread: t.unread,
+          lastBody: t.lastBody.slice(0, 80),
+          lastAuthorName: t.lastAuthorName,
+          lastCreatedAt: t.lastCreatedAt.toISOString(),
+          href: `/admin/education/${t.targetId}`,
+        };
+      }
       const rawName =
         t.targetType === "MIRACLE10"
           ? m10Name.get(t.targetId)

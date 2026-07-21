@@ -44,27 +44,54 @@ import {
   type UnreadNotification,
 } from "@/lib/admin-fetchers";
 
+/** 네비 항목 — scope: 해당 권한이 없으면 네비에서 감춤 (Step 16). null = 전 운영자. */
+interface NavItem {
+  href: string;
+  label: string;
+  exact: boolean;
+  badge: boolean;
+  scope: "otc" | "education" | null;
+}
+
 /** 데스크탑 사이드바 항목 */
-const SIDE_ITEMS = [
-  { href: "/admin", label: "대시보드", exact: true, badge: false },
-  { href: "/admin/requests", label: "신청 관리", exact: false, badge: true },
-  { href: "/admin/schedule", label: "일정 캘린더", exact: false, badge: false },
-  { href: "/admin/calculator", label: "OTC 계산기", exact: false, badge: false },
+const SIDE_ITEMS: NavItem[] = [
+  { href: "/admin", label: "대시보드", exact: true, badge: false, scope: null },
+  { href: "/admin/requests", label: "신청 관리", exact: false, badge: true, scope: "otc" },
+  { href: "/admin/education", label: "교육 관리", exact: false, badge: false, scope: "education" },
+  { href: "/admin/schedule", label: "일정 캘린더", exact: false, badge: false, scope: "otc" },
+  { href: "/admin/calculator", label: "OTC 계산기", exact: false, badge: false, scope: "otc" },
   {
     href: "/admin/wallet-inventory",
     label: "10모 지갑 재고",
     exact: false,
     badge: false,
+    scope: "otc",
   },
-] as const;
+  { href: "/admin/operators", label: "운영자 권한", exact: false, badge: false, scope: null },
+];
 
-/** 모바일 하단탭 — 4개 (과밀 해소) */
-const TAB_ITEMS = [
-  { href: "/admin", label: "홈", exact: true, badge: false },
-  { href: "/admin/requests", label: "신청", exact: false, badge: true },
-  { href: "/admin/schedule", label: "캘린더", exact: false, badge: false },
-  { href: "/admin/calculator", label: "계산기", exact: false, badge: false },
-] as const;
+/** 모바일 하단탭 — 기존 4탭 구조 유지(manageOtc 운영자 기준). */
+const TAB_ITEMS: NavItem[] = [
+  { href: "/admin", label: "홈", exact: true, badge: false, scope: null },
+  { href: "/admin/requests", label: "신청", exact: false, badge: true, scope: "otc" },
+  { href: "/admin/schedule", label: "캘린더", exact: false, badge: false, scope: "otc" },
+  { href: "/admin/calculator", label: "계산기", exact: false, badge: false, scope: "otc" },
+];
+
+/** 교육 전용 운영자(manageOtc=false) 하단탭 — OTC 탭들이 사라지면 교육 관리로 대체. */
+const TAB_ITEMS_EDUCATION_ONLY: NavItem[] = [
+  { href: "/admin", label: "홈", exact: true, badge: false, scope: null },
+  { href: "/admin/education", label: "교육 관리", exact: false, badge: false, scope: "education" },
+];
+
+function hasScope(
+  item: NavItem,
+  scopes: { manageOtc: boolean; manageEducation: boolean },
+): boolean {
+  if (item.scope === "otc") return scopes.manageOtc;
+  if (item.scope === "education") return scopes.manageEducation;
+  return true;
+}
 
 /** 배지 폴링 주기 — 화면에 머무는 동안에도 새 신청·코멘트를 반영 */
 const BADGE_POLL_MS = 45_000;
@@ -518,6 +545,14 @@ function resolvePageTitle(pathname: string): string {
     return "신청 관리";
   }
   if (pathname.startsWith("/admin/profile")) return "내 프로필";
+  if (pathname.startsWith("/admin/operators")) return "운영자 권한";
+  if (/^\/admin\/education\/[^/]+\/applicants$/.test(pathname)) {
+    return "신청자 명단";
+  }
+  if (pathname === "/admin/education/educators") return "교육자 신청";
+  if (pathname === "/admin/education/slots") return "교육 슬롯";
+  if (/^\/admin\/education\/[^/]+$/.test(pathname)) return "행사 상세";
+  if (pathname.startsWith("/admin/education")) return "교육 관리";
   if (pathname.startsWith("/admin/schedule")) return "일정·근무 캘린더";
   if (pathname.startsWith("/admin/calculator")) return "BMB OTC 단가 계산기";
   if (pathname.startsWith("/admin/wallet-inventory")) {
@@ -654,6 +689,8 @@ export default function AdminShell({
     adminUserId: null,
     username: null,
     displayName: null,
+    manageOtc: true,
+    manageEducation: true,
     loading: true,
   });
   const [pageHeader, setPageHeader] = useState<AdminPageHeader | null>(null);
@@ -683,6 +720,9 @@ export default function AdminShell({
               adminUserId: meJson.adminUserId ?? null,
               username: meJson.username ?? null,
               displayName: meJson.displayName ?? null,
+              // 응답에 없으면 true — 기본 전원 true와 일관(아무도 잘려나가지 않게)
+              manageOtc: meJson.manageOtc !== false,
+              manageEducation: meJson.manageEducation !== false,
               loading: false,
             });
           } else {
@@ -717,6 +757,17 @@ export default function AdminShell({
   const commentUnread = stats?.commentUnread ?? 0;
   const defaultTitle = useMemo(() => resolvePageTitle(pathname), [pathname]);
 
+  // Step 16: 권한 반영 네비 — 없는 쪽은 감춤. manageOtc면 기존 하단 4탭 구조 그대로 유지,
+  // 교육 전용 운영자만 [홈·교육 관리]로 대체.
+  const sideItems = useMemo(
+    () => SIDE_ITEMS.filter((item) => hasScope(item, session)),
+    [session],
+  );
+  const tabItems = useMemo(() => {
+    if (session.manageOtc) return TAB_ITEMS;
+    return TAB_ITEMS_EDUCATION_ONLY.filter((item) => hasScope(item, session));
+  }, [session]);
+
   const handleLogout = async () => {
     await fetch("/api/admin/auth/logout", { method: "POST" });
     router.push("/admin/login");
@@ -729,7 +780,7 @@ export default function AdminShell({
         <Shell>
           <Sidebar>
             <SideNav>
-              {SIDE_ITEMS.map((item) => (
+              {sideItems.map((item) => (
                 <SideLink
                   key={item.href}
                   href={item.href}
@@ -784,7 +835,7 @@ export default function AdminShell({
           </MainColumn>
 
           <BottomNav aria-label="어드민 메뉴">
-            {TAB_ITEMS.map((item) => (
+            {tabItems.map((item) => (
               <TabLink
                 key={item.href}
                 href={item.href}

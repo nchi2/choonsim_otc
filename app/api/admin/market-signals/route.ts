@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getAdminUser } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
 import { getMarketSignals } from "@/lib/market-signals";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  if (!(await getAdminUser())) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const gate = await requireOtcManager();
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   const { searchParams } = new URL(request.url);
