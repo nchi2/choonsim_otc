@@ -1,8 +1,8 @@
 "use client";
 
-// /events/[slug] 상세 — 이벤터스 상세 구조 참조. 표시 + 신청 폼 UI(제출은 placeholder).
-// 좌: 본문(소개·안내 아코디언·참여정보·입금안내·신청 폼). 우: sticky 요약+신청 버튼(데스크톱).
-// 모바일: 요약 인라인 + 하단 고정 신청 바.
+// /events/[slug] 상세 — 이벤터스 상세 구조 참조. 표시 + [신청하기]가 여는 3단계 모달(Step 24).
+// 좌: 본문(소개·안내 아코디언·참여정보·입금안내). 우: sticky 요약+신청 버튼(데스크톱).
+// 모바일: 요약 인라인 + 하단 고정 신청 바. 인라인 신청 폼은 없음 — 버튼이 전부 같은 모달을 연다.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -10,7 +10,11 @@ import styled from "styled-components";
 import { todayKst } from "@/lib/kst";
 import { PublicShell } from "@/components/education/PublicShell";
 import { Markdown } from "@/components/education/Markdown";
-import { ApplyForm } from "@/components/education/ApplyForm";
+import {
+  ApplyModal,
+  type ApplyEventSummary,
+} from "@/components/education/ApplyModal";
+import type { ApplySubmittedData } from "@/components/education/ApplyForm";
 import {
   EventCard,
   EventCardGrid,
@@ -249,19 +253,20 @@ const AsideRow = styled.div`
   }
 `;
 
-const ApplyBtn = styled.a<{ $disabled?: boolean }>`
+const ApplyBtn = styled.button<{ $disabled?: boolean }>`
   display: block;
+  width: 100%;
   margin-top: 0.9rem;
   padding: 0.7rem;
+  border: none;
   border-radius: 9px;
   text-align: center;
   font-size: 0.92rem;
   font-weight: 800;
-  text-decoration: none;
   ${(p) =>
     p.$disabled
       ? `background:${eduColors.bg};color:${eduColors.textFaint};cursor:not-allowed;border:1px solid ${eduColors.border};`
-      : `background:${eduColors.primary};color:${eduColors.white};`}
+      : `background:${eduColors.primary};color:${eduColors.white};cursor:pointer;`}
   &:hover {
     ${(p) => (p.$disabled ? "" : `background:${eduColors.primaryHover};`)}
   }
@@ -290,18 +295,17 @@ const MobileBarFee = styled.div`
   color: ${eduColors.text};
   flex-shrink: 0;
 `;
-const MobileBarBtn = styled.a<{ $disabled?: boolean }>`
+const MobileBarBtn = styled.button<{ $disabled?: boolean }>`
   flex: 1;
   padding: 0.65rem;
   border-radius: 9px;
   text-align: center;
   font-size: 0.9rem;
   font-weight: 800;
-  text-decoration: none;
   ${(p) =>
     p.$disabled
-      ? `background:${eduColors.bg};color:${eduColors.textFaint};border:1px solid ${eduColors.border};`
-      : `background:${eduColors.primary};color:${eduColors.white};`}
+      ? `background:${eduColors.bg};color:${eduColors.textFaint};border:1px solid ${eduColors.border};cursor:not-allowed;`
+      : `background:${eduColors.primary};color:${eduColors.white};border:none;cursor:pointer;`}
 `;
 
 function Accordion({ title, body }: { title: string; body: string }) {
@@ -350,6 +354,28 @@ export function EventDetailClient({
         : null;
 
   const requiresDeposit = event.feeKrw > 0;
+
+  // 신청 모달(Step 24) — 아side 버튼·모바일 sticky 바 모두 이 상태를 공유해 같은 모달을 연다.
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
+  const [submitted, setSubmitted] = useState<ApplySubmittedData | null>(null);
+
+  const openApplyModal = () => {
+    if (closedReason) return;
+    setModalStep(1);
+    setSubmitted(null);
+    setModalOpen(true);
+  };
+
+  const eventSummary: ApplyEventSummary = {
+    title: event.title,
+    locationName: event.locationName,
+    feeKrw: event.feeKrw,
+    depositBankName: event.depositBankName,
+    depositAccountNo: event.depositAccountNo,
+    depositAccountHolder: event.depositAccountHolder,
+    refundPolicy: event.refundPolicy,
+  };
 
   return (
     <PublicShell>
@@ -498,24 +524,6 @@ export function EventDetailClient({
             </Section>
           ) : null}
 
-          <Section id="apply">
-            <SectionTitle>수강 신청</SectionTitle>
-            <ApplyForm
-              eventId={event.id}
-              requiresDeposit={requiresDeposit}
-              sessions={event.sessions}
-              closedReason={closedReason}
-              eventSummary={{
-                title: event.title,
-                locationName: event.locationName,
-                feeKrw: event.feeKrw,
-                depositBankName: event.depositBankName,
-                depositAccountNo: event.depositAccountNo,
-                depositAccountHolder: event.depositAccountHolder,
-                refundPolicy: event.refundPolicy,
-              }}
-            />
-          </Section>
         </Main>
 
         <Aside>
@@ -537,7 +545,12 @@ export function EventDetailClient({
                 : `${event.applicationCount}/${event.capacity}명`}
             </strong>
           </AsideRow>
-          <ApplyBtn href="#apply" $disabled={!!closedReason}>
+          <ApplyBtn
+            type="button"
+            $disabled={!!closedReason}
+            disabled={!!closedReason}
+            onClick={openApplyModal}
+          >
             {closedReason ?? "신청하기"}
           </ApplyBtn>
         </Aside>
@@ -560,10 +573,28 @@ export function EventDetailClient({
 
       <MobileBar>
         <MobileBarFee>{formatFee(event.feeKrw)}</MobileBarFee>
-        <MobileBarBtn href="#apply" $disabled={!!closedReason}>
+        <MobileBarBtn
+          type="button"
+          $disabled={!!closedReason}
+          disabled={!!closedReason}
+          onClick={openApplyModal}
+        >
           {closedReason ?? "신청하기"}
         </MobileBarBtn>
       </MobileBar>
+
+      <ApplyModal
+        open={modalOpen}
+        step={modalStep}
+        onStepChange={setModalStep}
+        onClose={() => setModalOpen(false)}
+        eventId={event.id}
+        requiresDeposit={requiresDeposit}
+        sessions={event.sessions}
+        submitted={submitted}
+        onSubmitted={setSubmitted}
+        eventSummary={eventSummary}
+      />
     </PublicShell>
   );
 }

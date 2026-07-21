@@ -1,12 +1,12 @@
 "use client";
 
-// 수강 신청 폼 — POST /api/education/apply 로 제출(정원·중복은 서버 트랜잭션이 원자 처리).
-// 마감/정원초과면 비활성 + 사유. 서버 거절(정원 마감 등)은 에러 메시지로 표시.
+// 수강 신청 1단계(입력) — ApplyModal(Step 24)의 1단계 콘텐츠로 쓰이는 필드+제출 컴포넌트.
+// POST /api/education/apply 로 제출(정원·중복은 서버 트랜잭션이 원자 처리) — API 로직 무접촉.
+// 마감/정원초과 등은 모달을 여는 버튼 쪽에서 이미 막으므로 여기서는 서버 거절만 에러로 표시.
 // 로그인 시 이름·연락처·입금자명 자동입력(수정 가능). 비로그인도 그대로 신청 가능.
 // 전화 자동 포맷(formatPhone). 개인정보 동의는 제출 시 강조 안내.
-// 신청 완료 후에는 ApplyDoneCard(신청 정보 요약 + 유료 시 입금 안내)를 보여준다(Step 21).
-// API는 무접촉 — 확인 화면에 필요한 데이터는 전부 이미 로드된 event 정보 + 제출값으로 구성.
-// Turnstile: 키 장착 시 아래 [TURNSTILE 위젯 자리]에 위젯을 렌더하고 token을 body에 실으면 됨.
+// 제출 성공 시 onSubmitted로 입력값을 부모(ApplyModal)에 넘기고, 이후 화면(2·3단계)은
+// 모달이 담당한다 — 이 컴포넌트는 접수 이후 상태를 갖지 않는다.
 
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
@@ -14,7 +14,6 @@ import { formatPhone } from "@/lib/format-phone";
 import { useMemberSession } from "@/lib/member-client";
 import { eduColors } from "./tokens";
 import { formatSessionRange } from "./types";
-import { ApplyDoneCard, type ApplyEventSummary } from "./ApplyDoneCard";
 
 const Form = styled.form`
   display: flex;
@@ -37,6 +36,14 @@ const FieldLabel = styled.span`
     color: ${eduColors.danger};
     font-style: normal;
   }
+`;
+
+const FieldHint = styled.span`
+  display: block;
+  font-size: 0.72rem;
+  color: ${eduColors.textFaint};
+  margin-top: 0.25rem;
+  line-height: 1.45;
 `;
 
 const inputCss = `
@@ -115,7 +122,7 @@ const SubmitBtn = styled.button`
   }
 `;
 
-const ClosedNote = styled.div`
+const ErrorNote = styled.div`
   padding: 0.7rem 0.85rem;
   border-radius: 9px;
   background: ${eduColors.dangerSoft};
@@ -133,26 +140,32 @@ export interface ApplyFormSession {
   endTime: string;
 }
 
+/** 제출 성공 시 부모(ApplyModal)에 넘기는 입력값 — 2·3단계 표시에 그대로 재사용. */
+export interface ApplySubmittedData {
+  name: string;
+  contact: string;
+  email: string | null;
+  depositorName: string | null;
+  sessionId: number | null;
+}
+
 export function ApplyForm({
   eventId,
   requiresDeposit,
   sessions,
-  closedReason,
-  eventSummary,
+  onSubmitted,
 }: {
   eventId: number;
   requiresDeposit: boolean;
   sessions: ApplyFormSession[];
-  /** 마감/정원초과/종료 사유 — 있으면 폼 비활성 */
-  closedReason?: string | null;
-  /** 완료 화면(ApplyDoneCard)에 필요한 행사 요약 — 상세 페이지가 이미 가진 값 그대로 전달 */
-  eventSummary: ApplyEventSummary;
+  /** 신청 API 성공 시 호출 — 모달이 2/3단계로 전환한다 */
+  onSubmitted: (data: ApplySubmittedData) => void;
 }) {
   const { member } = useMemberSession();
 
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
-  const [email, setEmail] = useState(""); // 선택 — 리마인더 수신용
+  const [email, setEmail] = useState(""); // 선택 — 이메일 안내 수신용
   const [depositorName, setDepositorName] = useState("");
   const [question, setQuestion] = useState("");
   const [sessionId, setSessionId] = useState<number | "">(
@@ -160,7 +173,6 @@ export function ApplyForm({
   );
   const [agree, setAgree] = useState(false);
   const [agreeError, setAgreeError] = useState(false);
-  const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const agreeRef = useRef<HTMLLabelElement>(null);
@@ -175,22 +187,6 @@ export function ApplyForm({
       setDepositorName((prev) => prev || member.name);
     }
   }, [member]);
-
-  if (closedReason) {
-    return <ClosedNote>{closedReason}</ClosedNote>;
-  }
-  if (done) {
-    const selectedSession = sessions.find((s) => s.id === sessionId) ?? sessions[0] ?? null;
-    return (
-      <ApplyDoneCard
-        event={eventSummary}
-        session={selectedSession}
-        name={name}
-        contact={contact}
-        depositorName={requiresDeposit ? depositorName : null}
-      />
-    );
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,7 +233,13 @@ export function ApplyForm({
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "신청 접수에 실패했습니다.");
       }
-      setDone(true);
+      onSubmitted({
+        name: name.trim(),
+        contact: contact.trim(),
+        email: email.trim() || null,
+        depositorName: requiresDeposit ? depositorName.trim() : null,
+        sessionId: sessionId === "" ? null : sessionId,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "신청 접수에 실패했습니다.");
     } finally {
@@ -297,8 +299,9 @@ export function ApplyForm({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="행사 전일 리마인더를 받으시려면 입력해 주세요"
+          placeholder="you@example.com"
         />
+        <FieldHint>안내를 이메일로 받으시려면 입력해 주세요.</FieldHint>
       </Field>
 
       {requiresDeposit ? (
@@ -340,7 +343,7 @@ export function ApplyForm({
         </span>
       </AgreeBox>
 
-      {error ? <ClosedNote role="alert">{error}</ClosedNote> : null}
+      {error ? <ErrorNote role="alert">{error}</ErrorNote> : null}
 
       <SubmitBtn type="submit" disabled={submitting}>
         {submitting ? "접수 중…" : "신청하기"}
