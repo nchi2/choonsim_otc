@@ -6,7 +6,7 @@
 // ★ 포스터는 미리보기 UI만 — 실제 업로드(R2)는 다음 Step. 제출 시 무시.
 // Turnstile: 키 장착 시 제출 body의 turnstileToken 자리에 위젯 token을 실으면 서버 검증이 켜진다.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { PublicShell } from "@/components/education/PublicShell";
 import {
@@ -116,16 +116,49 @@ const Select = styled.select`
   ${baseInput}
 `;
 
-const SessionRow = styled.div`
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr auto;
-  gap: 0.5rem;
+/* 회차 카드 — 날짜(+삭제) 한 줄, 시작·종료 시간 아래 줄. 시간은 오전/오후+시+분 셀렉트. */
+const SessionCard = styled.div`
+  border: 1px solid ${eduColors.border};
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+`;
+
+const SessionTop = styled.div`
+  display: flex;
   align-items: end;
-  margin-bottom: 0.55rem;
+  gap: 0.5rem;
+
+  label {
+    flex: 1;
+    min-width: 0;
+  }
+`;
+
+const SessionTimes = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
 
   ${media.sm} {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
+`;
+
+/* 시간 셀렉트 3개(오전·오후 / 시 / 분) 묶음 */
+const TimeGroup = styled.div`
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 0.35rem;
+`;
+
+const MiniSelect = styled.select`
+  ${baseInput}
+  padding: 0.5rem 0.35rem;
+  font-size: 0.82rem;
 `;
 
 const MiniLabel = styled.span`
@@ -294,6 +327,128 @@ interface SessionInput {
 
 const MAX_POSTER_BYTES = 5 * 1024 * 1024;
 const POSTER_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/* ── 시간 입력(오전/오후 + 시 + 분) ⇄ 24시간 "HH:MM" 저장 형식 변환 (Step 20) ──
+ * 저장·조회·캘린더는 전부 "HH:MM"(24h)에 의존 — UI만 바꾸고 형식은 절대 유지. */
+const AMPM_OPTS = ["오전", "오후"] as const;
+const HOUR12_OPTS = Array.from({ length: 12 }, (_, i) => i + 1); // 1..12
+const MINUTE_OPTS = ["00", "30"] as const;
+
+/** "HH:MM"(24h) → {오전/오후, 12시제 시, 분}. 형식 아니면 null. */
+function parse24(v: string): { ampm: string; hour: number; minute: string } | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  if (h < 0 || h > 23) return null;
+  const ampm = h < 12 ? "오전" : "오후";
+  const hour = h % 12 === 0 ? 12 : h % 12; // 0시·12시 → 12
+  return { ampm, hour, minute: m[2] };
+}
+
+/** {오전/오후, 12시제 시, 분} → "HH:MM"(24h). */
+function to24(ampm: string, hour12: number, minute: string): string {
+  let h = hour12 % 12; // 12 → 0
+  if (ampm === "오후") h += 12;
+  return `${String(h).padStart(2, "0")}:${minute}`;
+}
+
+/** 시간 피커 — 부모는 "HH:MM"(또는 "") 하나만 관리. 미완성(오전/오후·시 미선택)은 ""로 emit. */
+function TimePicker({
+  value,
+  onChange,
+  disabled,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  const p0 = parse24(value);
+  const [ampm, setAmpm] = useState(p0?.ampm ?? "");
+  const [hour, setHour] = useState(p0 ? String(p0.hour) : "");
+  const [minute, setMinute] = useState(p0?.minute ?? "00");
+  // 우리가 방금 emit한 값 기록 — 외부(edit 로드·회차 삭제로 인덱스 이동) 변경만 재동기화
+  const syncedRef = useRef(value);
+
+  useEffect(() => {
+    if (value !== syncedRef.current) {
+      syncedRef.current = value;
+      const p = parse24(value);
+      setAmpm(p?.ampm ?? "");
+      setHour(p ? String(p.hour) : "");
+      setMinute(p?.minute ?? "00");
+    }
+  }, [value]);
+
+  const update = (a: string, h: string, m: string) => {
+    setAmpm(a);
+    setHour(h);
+    setMinute(m);
+    const next = a && h ? to24(a, Number(h), m) : "";
+    syncedRef.current = next;
+    onChange(next);
+  };
+
+  // 기존 데이터가 00/30이 아닌 분(예외)이면 옵션에 포함해 값 유실 방지
+  const minuteOptions: readonly string[] = (
+    MINUTE_OPTS as readonly string[]
+  ).includes(minute)
+    ? MINUTE_OPTS
+    : [minute, ...MINUTE_OPTS];
+
+  return (
+    <TimeGroup role="group" aria-label={label}>
+      <MiniSelect
+        value={ampm}
+        disabled={disabled}
+        onChange={(e) => update(e.target.value, hour, minute)}
+        aria-label={`${label} 오전/오후`}
+      >
+        <option value="">오전/오후</option>
+        {AMPM_OPTS.map((a) => (
+          <option key={a} value={a}>
+            {a}
+          </option>
+        ))}
+      </MiniSelect>
+      <MiniSelect
+        value={hour}
+        disabled={disabled}
+        onChange={(e) => update(ampm, e.target.value, minute)}
+        aria-label={`${label} 시`}
+      >
+        <option value="">시</option>
+        {HOUR12_OPTS.map((h) => (
+          <option key={h} value={h}>
+            {h}시
+          </option>
+        ))}
+      </MiniSelect>
+      <MiniSelect
+        value={minute}
+        disabled={disabled}
+        onChange={(e) => update(ampm, hour, e.target.value)}
+        aria-label={`${label} 분`}
+      >
+        {minuteOptions.map((m) => (
+          <option key={m} value={m}>
+            {m}분
+          </option>
+        ))}
+      </MiniSelect>
+    </TimeGroup>
+  );
+}
+
+/** 날짜 인풋 클릭 시 네이티브 달력 피커 열기(지원 브라우저) — 필드 어디를 눌러도 달력이 뜨게. */
+function openDatePicker(e: React.MouseEvent<HTMLInputElement>) {
+  try {
+    e.currentTarget.showPicker?.();
+  } catch {
+    // 일부 브라우저/상황에서 showPicker 미지원 — 기본 동작(입력)으로 폴백
+  }
+}
 
 export interface HostFormInitial {
   status: string; // PENDING | APPROVED | REJECTED (수정 모드)
@@ -663,9 +818,7 @@ export function HostFormClient({
             <Textarea
               value={descriptionMd}
               onChange={(e) => setDescriptionMd(e.target.value)}
-              placeholder={
-                "## 강연 내용\n- SBMB Q&A\n- Trust Wallet 기초 (지갑 생성·토큰 전송)\n- 토큰 스테이킹 / Uniswap 스왑"
-              }
+              placeholder="행사에 대한 설명을 적어주세요."
             />
           </Field>
           <Grid2>
@@ -684,7 +837,7 @@ export function HostFormClient({
               <Input
                 value={instructorBio}
                 onChange={(e) => setInstructorBio(e.target.value)}
-                placeholder="예: 10년차 EVM 지갑 강사"
+                placeholder="소개를 적어주세요."
               />
             </Field>
           </Grid2>
@@ -698,45 +851,46 @@ export function HostFormClient({
           </FieldLabel>
           <FieldHint>여러 날에 걸쳐 열린다면 회차를 추가하세요. 종료 시간은 선택입니다.</FieldHint>
           {sessions.map((s, i) => (
-            <SessionRow key={i}>
-              <label>
-                <MiniLabel>날짜{i === 0 ? " *" : ""}</MiniLabel>
-                <Input
-                  type="date"
-                  value={s.date}
-                  onChange={(e) => updateSession(i, { date: e.target.value })}
-                  aria-label={`${i + 1}회차 날짜`}
-                  disabled={locked}
-                />
-              </label>
-              <label>
-                <MiniLabel>시작{i === 0 ? " *" : ""}</MiniLabel>
-                <Input
-                  type="time"
-                  value={s.startTime}
-                  onChange={(e) => updateSession(i, { startTime: e.target.value })}
-                  aria-label={`${i + 1}회차 시작`}
-                  disabled={locked}
-                />
-              </label>
-              <label>
-                <MiniLabel>종료</MiniLabel>
-                <Input
-                  type="time"
-                  value={s.endTime}
-                  onChange={(e) => updateSession(i, { endTime: e.target.value })}
-                  aria-label={`${i + 1}회차 종료`}
-                  disabled={locked}
-                />
-              </label>
-              {sessions.length > 1 && !locked ? (
-                <SmallBtn type="button" onClick={() => removeSession(i)}>
-                  삭제
-                </SmallBtn>
-              ) : (
-                <span />
-              )}
-            </SessionRow>
+            <SessionCard key={i}>
+              <SessionTop>
+                <label>
+                  <MiniLabel>날짜{i === 0 ? " *" : ""}</MiniLabel>
+                  <Input
+                    type="date"
+                    value={s.date}
+                    onChange={(e) => updateSession(i, { date: e.target.value })}
+                    onClick={openDatePicker}
+                    aria-label={`${i + 1}회차 날짜`}
+                    disabled={locked}
+                  />
+                </label>
+                {sessions.length > 1 && !locked ? (
+                  <SmallBtn type="button" onClick={() => removeSession(i)}>
+                    삭제
+                  </SmallBtn>
+                ) : null}
+              </SessionTop>
+              <SessionTimes>
+                <div>
+                  <MiniLabel>시작{i === 0 ? " *" : ""}</MiniLabel>
+                  <TimePicker
+                    value={s.startTime}
+                    onChange={(v) => updateSession(i, { startTime: v })}
+                    disabled={locked}
+                    label={`${i + 1}회차 시작`}
+                  />
+                </div>
+                <div>
+                  <MiniLabel>종료</MiniLabel>
+                  <TimePicker
+                    value={s.endTime}
+                    onChange={(v) => updateSession(i, { endTime: v })}
+                    disabled={locked}
+                    label={`${i + 1}회차 종료`}
+                  />
+                </div>
+              </SessionTimes>
+            </SessionCard>
           ))}
           {locked ? null : (
             <AddBtn type="button" onClick={addSession}>
@@ -765,7 +919,6 @@ export function HostFormClient({
               <Input
                 value={customLocation}
                 onChange={(e) => setCustomLocation(e.target.value)}
-                placeholder="예: 수원모빅회관"
                 disabled={locked || officeId !== ""}
               />
             </Field>
@@ -808,6 +961,7 @@ export function HostFormClient({
               type="date"
               value={applyDeadline}
               onChange={(e) => setApplyDeadline(e.target.value)}
+              onClick={openDatePicker}
               disabled={locked}
             />
           </Field>
@@ -856,7 +1010,7 @@ export function HostFormClient({
             <Input
               value={eligibility}
               onChange={(e) => setEligibility(e.target.value)}
-              placeholder="예: SBMB에 관심 있는 누구나"
+              placeholder="예: 모빅에 관심있는 누구나"
             />
           </Field>
           <Field>
@@ -864,7 +1018,7 @@ export function HostFormClient({
             <Input
               value={preparation}
               onChange={(e) => setPreparation(e.target.value)}
-              placeholder="예: 10모의 기적 종이지갑 지참"
+              placeholder="지트모빅 종이지갑"
             />
           </Field>
           <Field>
@@ -872,7 +1026,7 @@ export function HostFormClient({
             <Input
               value={reward}
               onChange={(e) => setReward(e.target.value)}
-              placeholder="예: 이더리움 지갑 1장"
+              placeholder="기념 종이지갑 1장"
             />
           </Field>
           <Field>
