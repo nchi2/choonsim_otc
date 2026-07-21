@@ -148,6 +148,7 @@ export function CalendarClient({
             onSelect={setSelected}
             dayEvents={dayEvents}
             maxEventsPerDay={3}
+            hideEventTime
           />
         </CalWrap>
 
