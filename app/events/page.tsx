@@ -4,6 +4,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { loadPublishedEventCards, loadActiveOffices } from "@/lib/education-public";
+import { todayKst } from "@/lib/kst";
 import { EventsListClient } from "./EventsListClient";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function EventsPage() {
 
   return (
     <Suspense fallback={null}>
-      <EventsListClient events={events} offices={offices} />
+      <EventsListClient events={events} offices={offices} today={todayKst()} />
     </Suspense>
   );
 }

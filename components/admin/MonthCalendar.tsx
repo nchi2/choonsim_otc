@@ -65,6 +65,12 @@ export interface MonthCalendarProps {
    * 미지정이면 minDate 기준 (공개 모달 영향 없음).
    */
   pastBoundaryDate?: string;
+  /**
+   * 상세 모드에서 셀 안 일정 항목의 시간(HH:MM)을 숨기고 제목(label)만 표시 — 교육 공개
+   * 캘린더 전용 opt-in. 미지정이면 기존대로 시간 + (모바일은 앞글자) 표시
+   * (어드민 스케줄은 예약 시각이 핵심이라 이 값을 넘기지 않으므로 영향 없음).
+   */
+  hideEventTime?: boolean;
   onMonthChange?: (year: number, month: number) => void;
 }
 
@@ -87,6 +93,7 @@ export default function MonthCalendar({
   maxEventsPerDay = 3,
   edgeToEdge = false,
   pastBoundaryDate,
+  hideEventTime = false,
   onMonthChange,
 }: MonthCalendarProps) {
   // 회색 처리 기준일 — opt-in pastBoundaryDate 우선, 없으면 minDate (공개 기존 동작)
@@ -241,13 +248,20 @@ export default function MonthCalendar({
                       key={ev.key}
                       $confirmed={ev.confirmed}
                       $test={ev.isTest === true}
-                      title={`${ev.time} ${ev.label} ${ev.confirmed ? "확정" : "미확정"}${ev.isTest ? " · 테스트" : ""}`}
+                      title={`${hideEventTime ? "" : `${ev.time} `}${ev.label} ${ev.confirmed ? "확정" : "미확정"}${ev.isTest ? " · 테스트" : ""}`}
                     >
-                      <EvTime>{ev.time}</EvTime>
-                      <EvLabelFull>{ev.label}</EvLabelFull>
-                      <EvLabelShort aria-hidden="true">
-                        {ev.label.slice(0, 1)}
-                      </EvLabelShort>
+                      {hideEventTime ? (
+                        // 교육 캘린더 — 시간 없이 제목만(모든 폭에서), 넘치면 말줄임
+                        <EvTitle>{ev.label}</EvTitle>
+                      ) : (
+                        <>
+                          <EvTime>{ev.time}</EvTime>
+                          <EvLabelFull>{ev.label}</EvLabelFull>
+                          <EvLabelShort aria-hidden="true">
+                            {ev.label.slice(0, 1)}
+                          </EvLabelShort>
+                        </>
+                      )}
                     </DayEventItem>
                   ))}
                   {dayEvents![ymd].length > maxEventsPerDay ? (
@@ -326,7 +340,10 @@ const CalTitle = styled.span`
 
 const CalWeekRow = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* ★ minmax(0, 1fr): 1fr(=minmax(auto,1fr))은 셀 콘텐츠의 최소폭(nowrap 텍스트의 max-content)
+   * 만큼 컬럼을 밀어내 좁은 화면에서 7열이 화면을 넘어갔다. min을 0으로 잡아 항상 화면 폭 안에서
+   * 균등 축소되게 한다(가로 오버플로우 근본 해결). 콘텐츠는 각 셀에서 overflow:hidden으로 클립. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   margin-bottom: 4px;
 `;
 
@@ -336,12 +353,21 @@ const CalWeekday = styled.span<{ $sun?: boolean; $sat?: boolean }>`
   font-weight: 600;
   padding: 4px 0;
   color: ${(p) => (p.$sun ? adminColors.danger : p.$sat ? adminColors.info : adminColors.textMuted)};
+
+  @media (max-width: 640px) {
+    font-size: 0.64rem;
+    padding: 3px 0;
+  }
 `;
 
 const CalGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
+
+  @media (max-width: 640px) {
+    gap: 1px;
+  }
 `;
 
 const CalDayWrap = styled.div<{ $detailed?: boolean; $full?: boolean }>`
@@ -364,10 +390,20 @@ const CalDayWrap = styled.div<{ $detailed?: boolean; $full?: boolean }>`
   padding: 1px;
   `
         : ""}
+
+  /* 모바일 — 상세 모드 셀 높이·여백 축소로 한 화면에 들어오게(어드민·교육 공통) */
+  @media (max-width: 640px) {
+    min-height: ${(p) => (p.$detailed ? "60px" : "44px")};
+    ${(p) => (p.$detailed ? "padding: 1px 1px 3px;" : "")}
+  }
 `;
 
 const CalEmpty = styled.div<{ $detailed?: boolean }>`
   min-height: ${(p) => (p.$detailed ? "88px" : "52px")};
+
+  @media (max-width: 640px) {
+    min-height: ${(p) => (p.$detailed ? "60px" : "44px")};
+  }
 `;
 
 const CalDay = styled.button<{
@@ -387,6 +423,13 @@ const CalDay = styled.button<{
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
+  @media (max-width: 640px) {
+    max-width: 30px;
+    height: 30px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+  }
   background: ${(p) => (p.$selected ? adminColors.primary : "transparent")};
   color: ${(p) =>
     p.$selected
@@ -485,11 +528,24 @@ const DayEventItem = styled.div<{ $confirmed: boolean; $test?: boolean }>`
     p.$test ? adminColors.bgHover : p.$confirmed ? adminColors.successBg : adminColors.white};
   color: ${(p) => (p.$test ? adminColors.textFaint : p.$confirmed ? adminColors.successDeep : adminColors.textMuted)};
   font-weight: ${(p) => (p.$confirmed && !p.$test ? 700 : 500)};
+
+  @media (max-width: 640px) {
+    gap: 2px;
+    padding: 1px 3px;
+    font-size: 0.58rem;
+  }
 `;
 
 const EvTime = styled.span`
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+`;
+
+/* 교육 캘린더(hideEventTime) — 제목만, 모든 폭에서 표시하고 넘치면 말줄임 */
+const EvTitle = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const EvLabelFull = styled.span`

@@ -88,12 +88,50 @@ function filterFromParams(p: URLSearchParams): EventFilterValue {
   };
 }
 
+/**
+ * /events 목록 정렬 — 다가오는 행사(오늘 이후) 먼저 가까운 순, 그다음 세션 미등록,
+ * 마지막에 종료된 행사(최근에 끝난 순). 종료된 것도 보이되 아래로 민다.
+ * (메인 "앞으로의 행사"와 같은 기준 — 종료 그룹만 역순으로 추가.)
+ */
+function sortForListing(list: EventCardData[], today: string): EventCardData[] {
+  const rank = (e: EventCardData) => {
+    const d = e.session?.date ?? null;
+    if (d == null) return 1; // 세션 미등록 — 다가옴과 종료 사이
+    return d >= today ? 0 : 2; // 다가옴(오늘 포함)=0, 종료=2
+  };
+  return [...list].sort((a, b) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    const da = a.session?.date ?? "";
+    const db = b.session?.date ?? "";
+    const ta = a.session?.startTime ?? "";
+    const tb = b.session?.startTime ?? "";
+    if (ra === 0) {
+      // 다가옴 — 가까운 일정 순(오름차순)
+      if (da !== db) return da < db ? -1 : 1;
+      if (ta !== tb) return ta < tb ? -1 : 1;
+      return b.id - a.id;
+    }
+    if (ra === 2) {
+      // 종료 — 최근에 끝난 순(내림차순)
+      if (da !== db) return da > db ? -1 : 1;
+      if (ta !== tb) return ta > tb ? -1 : 1;
+      return b.id - a.id;
+    }
+    // 세션 미등록 — 최근 개설 먼저
+    return b.id - a.id;
+  });
+}
+
 export function EventsListClient({
   events,
   offices,
+  today,
 }: {
   events: EventCardData[];
   offices: { id: number; name: string }[];
+  today: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -124,8 +162,9 @@ export function EventsListClient({
           ? list.filter((e) => e.officeId == null) // 기타 장소
           : list.filter((e) => e.officeId === filter.officeId);
     }
-    return list;
-  }, [events, filter]);
+    // 필터 적용 후에도 정렬 유지 — 다가오는 순, 종료는 아래로(Step: /events 정렬)
+    return sortForListing(list, today);
+  }, [events, filter, today]);
 
   return (
     <PublicShell>
