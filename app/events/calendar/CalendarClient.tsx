@@ -29,12 +29,16 @@ const PageSub = styled.p`
 
 const Layout = styled.div`
   display: grid;
-  grid-template-columns: 1fr 320px;
+  /* ★ minmax(0, 1fr): 1fr(=minmax(auto,1fr))의 auto 최소값 = 컬럼 내 아이템 min-content 최대값.
+   * DayPanel의 RowTitle(nowrap·긴 제목)이 min-width:0 없이 큰 min-content를 유지해 모바일 단일
+   * 컬럼을 화면보다 넓게 밀어올렸고(그 위 캘린더까지 같이 넓어져 우측 토요일 열이 잘림), min을
+   * 0으로 잡아 컬럼이 화면 폭 안에서 축소되게 한다. 내용은 각자 overflow:hidden으로 클립. */
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1.5rem;
   align-items: start;
 
   @media (max-width: ${eduLayout.maxWidth - 200}px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 `;
 
@@ -88,6 +92,10 @@ const RowTitle = styled.span`
   font-size: 0.85rem;
   color: ${eduColors.textSub};
   font-weight: 600;
+  /* flex 아이템은 min-width:auto라 nowrap 텍스트가 안 줄어들어 말줄임이 동작하지 않았다.
+   * min-width:0으로 축소를 허용해 말줄임이 실제로 걸리게(오버플로우 방지에도 기여). */
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
