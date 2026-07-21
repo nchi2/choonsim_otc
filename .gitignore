@@ -45,3 +45,6 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# Step 26 이관 덤프 — 개인정보(개설자 연락처·이메일) 포함, 커밋 금지
+/scripts/education-export.json
