@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser, maskName } from "@/lib/admin-guard";
-import { getUnreadCommentTargets } from "@/lib/order-comments";
+import { getAdminScopes } from "@/lib/admin-scope-guard";
+import {
+  allowedCommentTypesForScopes,
+  getUnreadCommentTargets,
+} from "@/lib/order-comments";
 
 export const runtime = "nodejs";
 
 // 읽기 전용 — 내 안읽음 코멘트가 있는 신청 목록 (헤더 벨 드롭다운). 상태 변경 없음.
+// Step 28: 운영자 스코프에 맞는 종류만(교육 운영자에게 OTC 코멘트 미노출 — 데이터 단 필터).
 export async function GET() {
   const admin = await getAdminUser();
   if (!admin) {
@@ -16,7 +21,11 @@ export async function GET() {
   }
 
   try {
-    const targets = await getUnreadCommentTargets(admin.adminUserId);
+    const scopes = await getAdminScopes(admin.adminUserId);
+    const targets = await getUnreadCommentTargets(
+      admin.adminUserId,
+      allowedCommentTypesForScopes(scopes),
+    );
 
     // 신청명(이름) 배치 조회
     const m10Ids = targets

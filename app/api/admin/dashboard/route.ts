@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminUser } from "@/lib/admin-guard";
+import { getAdminScopes } from "@/lib/admin-scope-guard";
 import { computeAdminStats } from "@/lib/admin-stats";
+import { allowedCommentTypesForScopes } from "@/lib/order-comments";
 import { verifiedAssignedOrderWhere } from "@/lib/available-slots";
 import { todayKst } from "@/lib/kst";
 
@@ -22,8 +24,13 @@ export async function GET() {
   }
 
   try {
+    // Step 28: commentUnread는 운영자 스코프 종류만 집계
+    const scopes = await getAdminScopes(admin.adminUserId);
     const [stats, offices, todayOrders] = await Promise.all([
-      computeAdminStats(admin.adminUserId),
+      computeAdminStats(
+        admin.adminUserId,
+        allowedCommentTypesForScopes(scopes),
+      ),
       prisma.office.findMany({
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
         select: {

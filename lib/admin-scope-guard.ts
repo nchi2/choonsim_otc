@@ -9,7 +9,7 @@ export type AdminScope = "manageOtc" | "manageEducation";
 
 export type AdminScopeResult =
   | { ok: true; admin: AdminSessionUser }
-  | { ok: false; status: 401 | 403; error: string };
+  | { ok: false; status: 401 | 403 | 500; error: string };
 
 const SCOPE_DENIED_MESSAGE: Record<AdminScope, string> = {
   manageOtc: "OTC 운영 권한이 없습니다. (manageOtc)",
@@ -41,4 +41,49 @@ export async function requireAdminScope(
 /** OTC 운영 API 공용 게이트 — manageOtc. */
 export function requireOtcManager(): Promise<AdminScopeResult> {
   return requireAdminScope("manageOtc");
+}
+
+/**
+ * 운영자 스코프 조회(Step 28) — 알림/코멘트 스코프 필터 등 "표시 범위" 결정용.
+ * 조회 실패 시 둘 다 true(가용성 우선 — 스코프 게이트 기본과 일관, 기존 동작 유지).
+ */
+export async function getAdminScopes(adminUserId: number): Promise<{
+  manageOtc: boolean;
+  manageEducation: boolean;
+}> {
+  try {
+    const row = await prisma.adminUser.findUnique({
+      where: { id: adminUserId },
+      select: { manageOtc: true, manageEducation: true },
+    });
+    if (row) return row;
+  } catch (err) {
+    console.error("[admin-scope-guard] scopes lookup failed", err);
+  }
+  return { manageOtc: true, manageEducation: true };
+}
+
+/**
+ * 총괄 전용 게이트 (Step 27) — 운영자 계정 관리(생성·role/활성 변경)처럼 민감한 작업.
+ * 두 권한 모두(manageOtc && manageEducation) + 활성 계정(isActive)일 때만 통과.
+ * ★ 스코프 게이트(requireAdminScope)와 달리 조회 실패 시 잠근다(민감 작업이라 안전 우선).
+ */
+export async function requireSuperAdmin(): Promise<AdminScopeResult> {
+  const admin = await getAdminUser();
+  if (!admin) return { ok: false, status: 401, error: "unauthorized" };
+  try {
+    const row = await prisma.adminUser.findUnique({
+      where: { id: admin.adminUserId },
+      select: { manageOtc: true, manageEducation: true, isActive: true },
+    });
+    if (!row || !row.isActive) return { ok: false, status: 401, error: "unauthorized" };
+    if (!(row.manageOtc && row.manageEducation)) {
+      return { ok: false, status: 403, error: "총괄 운영자만 접근할 수 있습니다." };
+    }
+    return { ok: true, admin };
+  } catch (err) {
+    console.error("[admin-scope-guard] super check failed", err);
+    // 민감 작업이라 조회 실패 시 통과시키지 않는다.
+    return { ok: false, status: 500, error: "권한 확인 중 오류가 발생했습니다." };
+  }
 }

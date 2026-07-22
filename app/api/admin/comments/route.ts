@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAdminUser } from "@/lib/admin-guard";
+import { requireOtcManager } from "@/lib/admin-scope-guard";
+import { requireEducationManager } from "@/lib/education-admin-guard";
 import {
   isCommentTargetType,
   markCommentsRead,
@@ -56,22 +57,28 @@ async function targetExists(
 
 // 읽음 처리는 lib/order-comments.ts markCommentsRead 공유 (상세 GET과 동일 규칙)
 
+/** targetType별 스코프 게이트(Step 28) — 교육 코멘트는 manageEducation, OTC/10모는 manageOtc. */
+async function requireScopeForTarget(targetType: CommentTargetType) {
+  return targetType === "EDUCATION_EVENT"
+    ? requireEducationManager()
+    : requireOtcManager();
+}
+
 /** 코멘트 목록. markRead=1이면 조회 시점까지 읽음 처리(상세 열람). */
 export async function GET(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const target = parseTarget(
     searchParams.get("targetType"),
     searchParams.get("targetId"),
   );
   if (!target) return bad("targetType/targetId가 올바르지 않습니다.");
+
+  // Step 28: 스코프 없는 종류의 코멘트는 직접 조회도 차단(401/403)
+  const gate = await requireScopeForTarget(target.targetType);
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
+  }
+  const admin = gate.admin;
 
   try {
     const comments = await prisma.orderComment.findMany({
@@ -108,14 +115,6 @@ export async function GET(request: Request) {
 
 /** 코멘트 작성. 작성과 함께 해당 건 읽음 처리. */
 export async function POST(request: Request) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 },
-    );
-  }
-
   let json: Record<string, unknown>;
   try {
     json = (await request.json()) as Record<string, unknown>;
@@ -125,6 +124,13 @@ export async function POST(request: Request) {
 
   const target = parseTarget(json.targetType, json.targetId);
   if (!target) return bad("targetType/targetId가 올바르지 않습니다.");
+
+  // Step 28: 스코프 없는 종류에는 코멘트 작성도 차단
+  const gate = await requireScopeForTarget(target.targetType);
+  if (!gate.ok) {
+    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
+  }
+  const admin = gate.admin;
 
   const body = typeof json.body === "string" ? json.body.trim() : "";
   if (!body || body.length > MAX_BODY_LEN) {

@@ -243,6 +243,10 @@ interface Profile {
   bankAccountHolder: string | null;
   alertMiracle10: boolean;
   alertOtc: boolean;
+  alertEducation: boolean;
+  /** role 분기용(읽기 전용) — Step 28 */
+  manageOtc: boolean;
+  manageEducation: boolean;
 }
 
 /** 계좌번호 마스킹 — 앞 6자리만 노출, 이후 숫자는 *, 구분자는 유지. */
@@ -270,6 +274,7 @@ export default function AdminProfilePage() {
   const [phone, setPhone] = useState("");
   const [alertMiracle10, setAlertMiracle10] = useState(true);
   const [alertOtc, setAlertOtc] = useState(true);
+  const [alertEducation, setAlertEducation] = useState(true);
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoMsg, setInfoMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -323,6 +328,7 @@ export default function AdminProfilePage() {
     setPhone(p.phone ?? "");
     setAlertMiracle10(p.alertMiracle10);
     setAlertOtc(p.alertOtc);
+    setAlertEducation(p.alertEducation);
     setBankName(p.bankName ?? "");
     setBankHolder(p.bankAccountHolder ?? "");
     setBankAccountNo(p.bankAccountNo ?? "");
@@ -367,8 +373,10 @@ export default function AdminProfilePage() {
           displayName: displayName.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
-          alertMiracle10,
-          alertOtc,
+          // ★ 화면에 보이는 알림 토글만 전송(Step 28) — API는 "요청에 없으면 미변경"이라
+          //   role상 안 보이는 플래그가 임의로 꺼지는 일이 없다.
+          ...(profile?.manageOtc ? { alertMiracle10, alertOtc } : {}),
+          ...(profile?.manageEducation ? { alertEducation } : {}),
         }),
       });
       const json = await res.json();
@@ -508,22 +516,37 @@ export default function AdminProfilePage() {
             체크한 종류의 신규 신청이 들어오면 이메일로 알려드립니다. (이메일이
             비어 있으면 발송되지 않습니다.)
           </AlertHint>
-          <AlertCheck>
-            <input
-              type="checkbox"
-              checked={alertMiracle10}
-              onChange={(e) => setAlertMiracle10(e.target.checked)}
-            />
-            10모의 기적 신청 알림
-          </AlertCheck>
-          <AlertCheck>
-            <input
-              type="checkbox"
-              checked={alertOtc}
-              onChange={(e) => setAlertOtc(e.target.checked)}
-            />
-            BMB 구매·판매(OTC) 신청 알림
-          </AlertCheck>
+          {/* Step 28: role에 맞는 종류만 노출 — OTC 스코프 없는 운영자에게 OTC 알림 숨김 */}
+          {profile.manageOtc ? (
+            <>
+              <AlertCheck>
+                <input
+                  type="checkbox"
+                  checked={alertMiracle10}
+                  onChange={(e) => setAlertMiracle10(e.target.checked)}
+                />
+                10모의 기적 신청 알림
+              </AlertCheck>
+              <AlertCheck>
+                <input
+                  type="checkbox"
+                  checked={alertOtc}
+                  onChange={(e) => setAlertOtc(e.target.checked)}
+                />
+                BMB 구매·판매(OTC) 신청 알림
+              </AlertCheck>
+            </>
+          ) : null}
+          {profile.manageEducation ? (
+            <AlertCheck>
+              <input
+                type="checkbox"
+                checked={alertEducation}
+                onChange={(e) => setAlertEducation(e.target.checked)}
+              />
+              교육 알림 (행사 개설·수강 신청 등)
+            </AlertCheck>
+          ) : null}
         </AlertFieldset>
         <SaveRow>
           <SaveBtn
@@ -646,6 +669,8 @@ export default function AdminProfilePage() {
         </SaveRow>
       </Card>
 
+      {/* Step 28: 근무 슬롯·방문 일정은 OTC 예약 업무 — manageOtc 없는 운영자에게 숨김 */}
+      {profile.manageOtc ? (
       <Card>
         <SectionTitle>내 근무 · 오늘 일정</SectionTitle>
         <SectionSub>오늘 내게 배정된 확정 방문과 이번 주 근무 슬롯 요약.</SectionSub>
@@ -680,6 +705,7 @@ export default function AdminProfilePage() {
         )}
         <FootLink href="/admin/schedule">근무 슬롯 등록·해제는 일정 캘린더에서 →</FootLink>
       </Card>
+      ) : null}
     </Page>
   );
 }
