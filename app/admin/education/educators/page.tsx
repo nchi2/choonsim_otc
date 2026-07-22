@@ -5,7 +5,6 @@
 // 신청 소개·활동 계획은 educatorIntro로 저장·화면 표시(12A). 알림 메일에도 포함.
 
 import { Suspense, useCallback, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import {
@@ -19,6 +18,7 @@ import {
   adminColors,
 } from "@/components/admin/ui";
 import { EmptyState, ErrorState, Skeleton } from "@/components/admin/States";
+import { EducationTabs } from "@/components/admin/EducationTabs";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
 import { invalidate, useAdminData, fetchAdminJson } from "@/lib/admin-data";
 
@@ -69,17 +69,6 @@ const TopRow = styled.div`
   gap: 0.4rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
-`;
-
-const BackLink = styled(Link)`
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: ${adminColors.textMuted};
-  text-decoration: none;
-  margin-right: auto;
-  &:hover {
-    color: ${adminColors.primary};
-  }
 `;
 
 const Card = styled.div`
@@ -225,8 +214,8 @@ function EducatorsInner() {
 
   return (
     <Wrap>
+      <EducationTabs active="educators" />
       <TopRow>
-        <BackLink href="/admin/education">← 교육 관리</BackLink>
         {TAB_ORDER.map((t) => (
           <FilterTab
             key={t}

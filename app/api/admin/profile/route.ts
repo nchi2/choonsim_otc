@@ -19,6 +19,11 @@ const PROFILE_SELECT = {
   bankAccountHolder: true,
   alertMiracle10: true,
   alertOtc: true,
+  // Step 28: 교육 알림 토글(발송은 getAlertRecipients("education")가 이 플래그로 필터 — Step 5 배선)
+  alertEducation: true,
+  // Step 28: 화면 role 분기용(읽기 전용 — PATCH로는 못 바꿈, 스코프는 운영자 관리에서만)
+  manageOtc: true,
+  manageEducation: true,
 } as const;
 
 export async function GET() {
@@ -60,8 +65,8 @@ const TEXT_FIELDS = [
   { key: "bankAccountHolder", max: 50 },
 ] as const;
 
-// 알림 수신 종류 토글 — 요청에 없으면 미변경.
-const BOOL_FIELDS = ["alertMiracle10", "alertOtc"] as const;
+// 알림 수신 종류 토글 — 요청에 없으면 미변경(화면에 안 보이는 플래그는 body에 없어 유실되지 않음).
+const BOOL_FIELDS = ["alertMiracle10", "alertOtc", "alertEducation"] as const;
 
 export async function PATCH(request: Request) {
   const admin = await getAdminUser();

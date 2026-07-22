@@ -3,7 +3,10 @@
 import { prisma } from "@/lib/prisma";
 import { OrderKind, OrderStatus } from "@/app/generated/prisma/client";
 import { computeWalletTotals } from "@/lib/wallet-inventory";
-import { getGlobalUnreadCount } from "@/lib/order-comments";
+import {
+  getGlobalUnreadCount,
+  type CommentTargetType,
+} from "@/lib/order-comments";
 import { paperWalletCountToPrepare } from "@/lib/otc-estimate";
 
 export interface AdminStats {
@@ -37,6 +40,8 @@ export interface AdminStats {
 
 export async function computeAdminStats(
   adminUserId: number,
+  /** 코멘트 스코프 필터(Step 28) — 미지정이면 전체(기존 동작·하위호환). */
+  allowedCommentTypes?: CommentTargetType[],
 ): Promise<AdminStats> {
   const m10Base = { kind: OrderKind.MIRACLE10, isTest: false };
 
@@ -53,7 +58,7 @@ export async function computeAdminStats(
         _count: { _all: true },
       }),
       computeWalletTotals(),
-      getGlobalUnreadCount(adminUserId),
+      getGlobalUnreadCount(adminUserId, allowedCommentTypes),
       // reserved: 확정(VERIFIED) 건이 전부 나가면 필요한 종이지갑 장수
       // (손님 보유분 ownedPaperWalletCount 차감 — 거래기록에 장수가 있으면 그 값 우선)
       prisma.otcOrder.findMany({

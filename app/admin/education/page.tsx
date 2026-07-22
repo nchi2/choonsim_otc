@@ -15,6 +15,7 @@ import {
   adminColors,
 } from "@/components/admin/ui";
 import { EmptyState, ErrorState, RefreshingBar, Skeleton } from "@/components/admin/States";
+import { EducationTabs } from "@/components/admin/EducationTabs";
 import { useAdminPageHeader } from "@/components/admin/AdminPageHeaderContext";
 import { invalidate, useAdminData } from "@/lib/admin-data";
 import {
@@ -183,24 +184,16 @@ function EducationListInner() {
     );
 
   const doRefresh = useCallback(() => invalidate("admin:edu:list"), []);
+  // Step 28: "교육자 신청" 진입은 헤더 버튼 대신 상단 탭(EducationTabs)으로 이동
   const headerActions = useMemo(
     () => (
-      <>
-        <ToolbarButton
-          as={Link}
-          href="/admin/education/educators"
-          style={{ marginLeft: 0, textDecoration: "none" }}
-        >
-          교육자 신청
-        </ToolbarButton>
-        <ToolbarButton type="button" style={{ marginLeft: 0 }} onClick={doRefresh}>
-          새로고침
-        </ToolbarButton>
-      </>
+      <ToolbarButton type="button" style={{ marginLeft: 0 }} onClick={doRefresh}>
+        새로고침
+      </ToolbarButton>
     ),
     [doRefresh],
   );
-  useAdminPageHeader("교육 관리", headerActions);
+  useAdminPageHeader("이벤트 관리", headerActions);
 
   const counts = data?.counts;
   const tabCount = (t: StatusFilter) =>
@@ -213,6 +206,7 @@ function EducationListInner() {
 
   return (
     <Wrap>
+      <EducationTabs active="events" />
       <Toolbar>
         {TAB_ORDER.map((t) => (
           <FilterTab

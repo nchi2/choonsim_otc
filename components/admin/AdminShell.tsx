@@ -59,7 +59,7 @@ interface NavItem {
 const SIDE_ITEMS: NavItem[] = [
   { href: "/admin", label: "대시보드", exact: true, badge: false, scope: null },
   { href: "/admin/requests", label: "신청 관리", exact: false, badge: true, scope: "otc" },
-  { href: "/admin/education", label: "교육 관리", exact: false, badge: false, scope: "education" },
+  { href: "/admin/education", label: "이벤트 관리", exact: false, badge: false, scope: "education" },
   { href: "/admin/schedule", label: "일정 캘린더", exact: false, badge: false, scope: "otc" },
   { href: "/admin/calculator", label: "OTC 계산기", exact: false, badge: false, scope: "otc" },
   {
@@ -83,7 +83,7 @@ const TAB_ITEMS: NavItem[] = [
 /** 교육 전용 운영자(manageOtc=false) 하단탭 — OTC 탭들이 사라지면 교육 관리로 대체. */
 const TAB_ITEMS_EDUCATION_ONLY: NavItem[] = [
   { href: "/admin", label: "홈", exact: true, badge: false, scope: null },
-  { href: "/admin/education", label: "교육 관리", exact: false, badge: false, scope: "education" },
+  { href: "/admin/education", label: "이벤트 관리", exact: false, badge: false, scope: "education" },
 ];
 
 function hasScope(
@@ -556,7 +556,7 @@ function resolvePageTitle(pathname: string): string {
   if (pathname === "/admin/education/educators") return "교육자 신청";
   if (pathname === "/admin/education/slots") return "교육 슬롯";
   if (/^\/admin\/education\/[^/]+$/.test(pathname)) return "행사 상세";
-  if (pathname.startsWith("/admin/education")) return "교육 관리";
+  if (pathname.startsWith("/admin/education")) return "이벤트 관리";
   if (pathname.startsWith("/admin/schedule")) return "일정·근무 캘린더";
   if (pathname.startsWith("/admin/calculator")) return "BMB OTC 단가 계산기";
   if (pathname.startsWith("/admin/wallet-inventory")) {

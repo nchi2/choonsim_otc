@@ -15,6 +15,21 @@ export function isCommentTargetType(v: unknown): v is CommentTargetType {
   );
 }
 
+/**
+ * 운영자 스코프 → 볼 수 있는 코멘트 종류 (Step 28 — 알림/벨 스코프 누수 수정).
+ * OTC 스코프 = MIRACLE10·OTC_REQUEST, 교육 스코프 = EDUCATION_EVENT. 총괄은 전부.
+ * 둘 다 없으면 빈 배열(아무 코멘트도 안 보임).
+ */
+export function allowedCommentTypesForScopes(scopes: {
+  manageOtc: boolean;
+  manageEducation: boolean;
+}): CommentTargetType[] {
+  const types: CommentTargetType[] = [];
+  if (scopes.manageOtc) types.push("MIRACLE10", "OTC_REQUEST");
+  if (scopes.manageEducation) types.push("EDUCATION_EVENT");
+  return types;
+}
+
 export interface CommentBadge {
   /** 전체 코멘트 수 */
   count: number;
@@ -135,9 +150,13 @@ export interface UnreadTarget {
  */
 export async function getUnreadCommentTargets(
   adminUserId: number,
+  /** 스코프 필터(Step 28) — 미지정이면 전체(기존 동작·하위호환). 빈 배열이면 아무것도 안 보임. */
+  allowedTypes?: CommentTargetType[],
 ): Promise<UnreadTarget[]> {
+  if (allowedTypes && allowedTypes.length === 0) return [];
   const [comments, reads] = await Promise.all([
     prisma.orderComment.findMany({
+      where: allowedTypes ? { targetType: { in: allowedTypes } } : undefined,
       orderBy: { createdAt: "asc" },
       select: {
         targetType: true,
@@ -211,10 +230,16 @@ export async function markCommentsRead(
  */
 export async function getGlobalUnreadCount(
   adminUserId: number,
+  /** 스코프 필터(Step 28) — 미지정이면 전체(기존 동작·하위호환). 빈 배열이면 0. */
+  allowedTypes?: CommentTargetType[],
 ): Promise<number> {
+  if (allowedTypes && allowedTypes.length === 0) return 0;
   const [comments, reads] = await Promise.all([
     prisma.orderComment.findMany({
-      where: { NOT: { authorId: adminUserId } },
+      where: {
+        NOT: { authorId: adminUserId },
+        ...(allowedTypes ? { targetType: { in: allowedTypes } } : {}),
+      },
       select: {
         targetType: true,
         targetId: true,

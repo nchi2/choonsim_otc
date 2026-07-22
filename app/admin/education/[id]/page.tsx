@@ -611,7 +611,7 @@ function DetailBody({
   return (
     <Wrap>
       <TopRow>
-        <BackLink href="/admin/education">← 교육 관리 목록</BackLink>
+        <BackLink href="/admin/education">← 이벤트 관리 목록</BackLink>
         <BadgeRow>
           <StatusBadge $color={eduStatusColor(event.status)}>
             {EDU_STATUS_LABEL[event.status] ?? event.status}

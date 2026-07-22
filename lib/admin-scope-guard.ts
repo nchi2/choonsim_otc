@@ -44,6 +44,26 @@ export function requireOtcManager(): Promise<AdminScopeResult> {
 }
 
 /**
+ * 운영자 스코프 조회(Step 28) — 알림/코멘트 스코프 필터 등 "표시 범위" 결정용.
+ * 조회 실패 시 둘 다 true(가용성 우선 — 스코프 게이트 기본과 일관, 기존 동작 유지).
+ */
+export async function getAdminScopes(adminUserId: number): Promise<{
+  manageOtc: boolean;
+  manageEducation: boolean;
+}> {
+  try {
+    const row = await prisma.adminUser.findUnique({
+      where: { id: adminUserId },
+      select: { manageOtc: true, manageEducation: true },
+    });
+    if (row) return row;
+  } catch (err) {
+    console.error("[admin-scope-guard] scopes lookup failed", err);
+  }
+  return { manageOtc: true, manageEducation: true };
+}
+
+/**
  * 총괄 전용 게이트 (Step 27) — 운영자 계정 관리(생성·role/활성 변경)처럼 민감한 작업.
  * 두 권한 모두(manageOtc && manageEducation) + 활성 계정(isActive)일 때만 통과.
  * ★ 스코프 게이트(requireAdminScope)와 달리 조회 실패 시 잠근다(민감 작업이라 안전 우선).
