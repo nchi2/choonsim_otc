@@ -137,6 +137,116 @@ export async function sendEducationApplyAlert(
   if (error) throw new Error(error.message || "Resend send failed");
 }
 
+/* ── 2-b. 신청자 본인: 수강 신청 확인 메일 (Step 29) ──
+ * ★ 운영자 알림(sendEducationApplyAlert)과 별개. 신청서에 이메일이 있을 때만 발송.
+ *   회원=계정 이메일, 비회원=입력한 선택 이메일. 이메일 없으면 호출부가 아예 부르지 않음.
+ *   발송 실패가 신청을 실패시키면 안 되므로 호출부에서 try/catch로 감싼다(다른 알림과 동일). */
+
+function fmtFeeKrw(feeKrw: number): string {
+  return feeKrw <= 0 ? "무료" : `${feeKrw.toLocaleString("ko-KR")}원`;
+}
+
+export interface ApplicantConfirmPayload {
+  to: string; // 신청자 이메일 (호출부가 존재 확인 후 전달)
+  eventTitle: string;
+  slug: string;
+  session: { date: string; startTime: string; endTime: string } | null;
+  locationName: string | null;
+  applicantName: string;
+  applicantContact: string;
+  depositorName: string | null;
+  feeKrw: number;
+  depositBankName: string | null;
+  depositAccountNo: string | null;
+  depositAccountHolder: string | null;
+  refundPolicy: string | null;
+  notice: string | null;
+}
+
+/** 확인 메일 본문 HTML — 순수 함수(발송과 분리해 테스트 가능). */
+export function buildApplicantConfirmationHtml(
+  payload: ApplicantConfirmPayload,
+): string {
+  const paid = payload.feeKrw > 0;
+  const hasAccount = Boolean(
+    payload.depositBankName || payload.depositAccountNo,
+  );
+
+  const eventRows: [string, string][] = [
+    ["행사명", payload.eventTitle],
+    ["일시", payload.session ? fmtSession(payload.session) : "미정"],
+    ["장소", payload.locationName ?? "미정"],
+  ];
+  const applicantRows: [string, string][] = [
+    ["이름", payload.applicantName],
+    ["연락처", payload.applicantContact],
+  ];
+  if (payload.depositorName)
+    applicantRows.push(["입금자명", payload.depositorName]);
+
+  let body =
+    `<p style="margin:0 0 12px">${escapeAlertHtml(payload.applicantName)}님, 수강 신청이 <strong>접수</strong>되었습니다.</p>` +
+    `<h3 style="margin:20px 0 8px;font-size:15px">신청 행사</h3>` +
+    rowsTable(eventRows) +
+    `<h3 style="margin:20px 0 8px;font-size:15px">신청 정보</h3>` +
+    rowsTable(applicantRows);
+
+  if (paid) {
+    // 유료 — 입금 안내(계좌·예금주 + 확정 조건). 완료 화면(Step 24)과 동일 정보.
+    body +=
+      `<h3 style="margin:20px 0 8px;font-size:15px">입금 안내</h3>` +
+      `<p style="margin:0 0 8px;color:#b45309"><strong>아직 수강 확정 전입니다.</strong> 아래 계좌로 입금이 확인되어야 수강이 확정됩니다.</p>`;
+    const depositRows: [string, string][] = [
+      ["참가비", fmtFeeKrw(payload.feeKrw)],
+    ];
+    if (hasAccount) {
+      depositRows.push([
+        "입금 계좌",
+        `${payload.depositBankName ?? ""} ${payload.depositAccountNo ?? ""}`.trim(),
+      ]);
+      if (payload.depositAccountHolder)
+        depositRows.push(["예금주", payload.depositAccountHolder]);
+    }
+    body += rowsTable(depositRows);
+    body += hasAccount
+      ? `<p style="margin:12px 0 0;color:#6b7280">입금자명을 신청자명(위 입금자명)과 동일하게 입금해 주세요. 확인까지 다소 시간이 걸릴 수 있습니다.</p>`
+      : `<p style="margin:12px 0 0;color:#6b7280">입금 계좌는 별도로 안내됩니다.</p>`;
+  }
+
+  if (payload.refundPolicy) {
+    body +=
+      `<h3 style="margin:20px 0 8px;font-size:15px">환불·노쇼 규정</h3>` +
+      `<p style="margin:0;color:#374151;white-space:pre-line">${escapeAlertHtml(payload.refundPolicy)}</p>`;
+  }
+  if (payload.notice) {
+    body +=
+      `<h3 style="margin:20px 0 8px;font-size:15px">유의사항</h3>` +
+      `<p style="margin:0;color:#374151;white-space:pre-line">${escapeAlertHtml(payload.notice)}</p>`;
+  }
+
+  body += `<p style="margin:20px 0 0"><a href="${PUBLIC_EVENT_URL(payload.slug)}" style="color:#4338ca">행사 안내 페이지 →</a></p>`;
+  return wrapHtml(body);
+}
+
+export async function sendEducationApplicantConfirmation(
+  payload: ApplicantConfirmPayload,
+): Promise<void> {
+  if (!payload.to.includes("@")) return; // 방어 — 정상 경로에선 호출부가 이미 확인
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[education/apply-confirm] RESEND_API_KEY not set, skip email");
+    return;
+  }
+
+  const { error } = await resend.emails.send({
+    from: getAlertFromAddress(),
+    to: [payload.to],
+    subject: `[춘심 교육] 수강 신청 접수 — ${payload.eventTitle}`,
+    html: buildApplicantConfirmationHtml(payload),
+  });
+  if (error) throw new Error(error.message || "Resend send failed");
+}
+
 /* ── 3. 교육자: 승인/반려 결과 (hostEmail 스냅샷 — 없으면 스킵) ── */
 
 export interface DecisionEmailPayload {

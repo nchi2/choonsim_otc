@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { todayKst } from "@/lib/kst";
-import { sendEducationApplyAlert } from "@/lib/education-alerts";
+import {
+  sendEducationApplyAlert,
+  sendEducationApplicantConfirmation,
+} from "@/lib/education-alerts";
 import { getMemberUser } from "@/lib/member-guard";
 import { verifyTurnstile } from "@/lib/turnstile";
 import {
@@ -76,9 +79,18 @@ export async function POST(request: Request) {
       select: {
         id: true,
         title: true,
+        slug: true,
         capacity: true,
         feeKrw: true,
         applyDeadline: true,
+        // 신청자 확인 메일용(Step 29) — 장소·입금 안내·규정
+        customLocation: true,
+        office: { select: { name: true } },
+        depositBankName: true,
+        depositAccountNo: true,
+        depositAccountHolder: true,
+        refundPolicy: true,
+        notice: true,
         sessions: {
           select: { id: true, date: true, startTime: true, endTime: true },
         },
@@ -146,15 +158,16 @@ export async function POST(request: Request) {
 
     if ("error" in result) return bad(result.error, result.status);
 
+    const session =
+      sessionId != null
+        ? (event.sessions.find((s) => s.id === sessionId) ?? null)
+        : (event.sessions[0] ?? null);
+
     // 운영자 알림(건별) — 발송 실패해도 신청은 성공 유지.
     try {
       const appliedCount = await prisma.eventApplication.count({
         where: { eventId: event.id, status: "APPLIED", isTest: false },
       });
-      const session =
-        sessionId != null
-          ? (event.sessions.find((s) => s.id === sessionId) ?? null)
-          : (event.sessions[0] ?? null);
       await sendEducationApplyAlert({
         eventId: event.id,
         eventTitle: event.title,
@@ -165,6 +178,34 @@ export async function POST(request: Request) {
       });
     } catch (alertErr) {
       console.error("[education/apply] alert failed", alertErr);
+    }
+
+    // 신청자 본인 확인 메일(Step 29) — 이메일이 있을 때만. 운영자 알림과 별개.
+    // 수신 주소: 신청서에 입력한 이메일 우선, 없으면 로그인 회원의 계정 이메일(회원=계정 이메일).
+    //   저장된 EventApplication.email은 바꾸지 않는다(기존 동작 유지) — 이 주소는 발송용만.
+    // ★ 발송 실패가 신청을 실패시키지 않도록 분리된 try/catch.
+    const confirmEmail = email ?? memberSession?.email ?? null;
+    if (confirmEmail) {
+      try {
+        await sendEducationApplicantConfirmation({
+          to: confirmEmail,
+          eventTitle: event.title,
+          slug: event.slug,
+          session,
+          locationName: event.office?.name ?? event.customLocation ?? null,
+          applicantName: name,
+          applicantContact: contact,
+          depositorName,
+          feeKrw: event.feeKrw,
+          depositBankName: event.depositBankName,
+          depositAccountNo: event.depositAccountNo,
+          depositAccountHolder: event.depositAccountHolder,
+          refundPolicy: event.refundPolicy,
+          notice: event.notice,
+        });
+      } catch (confirmErr) {
+        console.error("[education/apply] applicant confirm failed", confirmErr);
+      }
     }
 
     return NextResponse.json({ ok: true, id: result.id });
