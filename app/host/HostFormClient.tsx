@@ -17,8 +17,13 @@ import {
   parse24,
   to24,
 } from "@/lib/time-input";
-import { PosterCard, POSTER_ASPECT_CSS } from "@/components/education/PosterCard";
-import { toPosterFocus, type PosterFocus } from "@/components/education/types";
+import { POSTER_ASPECT_CSS } from "@/components/education/PosterCard";
+import { EventCard } from "@/components/education/EventCard";
+import {
+  toPosterFocus,
+  type PosterFocus,
+  type EventCardData,
+} from "@/components/education/types";
 import {
   CATEGORY_LABEL,
   MODE_LABEL,
@@ -296,6 +301,29 @@ const PosterDrop = styled.div`
   align-items: flex-start;
   flex-wrap: wrap;
 `;
+
+/* 실시간 카드 미리보기(Step 30) — 포스터가 없어도 지금까지 입력한 제목·카테고리·일시·장소로
+ * 개선된 폴백 카드를 그대로 렌더(WYSIWYG). 실제 목록 EventCard(grid)를 재사용하되 클릭·이동은
+ * 막아 표시 전용으로 둔다(pointer-events:none). 포스터를 올리면 그 이미지로 자동 전환된다. */
+const PreviewWrap = styled.div`
+  width: 240px;
+  flex-shrink: 0;
+
+  ${media.sm} {
+    width: 100%;
+    max-width: 320px;
+  }
+`;
+const PreviewCaption = styled.div`
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: ${eduColors.textMuted};
+  margin-bottom: 0.4rem;
+`;
+const PreviewCardBox = styled.div`
+  /* 표시 전용 — 클릭/이동/hover 비활성(미리보기라 링크 이동 방지) */
+  pointer-events: none;
+`;
 /* 목록·캐러셀에서 실제로 어떻게 잘려 보일지 미리 보는 박스(고정 4:3) — PosterCard를 그대로
  * 넣어 렌더하므로 실제 카드와 100% 같은 크롭 결과(WYSIWYG). 이미지가 없을 때만 안내 문구. */
 const PosterPreview = styled.div`
@@ -564,6 +592,37 @@ export function HostFormClient({
 
   const paid = Number(feeKrw) > 0;
   const isOnlineMode = mode === "ONLINE" || mode === "HYBRID";
+
+  // 실시간 카드 미리보기 데이터(Step 30) — 실제 목록 EventCard가 소비하는 EventCardData 형태로
+  // 현재 입력값을 그대로 구성한다(WYSIWYG). 포스터가 없으면 개선된 폴백으로 렌더된다.
+  const previewLocationName = officeId
+    ? (offices.find((o) => String(o.id) === officeId)?.name ?? null)
+    : customLocation.trim() || null;
+  const previewSessions = sessions.filter((s) => s.date);
+  const firstSession = previewSessions[0] ?? null;
+  const previewCard: EventCardData = {
+    id: -1,
+    slug: "preview",
+    title: title.trim() || "행사 제목이 여기에 표시됩니다",
+    category,
+    mode,
+    posterUrl,
+    posterFocus,
+    officeId: officeId ? Number(officeId) : null,
+    locationName: previewLocationName,
+    feeKrw: Number(feeKrw) || 0,
+    capacity: capacity ? Number(capacity) : null,
+    applicationCount: 0,
+    session: firstSession
+      ? {
+          date: firstSession.date,
+          startTime: firstSession.startTime || "",
+          endTime: firstSession.endTime || "",
+        }
+      : null,
+    sessionCount: previewSessions.length || 1,
+    isFeatured: false,
+  };
 
   const onPosterChange = async (file: File | null) => {
     setPosterWarn(null);
@@ -1071,20 +1130,16 @@ export function HostFormClient({
         <Fieldset>
           <legend>포스터 (선택)</legend>
           <PosterDrop>
-            <PosterPreview>
-              {posterUrl ? (
-                <PosterCard
-                  title={title || "포스터"}
-                  category={category}
-                  posterUrl={posterUrl}
-                  posterFocus={posterFocus}
-                />
-              ) : posterUploading ? (
-                "업로드 중…"
+            <PreviewWrap>
+              <PreviewCaption>목록에서 이렇게 보여요</PreviewCaption>
+              {posterUploading ? (
+                <PosterPreview>업로드 중…</PosterPreview>
               ) : (
-                "미리보기"
+                <PreviewCardBox aria-hidden>
+                  <EventCard event={previewCard} />
+                </PreviewCardBox>
               )}
-            </PosterPreview>
+            </PreviewWrap>
             <PosterCtl>
               <input
                 type="file"
