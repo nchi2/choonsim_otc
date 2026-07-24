@@ -1,173 +1,115 @@
-/** RPC 호출 전용 — 브라우저에서는 동일 출처 `/api/scanner/rpc`로 우회(확장·CORS 이슈 완화) */
+/** 스캐너 잔고 조회 — 체인당 JSON-RPC 배치 1회(왕복 최소화) + 배치 실패 시 개별 폴백.
+ *  ★ 구조: scanChain(체인 1개, 진행표시·타임아웃 단위) → scanWallet(3체인 병렬 합본, 하위호환). */
 
 import { RPC_ENDPOINTS, RPC_URLS } from "./rpc-config";
 import {
   SCANNER_TOKENS,
+  SCANNER_NETWORK_ORDER,
   type Network,
+  type Token,
   type TokenResult,
 } from "./tokens";
+import {
+  getNativeBalance,
+  getTokenBalance,
+  encodeBalanceOfData,
+  hexResultToNumber,
+  rpcBatch,
+  type RpcBatchCall,
+} from "./rpc-core";
 
 export { RPC_ENDPOINTS, RPC_URLS };
+export {
+  getNativeBalance,
+  getTokenBalance,
+  normalizeWalletForRpc,
+  rpcCall,
+} from "./rpc-core";
 
-const BALANCE_OF_SELECTOR = "0x70a08231";
-
-/** 검증만 수행; QR·입력의 EIP-55 대소문자 유지(노드는 일반적으로 동일 바이트로 처리) */
-function normalizeWalletForRpc(walletAddress: string): string | null {
-  const addr = walletAddress.trim();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) return null;
-  return addr;
+function tokenKey(t: Token): string {
+  return `${t.symbol}-${t.network}-${t.address}`;
 }
 
-/** `eth_getBalance` hex → ETH/BNB 단위 */
-function weiHexToEthNumber(hex: string): number {
-  try {
-    const h = hex.trim().toLowerCase();
-    if (h === "0x" || h === "") return 0;
-    const wei = BigInt(h);
-    const scale = BigInt(10) ** BigInt(18);
-    const whole = wei / scale;
-    const frac = wei % scale;
-    return Number(whole) + Number(frac) / 1e18;
-  } catch {
-    return 0;
+/** 토큰 → 배치 call. 네이티브는 eth_getBalance, ERC20은 balanceOf eth_call. */
+function toBatchCall(token: Token, wallet: string): RpcBatchCall {
+  if (token.type === "native") {
+    return { method: "eth_getBalance", params: [wallet, "latest"] };
   }
+  return {
+    method: "eth_call",
+    params: [{ to: token.address, data: encodeBalanceOfData(wallet) }, "latest"],
+  };
 }
 
-function padAddressParam(addr: string): string {
-  const hex = addr.startsWith("0x") ? addr.slice(2) : addr;
-  return hex.toLowerCase().padStart(64, "0");
-}
-
-function parseHexBalanceResult(result: unknown): number | null {
-  if (typeof result !== "string") return null;
-  const t = result.trim();
-  if (!/^0x[0-9a-fA-F]*$/i.test(t)) return null;
-  return weiHexToEthNumber(t);
-}
-
-export async function rpcCall(
-  network: Network,
-  method: string,
-  params: unknown[],
-): Promise<unknown | null> {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  try {
-    const res = await fetch("/api/scanner/rpc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ network, method, params }),
-    });
-    if (!res.ok) return null;
-    const json: { result?: unknown; error?: string | null } = await res.json();
-    if (json.error != null) return null;
-    return json.result ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export async function getNativeBalance(
-  network: Network,
-  walletAddress: string,
+/** 개별 폴백(배치 실패·항목 누락 시) — 네이티브/ERC20 각각 직접 호출. */
+async function fallbackOne(
+  token: Token,
+  wallet: string,
+  signal?: AbortSignal,
 ): Promise<number> {
-  const addr = normalizeWalletForRpc(walletAddress);
-  if (!addr) return 0;
-  const result = await rpcCall(network, "eth_getBalance", [addr, "latest"]);
-  const n = parseHexBalanceResult(result);
-  return n ?? 0;
-}
-
-export async function getTokenBalance(
-  network: Network,
-  contractAddress: string,
-  walletAddress: string,
-  decimals: number,
-): Promise<number> {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(contractAddress)) return 0;
-  const w = normalizeWalletForRpc(walletAddress);
-  if (!w) return 0;
-  const data = `${BALANCE_OF_SELECTOR}${padAddressParam(w)}`;
-  const result = await rpcCall(network, "eth_call", [
-    { to: contractAddress, data },
-    "latest",
-  ]);
-  if (
-    result === null ||
-    result === undefined ||
-    result === "0x" ||
-    result === ""
-  ) {
-    return 0;
-  }
-  if (typeof result !== "string" || !/^0x[0-9a-fA-F]*$/i.test(result.trim())) {
-    return 0;
-  }
   try {
-    const raw = BigInt(result.trim());
-    return Number(raw) / 10 ** decimals;
-  } catch {
-    return 0;
-  }
-}
-
-/** 네이티브 잔고(eth_getBalance)가 동시 다발 eth_call과 같은 출구 RPC에 몰릴 때 실패·0으로 떨어지는 것을 줄이기 위해 네이티브를 먼저 조회 */
-async function mapWithPool<T, R>(
-  items: readonly T[],
-  poolSize: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out = new Array<R>(items.length);
-  let next = 0;
-  async function worker(): Promise<void> {
-    for (;;) {
-      const i = next;
-      next += 1;
-      if (i >= items.length) return;
-      out[i] = await fn(items[i]);
+    if (token.type === "native") {
+      return await getNativeBalance(token.network, wallet, signal);
     }
+    return await getTokenBalance(
+      token.network,
+      token.address,
+      wallet,
+      token.decimals,
+      signal,
+    );
+  } catch {
+    return 0;
   }
-  const n = Math.max(1, Math.min(poolSize, items.length));
-  await Promise.all(Array.from({ length: n }, () => worker()));
-  return out;
 }
 
-export async function scanWallet(walletAddress: string): Promise<TokenResult[]> {
-  const natives = SCANNER_TOKENS.filter((t) => t.type === "native");
-  const erc20s = SCANNER_TOKENS.filter((t) => t.type === "erc20");
+/**
+ * 한 체인의 모든 토큰 잔고 — JSON-RPC 배치 1회. 배치 자체 실패면 개별 폴백.
+ * signal 로 취소/타임아웃 가능. 결과는 SCANNER_TOKENS 등록 순서(그 체인 부분).
+ */
+export async function scanChain(
+  network: Network,
+  wallet: string,
+  signal?: AbortSignal,
+): Promise<TokenResult[]> {
+  const tokens = SCANNER_TOKENS.filter((t) => t.network === network);
+  if (tokens.length === 0) return [];
 
-  const nativeResults = await Promise.all(
-    natives.map(async (token): Promise<TokenResult> => {
-      try {
-        const balance = await getNativeBalance(token.network, walletAddress);
-        return { ...token, balance };
-      } catch {
-        return { ...token, balance: 0 };
-      }
+  const calls = tokens.map((t) => toBatchCall(t, wallet));
+  const results = await rpcBatch(network, calls, signal);
+
+  // 배치 전체 실패(프록시/엔드포인트 다운·타임아웃 abort) → 예외로 신호.
+  // 호출부(useScanner)가 abort 여부로 "timeout" vs "error"를 구분해 재시도 UI를 띄운다.
+  // (개별 폴백은 같은 프록시·엔드포인트를 쓰므로 배치가 전부 실패하면 개별도 실패 → 폴백 무의미)
+  if (results == null) {
+    throw new Error("chain_scan_failed");
+  }
+
+  return Promise.all(
+    tokens.map(async (token, i): Promise<TokenResult> => {
+      const n = hexResultToNumber(results[i], token.decimals);
+      if (n != null) return { ...token, balance: n };
+      // 배치는 성공했으나 이 항목만 누락/이상 → 개별 재조회
+      return { ...token, balance: await fallbackOne(token, wallet, signal) };
     }),
   );
+}
 
-  const erc20Results = await mapWithPool(erc20s, 6, async (token): Promise<TokenResult> => {
-    try {
-      const balance = await getTokenBalance(
-        token.network,
-        token.address,
-        walletAddress,
-        token.decimals,
-      );
-      return { ...token, balance };
-    } catch {
-      return { ...token, balance: 0 };
-    }
-  });
-
+/**
+ * 전 체인 잔고(하위호환) — 3체인을 병렬 스캔해 SCANNER_TOKENS 순서로 합본.
+ * ※ 이 함수는 "전부 완료"를 기다린다. 점진 표시가 필요한 화면은 scanChain을 체인별로 직접 쓴다.
+ */
+export async function scanWallet(walletAddress: string): Promise<TokenResult[]> {
+  const perChain = await Promise.all(
+    SCANNER_NETWORK_ORDER.map((net) =>
+      scanChain(net, walletAddress).catch(() => [] as TokenResult[]),
+    ),
+  );
   const merged = new Map<string, TokenResult>();
-  for (const r of nativeResults) {
-    merged.set(`${r.symbol}-${r.network}-${r.address}`, r);
+  for (const list of perChain) {
+    for (const r of list) merged.set(tokenKey(r), r);
   }
-  for (const r of erc20Results) {
-    merged.set(`${r.symbol}-${r.network}-${r.address}`, r);
-  }
-  return SCANNER_TOKENS.map((t) => merged.get(`${t.symbol}-${t.network}-${t.address}`)!);
+  return SCANNER_TOKENS.map(
+    (t) => merged.get(tokenKey(t)) ?? ({ ...t, balance: 0 } as TokenResult),
+  );
 }
