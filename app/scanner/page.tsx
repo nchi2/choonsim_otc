@@ -11,13 +11,14 @@ import { RecentUpdatesNotice } from "./page/components/RecentUpdatesNotice";
 import { StatusMessage } from "./page/components/StatusMessage";
 import { TokenRow } from "./page/components/TokenRow";
 import { NftStakeRow } from "./page/components/NftStakeRow";
+import { ChainScanProgress } from "./page/components/ChainScanProgress";
 import { WalletQrScanner } from "./page/components/WalletQrScanner";
 import {
   ScanModeToggle,
   type ScanMode,
 } from "./page/components/ScanModeToggle";
 import { ContinuousScanPanel } from "./page/components/ContinuousScanPanel";
-import { isLdtStakeNft } from "./lib/tokens";
+import { isLdtStakeNft, SCANNER_NETWORK_ORDER } from "./lib/tokens";
 import { addressDedupKey, isValidAddress } from "./lib/utils";
 import { useScanner } from "./page/hooks/useScanner";
 import * as S from "./page/styles";
@@ -41,10 +42,12 @@ export default function ScannerPage() {
     scannedAddress,
     status,
     results,
+    chainStatus,
     activeTab,
     setActiveTab,
     errorMessage,
     handleScan,
+    retryChain,
     filteredResults,
   } = useScanner();
 
@@ -52,7 +55,26 @@ export default function ScannerPage() {
   const hasAnyBalance = results.some((r) => r.balance > 0);
   const showScannedAddress =
     !isContinuous && status !== "idle" && scannedAddress.length > 0;
-  const showResultsChrome = !isContinuous && status === "done" && hasAnyBalance;
+  // 점진 표시(Step: scanner-speed): 도착한 체인 잔고를 즉시 보여주고, 남은 체인은 진행 표시로.
+  const anyChainLoading = SCANNER_NETWORK_ORDER.some(
+    (n) => chainStatus[n] === "loading",
+  );
+  const anyChainFailed = SCANNER_NETWORK_ORDER.some(
+    (n) => chainStatus[n] === "timeout" || chainStatus[n] === "error",
+  );
+  const scanActive = status === "loading" || status === "done";
+  // 하나라도 잔고가 잡히면(체인 도착) 즉시 결과 UI 노출 — 전체 완료를 기다리지 않는다.
+  const showResultsChrome = !isContinuous && hasAnyBalance;
+  // 조회 중·지연·실패 체인이 있으면 체인별 진행/재시도 표시.
+  const showChainProgress =
+    !isContinuous && scanActive && (anyChainLoading || anyChainFailed);
+  // 모든 체인이 정상 종료됐는데 잔고가 하나도 없을 때만 "보유 없음".
+  const showEmpty =
+    !isContinuous &&
+    status === "done" &&
+    !anyChainLoading &&
+    !anyChainFailed &&
+    !hasAnyBalance;
 
   const clearCollected = useCallback(() => {
     collectedKeysRef.current.clear();
@@ -164,14 +186,8 @@ export default function ScannerPage() {
                 <ScannedAddressBar address={scannedAddress} />
               ) : null}
 
-              {status === "loading" && <StatusMessage state="loading" />}
-
               {status === "error" && (
                 <StatusMessage state="error" message={errorMessage} />
-              )}
-
-              {status === "done" && !hasAnyBalance && (
-                <StatusMessage state="empty" />
               )}
 
               {showResultsChrome && (
@@ -192,6 +208,15 @@ export default function ScannerPage() {
                   />
                 </>
               )}
+
+              {showChainProgress && (
+                <ChainScanProgress
+                  chainStatus={chainStatus}
+                  onRetry={retryChain}
+                />
+              )}
+
+              {showEmpty && <StatusMessage state="empty" />}
             </>
           )}
         </S.ScannerSection>
